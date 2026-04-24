@@ -1,0 +1,41 @@
+// =============================================================================
+// ChampStep — Firestore security rules (DEMO ONLY).
+// Deploy with:  firebase deploy --only firestore:rules
+// =============================================================================
+//
+// ⚠️  These rules allow any client to read/write. They exist so the app works
+// before you've added Firebase Auth. BEFORE launching in production you must
+// tighten them — see the AUTH block below (commented-out) for the real version.
+//
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- DEMO rules: open access (use only while building) ---------------
+    match /children/{childId} {
+      allow read, write: if true;
+    }
+    match /achievements/{docId} {
+      allow read, write: if true;
+    }
+
+    // ---- PRODUCTION rules (uncomment once Firebase Auth is wired) --------
+    //
+    // match /children/{childId} {
+    //   allow read, write: if request.auth != null
+    //     && resource.data.parentId == request.auth.uid;
+    //   allow create: if request.auth != null
+    //     && request.resource.data.parentId == request.auth.uid;
+    // }
+    //
+    // match /achievements/{docId} {
+    //   allow read: if request.auth != null
+    //     && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid;
+    //   allow create: if request.auth != null
+    //     && get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.parentId == request.auth.uid;
+    //   allow update, delete: if request.auth != null
+    //     && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid;
+    // }
+  }
+}

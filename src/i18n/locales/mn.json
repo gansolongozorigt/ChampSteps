@@ -1,0 +1,202 @@
+{
+  "app": {
+    "journal": "Тэмдэглэл",
+    "achievementsTitle": "{{name}}-ийн амжилтууд",
+    "addAchievement": "Амжилт нэмэх",
+    "editProfile": "Профайл засах",
+    "language": "Хэл"
+  },
+  "summary": {
+    "total": "Нийт",
+    "entries": "бичлэг",
+    "gold": "Алтан медаль",
+    "topCategory": "Тэргүүн ангилал"
+  },
+  "categories": {
+    "All": "Бүгд",
+    "Sports": "Спорт",
+    "Arts": "Урлаг",
+    "Academic": "Академик"
+  },
+  "awards": {
+    "Gold": "Алт",
+    "Silver": "Мөнгө",
+    "Bronze": "Хүрэл",
+    "Participant": "Оролцогч"
+  },
+  "search": {
+    "placeholder": "Амжилтын нэрээр хайх...",
+    "sort": "Эрэмбэ",
+    "newestFirst": "Шинэ нь түрүүнд",
+    "oldestFirst": "Хуучин нь түрүүнд",
+    "noResults": "Тохирох амжилт олдсонгүй."
+  },
+  "empty": {
+    "title": "Анхны тэмдэглэлээ бичье",
+    "subtitle": "Хүүхдийнхээ эхний тэмдэглэгдэх амжилтыг энд нэмээрэй — бяцхан оролцоо ч гэсэн үнэ цэнэтэй.",
+    "cta": "Амжилт нэмэх"
+  },
+  "emptySearch": {
+    "title": "Үр дүн олдсонгүй",
+    "subtitle": "Хайлт эсвэл шүүлтүүрээ өөрчлөөд дахин үзнэ үү.",
+    "reset": "Шүүлтүүр цэвэрлэх"
+  },
+  "card": {
+    "photos_one": "📷 {{count}} зураг",
+    "photos_other": "📷 {{count}} зураг"
+  },
+  "form": {
+    "headerEyebrow": "Шинэ тэмдэглэл",
+    "headerEyebrowWithName": "Шинэ тэмдэглэл · {{name}}",
+    "heading": "Амжилт нэмэх",
+    "steps": {
+      "basics": "Үндсэн",
+      "story": "Шагнал ба түүх",
+      "photos": "Зураг",
+      "review": "Хянах"
+    },
+    "fields": {
+      "title": "Тэмцээний нэр",
+      "titlePlaceholder": "жишээ нь: Улсын математикийн олимпиад 2026",
+      "date": "Огноо",
+      "location": "Байршил",
+      "locationPlaceholder": "Хот, газар",
+      "category": "Ангилал",
+      "award": "Шагнал",
+      "description": "Тайлбар / түүх",
+      "descriptionPlaceholder": "Хүүхэд чинь юу хийснийг, яагаад онцгой байсныг хэдэн өгүүлбэрээр бичээрэй.",
+      "photos": "Зураг (хамгийн ихдээ 8)",
+      "uploadCta": "Зураг оруулахын тулд товш",
+      "uploadHint": "JPG / PNG · ачаалахын өмнө автоматаар жижгэрнэ"
+    },
+    "validation": {
+      "required": "Заавал бөглөнө",
+      "descriptionTooShort": "Нэг, хоёр өгүүлбэрээр түүхийг нь дүрслээрэй"
+    },
+    "review": {
+      "heading": "Хянах",
+      "labels": {
+        "title": "Нэр",
+        "date": "Огноо",
+        "location": "Байршил",
+        "category": "Ангилал",
+        "award": "Шагнал",
+        "description": "Тайлбар",
+        "photos": "Зураг"
+      },
+      "photosAttached": "{{count}} хавсаргасан"
+    },
+    "actions": {
+      "cancel": "Цуцлах",
+      "back": "Буцах",
+      "continue": "Үргэлжлүүлэх",
+      "remove": "Устгах",
+      "save": "Тэмдэглэлийг хадгалах",
+      "saveForChild": "{{name}}-д хадгалах",
+      "saving": "Хадгалж байна…"
+    }
+  },
+  "nav": {
+    "pdfDownload": "PDF Татах",
+    "subscription": "Сарын эрх"
+  },
+  "auth": {
+    "signInTitle": "ChampStep-д нэвтрэх",
+    "signUpTitle": "Шинээр бүртгүүлэх",
+    "subtitle": "Хүүхдийнхээ амжилтуудыг цуглуулж, PDF портфолио үүсгэцгээе.",
+    "name": "Таны нэр",
+    "namePlaceholder": "Эцэг эхийн нэр",
+    "email": "Имэйл",
+    "password": "Нууц үг",
+    "signIn": "Нэвтрэх",
+    "signUp": "Бүртгүүлэх",
+    "signOut": "Гарах",
+    "signInGoogle": "Google-р нэвтрэх",
+    "submitting": "Хүлээнэ үү…",
+    "or": "эсвэл",
+    "toggleToSignup": "Шинэ хэрэглэгч үү? Энд бүртгүүл.",
+    "toggleToSignin": "Бүртгэлтэй юу? Нэвтрэх.",
+    "offlineHint": "Туршилтын горим — нэвтрэхгүйгээр үргэлжлүүлэх бол:",
+    "firebaseNotConfigured": "Firebase тохируулгагүй байна. Туршилтын горимд нэвтэрнэ үү:",
+    "continueOffline": "Нэвтрэхгүйгээр үргэлжлүүлэх",
+    "errors": {
+      "notConfigured": "Firebase тохируулгагүй байна. .env файлыг шалгаарай.",
+      "invalidEmail": "Имэйлийн формат буруу байна.",
+      "invalidCredentials": "Имэйл эсвэл нууц үг буруу байна.",
+      "emailInUse": "Энэ имэйл аль хэдийн бүртгэгдсэн байна.",
+      "weakPassword": "Нууц үг дор хаяж 6 тэмдэгт байх ёстой.",
+      "network": "Интернэт холболтоо шалгана уу.",
+      "popupClosed": "Нэвтрэх цонх хаагдсан байна.",
+      "generic": "Ямар нэг алдаа гарлаа. Дахин оролдоно уу.",
+      "notSignedIn": "Та эхлээд нэвтэрнэ үү."
+    }
+  },
+  "subscription": {
+    "heading": "ChampStep Premium",
+    "subtitle": "Premium болсноор PDF портфолио, олон хүүхэд, шуурхай дэмжлэг авна.",
+    "current": "Одоогийн эрх:",
+    "free": "Үнэгүй",
+    "premium": "Premium",
+    "perMonth": "сар тутам",
+    "features": {
+      "pdf": "PDF портфолио татах",
+      "unlimited": "Хязгааргүй амжилт нэмэх",
+      "multiChild": "Олон хүүхдийн бүртгэл",
+      "priority": "Шуурхай хэрэглэгчийн дэмжлэг"
+    },
+    "continueToPay": "Төлбөр рүү үргэлжлүүлэх",
+    "back": "Буцах",
+    "simulatePayment": "Төлбөрийг баталгаажуулах",
+    "processing": "Боловсруулж байна…",
+    "qpayIntro": "QPay аппаар дараах QR кодыг уншуулна уу.",
+    "qpayScanHint": "Өөрийн банкны аппаар сканнердана уу.",
+    "demoNote": "Туршилтын QR — бодит төлбөр хийгдэхгүй.",
+    "successTitle": "Баярлалаа! 🎉",
+    "successBody": "Таны Premium эрх идэвхжлээ. Одоо PDF татаж болно.",
+    "done": "Ойлголоо",
+    "close": "Хаах",
+    "alreadyPremium": "Аль хэдийн Premium",
+    "errors": {
+      "activate": "Эрх идэвхжүүлэхэд алдаа гарлаа."
+    }
+  },
+  "pdf": {
+    "generating": "PDF бэлдэж байна…",
+    "success": "PDF амжилттай татагдлаа.",
+    "error": "PDF үүсгэхэд алдаа гарлаа.",
+    "premiumRequired": "PDF татах эрх — Premium-д.",
+    "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
+    "coverFooter": "ChampStep-ээр үүсгэсэн.",
+    "pageOf": "{{current}} / {{total}}",
+    "meta": {
+      "birthDate": "Төрсөн огноо",
+      "totalEntries": "Нийт бичлэг",
+      "generated": "Үүсгэсэн огноо"
+    }
+  },
+  "status": {
+    "loading": "Ачааллаж байна…",
+    "saved": "Амжилттай хадгалагдлаа",
+    "savedProfile": "Профайл шинэчлэгдлээ",
+    "errorTitle": "Алдаа гарлаа",
+    "errorSaving": "Хадгалахад алдаа гарлаа. Интернэт болон Firebase Rules-ээ шалгана уу.",
+    "errorLoading": "Мэдээлэл татахад алдаа гарлаа.",
+    "offlineBanner": "Firebase тохируулгагүй байна — өгөгдөл зөвхөн энэ төхөөрөмжид хадгалагдана.",
+    "dismiss": "Хаах"
+  },
+  "profile": {
+    "heading": "Профайл засах",
+    "fields": {
+      "name": "Нэр",
+      "bio": "Товч танилцуулга",
+      "bioPlaceholder": "жишээ нь: 11 настай, шатар болон усан будаг дуртай",
+      "birthDate": "Төрсөн огноо",
+      "avatar": "Профайл зураг"
+    },
+    "actions": {
+      "save": "Хадгалах",
+      "cancel": "Цуцлах",
+      "removeAvatar": "Зургийг устгах"
+    }
+  }
+}

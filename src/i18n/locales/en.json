@@ -1,0 +1,202 @@
+{
+  "app": {
+    "journal": "Journal",
+    "achievementsTitle": "{{name}}'s achievements",
+    "addAchievement": "Add achievement",
+    "editProfile": "Edit profile",
+    "language": "Language"
+  },
+  "summary": {
+    "total": "Total",
+    "entries": "entries",
+    "gold": "Gold medals",
+    "topCategory": "Top category"
+  },
+  "categories": {
+    "All": "All",
+    "Sports": "Sports",
+    "Arts": "Arts",
+    "Academic": "Academic"
+  },
+  "awards": {
+    "Gold": "Gold",
+    "Silver": "Silver",
+    "Bronze": "Bronze",
+    "Participant": "Participant"
+  },
+  "search": {
+    "placeholder": "Search achievements...",
+    "sort": "Sort",
+    "newestFirst": "Newest first",
+    "oldestFirst": "Oldest first",
+    "noResults": "No matching achievements."
+  },
+  "empty": {
+    "title": "Start the journal",
+    "subtitle": "Add your child's first competition or award — even small wins belong here.",
+    "cta": "Add achievement"
+  },
+  "emptySearch": {
+    "title": "No results",
+    "subtitle": "Try adjusting the search or filters.",
+    "reset": "Clear filters"
+  },
+  "card": {
+    "photos_one": "📷 {{count}} photo",
+    "photos_other": "📷 {{count}} photos"
+  },
+  "form": {
+    "headerEyebrow": "New entry",
+    "headerEyebrowWithName": "New entry · {{name}}",
+    "heading": "Add an achievement",
+    "steps": {
+      "basics": "Basics",
+      "story": "Award & story",
+      "photos": "Photos",
+      "review": "Review"
+    },
+    "fields": {
+      "title": "Competition title",
+      "titlePlaceholder": "e.g. National Math Olympiad 2026",
+      "date": "Date",
+      "location": "Location",
+      "locationPlaceholder": "City, venue",
+      "category": "Category",
+      "award": "Award",
+      "description": "Description / story",
+      "descriptionPlaceholder": "A few sentences about what your child did and why it mattered.",
+      "photos": "Photos (up to 8)",
+      "uploadCta": "Tap to upload photos",
+      "uploadHint": "JPG / PNG · auto-compressed before upload"
+    },
+    "validation": {
+      "required": "Required",
+      "descriptionTooShort": "Tell the story in a sentence or two"
+    },
+    "review": {
+      "heading": "Review",
+      "labels": {
+        "title": "Title",
+        "date": "Date",
+        "location": "Location",
+        "category": "Category",
+        "award": "Award",
+        "description": "Description",
+        "photos": "Photos"
+      },
+      "photosAttached": "{{count}} attached"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "back": "Back",
+      "continue": "Continue",
+      "remove": "Remove",
+      "save": "Save achievement",
+      "saveForChild": "Save for {{name}}",
+      "saving": "Saving…"
+    }
+  },
+  "nav": {
+    "pdfDownload": "Download PDF",
+    "subscription": "Subscription"
+  },
+  "auth": {
+    "signInTitle": "Sign in to ChampStep",
+    "signUpTitle": "Create your account",
+    "subtitle": "Collect your child's wins and build a beautiful portfolio.",
+    "name": "Your name",
+    "namePlaceholder": "Parent name",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "signInGoogle": "Continue with Google",
+    "submitting": "Please wait…",
+    "or": "or",
+    "toggleToSignup": "New here? Create an account.",
+    "toggleToSignin": "Already have an account? Sign in.",
+    "offlineHint": "Want to try it first?",
+    "firebaseNotConfigured": "Firebase isn't configured. You can still try the app:",
+    "continueOffline": "Continue without an account",
+    "errors": {
+      "notConfigured": "Firebase isn't configured. Check your .env file.",
+      "invalidEmail": "That email doesn't look right.",
+      "invalidCredentials": "Incorrect email or password.",
+      "emailInUse": "This email is already registered.",
+      "weakPassword": "Password must be at least 6 characters.",
+      "network": "Check your internet connection.",
+      "popupClosed": "Sign-in popup was closed.",
+      "generic": "Something went wrong. Please try again.",
+      "notSignedIn": "Please sign in first."
+    }
+  },
+  "subscription": {
+    "heading": "ChampStep Premium",
+    "subtitle": "Premium unlocks PDF portfolios, multi-child, and priority support.",
+    "current": "Current plan:",
+    "free": "Free",
+    "premium": "Premium",
+    "perMonth": "per month",
+    "features": {
+      "pdf": "Downloadable PDF portfolio",
+      "unlimited": "Unlimited achievements",
+      "multiChild": "Multiple children",
+      "priority": "Priority support"
+    },
+    "continueToPay": "Continue to payment",
+    "back": "Back",
+    "simulatePayment": "Confirm payment",
+    "processing": "Processing…",
+    "qpayIntro": "Scan the QR code with the QPay app.",
+    "qpayScanHint": "Use your banking app's scanner.",
+    "demoNote": "Demo QR — no real charge is made.",
+    "successTitle": "Thank you! 🎉",
+    "successBody": "Your Premium plan is active. You can now download PDFs.",
+    "done": "Got it",
+    "close": "Close",
+    "alreadyPremium": "Already Premium",
+    "errors": {
+      "activate": "Could not activate your plan."
+    }
+  },
+  "pdf": {
+    "generating": "Building PDF…",
+    "success": "PDF downloaded.",
+    "error": "Could not generate PDF.",
+    "premiumRequired": "PDF export is a Premium feature.",
+    "coverTitle": "{{name}} — Achievement Journal",
+    "coverFooter": "Generated with ChampStep.",
+    "pageOf": "{{current}} / {{total}}",
+    "meta": {
+      "birthDate": "Birth date",
+      "totalEntries": "Total entries",
+      "generated": "Generated on"
+    }
+  },
+  "status": {
+    "loading": "Loading…",
+    "saved": "Saved successfully",
+    "savedProfile": "Profile updated",
+    "errorTitle": "Something went wrong",
+    "errorSaving": "Could not save. Check your internet connection and Firebase rules.",
+    "errorLoading": "Could not load data.",
+    "offlineBanner": "Firebase is not configured — data is only stored on this device.",
+    "dismiss": "Dismiss"
+  },
+  "profile": {
+    "heading": "Edit profile",
+    "fields": {
+      "name": "Name",
+      "bio": "Bio",
+      "bioPlaceholder": "e.g. 11 y/o · loves chess and watercolor",
+      "birthDate": "Birth date",
+      "avatar": "Avatar"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "removeAvatar": "Remove avatar"
+    }
+  }
+}
