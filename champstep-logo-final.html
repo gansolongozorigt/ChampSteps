@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChampStep — Лого A сайжруулсан</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f5f3f0;
+    font-family: 'DM Sans', sans-serif;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #9e9890;
+    margin-bottom: 40px;
+  }
+
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 640px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .card.dark {
+    background: #1c1917;
+  }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #c4bfb8;
+    margin-bottom: 8px;
+  }
+
+  .card.dark .card-label {
+    color: #4a4540;
+  }
+
+  /* Logo */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-sm { gap: 10px; }
+  .logo-xs { gap: 8px; }
+
+  .wordmark {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: #1c1917;
+  }
+
+  .wordmark .champ { color: #1c1917; }
+
+  .wordmark .step {
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card.dark .wordmark .champ { color: white; }
+
+  /* Sm */
+  .wordmark-sm {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .wordmark-sm .champ { color: #1c1917; }
+  .wordmark-sm .step {
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card.dark .wordmark-sm .champ { color: white; }
+
+  /* Xs — navbar */
+  .wordmark-xs {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .wordmark-xs .champ { color: #1c1917; }
+  .wordmark-xs .step {
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .divider {
+    height: 1px;
+    background: #f0ece8;
+    margin: 8px 0;
+  }
+
+  .card.dark .divider { background: #2a2520; }
+
+  .sizes {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .size-note {
+    font-size: 10px;
+    color: #c4bfb8;
+    margin-top: 4px;
+  }
+
+  /* Navbar mock */
+  .navbar {
+    background: white;
+    border: 1px solid #e8e4e0;
+    border-radius: 12px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .navbar-left { display: flex; align-items: center; gap: 10px; }
+
+  .nav-icon {
+    width: 28px;
+    height: 28px;
+    background: #1c1917;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .nav-link {
+    font-size: 11px;
+    color: #9e9890;
+    font-weight: 500;
+  }
+
+  .nav-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #f0ece8;
+    border: 1px solid #e0dbd5;
+  }
+
+  .desc {
+    font-size: 12px;
+    color: #a09890;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<h1>ChampStep · Лого A · Gradient хувилбар</h1>
+
+<div class="grid">
+
+  <!-- Цагаан дэвсгэр -->
+  <div class="card">
+    <div class="card-label">Цагаан дэвсгэр — үндсэн хувилбар</div>
+
+    <div class="logo">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <defs>
+          <linearGradient id="barGrad1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d97706" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#d97706" stop-opacity="0.15"/>
+          </linearGradient>
+          <linearGradient id="barGrad2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d97706" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#b45309" stop-opacity="0.5"/>
+          </linearGradient>
+          <linearGradient id="barGrad3" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d97706"/>
+            <stop offset="100%" stop-color="#92400e"/>
+          </linearGradient>
+          <linearGradient id="starGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fbbf24"/>
+            <stop offset="100%" stop-color="#d97706"/>
+          </linearGradient>
+        </defs>
+        <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#barGrad1)"/>
+        <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#barGrad2)"/>
+        <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#barGrad3)"/>
+        <circle cx="35" cy="7" r="5" fill="#1c1917"/>
+        <path d="M35 4.2 L36 6.5 L38.5 6.5 L36.5 8.1 L37.3 10.5 L35 9 L32.7 10.5 L33.5 8.1 L31.5 6.5 L34 6.5 Z" fill="url(#starGrad)"/>
+      </svg>
+      <div class="wordmark">
+        <span class="champ">Champ</span><span class="step">Step</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Хэмжээнүүд -->
+    <div class="sizes">
+      <div>
+        <div class="logo logo-sm">
+          <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+            <defs>
+              <linearGradient id="g1b" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d97706" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#d97706" stop-opacity="0.15"/>
+              </linearGradient>
+              <linearGradient id="g2b" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d97706" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#b45309" stop-opacity="0.5"/>
+              </linearGradient>
+              <linearGradient id="g3b" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d97706"/>
+                <stop offset="100%" stop-color="#92400e"/>
+              </linearGradient>
+            </defs>
+            <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#g1b)"/>
+            <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#g2b)"/>
+            <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#g3b)"/>
+            <circle cx="35" cy="7" r="5" fill="#1c1917"/>
+          </svg>
+          <div class="wordmark-sm">
+            <span class="champ">Champ</span><span class="step">Step</span>
+          </div>
+        </div>
+        <div class="size-note">Дунд — card, modal</div>
+      </div>
+
+      <div>
+        <div class="logo logo-xs">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+            <defs>
+              <linearGradient id="g3c" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d97706"/>
+                <stop offset="100%" stop-color="#92400e"/>
+              </linearGradient>
+            </defs>
+            <rect x="4" y="32" width="10" height="12" rx="2.5" fill="#d97706" opacity="0.2"/>
+            <rect x="17" y="22" width="10" height="22" rx="2.5" fill="#d97706" opacity="0.5"/>
+            <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#g3c)"/>
+            <circle cx="35" cy="7" r="5" fill="#1c1917"/>
+          </svg>
+          <div class="wordmark-xs">
+            <span class="champ">Champ</span><span class="step">Step</span>
+          </div>
+        </div>
+        <div class="size-note">Жижиг — navbar</div>
+      </div>
+
+      <div>
+        <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+          <defs>
+            <linearGradient id="g3d" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d97706"/>
+              <stop offset="100%" stop-color="#92400e"/>
+            </linearGradient>
+          </defs>
+          <rect x="4" y="32" width="10" height="12" rx="2.5" fill="#d97706" opacity="0.2"/>
+          <rect x="17" y="22" width="10" height="22" rx="2.5" fill="#d97706" opacity="0.5"/>
+          <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#g3d)"/>
+          <circle cx="35" cy="7" r="5" fill="#1c1917"/>
+        </svg>
+        <div class="size-note">Icon only — favicon</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Хар дэвсгэр -->
+  <div class="card dark">
+    <div class="card-label">Хар дэвсгэр — premium, dark mode</div>
+
+    <div class="logo">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <defs>
+          <linearGradient id="dg1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d97706" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#d97706" stop-opacity="0.1"/>
+          </linearGradient>
+          <linearGradient id="dg2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d97706" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#b45309" stop-opacity="0.45"/>
+          </linearGradient>
+          <linearGradient id="dg3" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fbbf24"/>
+            <stop offset="100%" stop-color="#d97706"/>
+          </linearGradient>
+          <linearGradient id="dstar" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fcd34d"/>
+            <stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+        <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#dg1)"/>
+        <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#dg2)"/>
+        <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#dg3)"/>
+        <circle cx="35" cy="7" r="5" fill="white" opacity="0.95"/>
+        <path d="M35 4.2 L36 6.5 L38.5 6.5 L36.5 8.1 L37.3 10.5 L35 9 L32.7 10.5 L33.5 8.1 L31.5 6.5 L34 6.5 Z" fill="url(#dstar)"/>
+      </svg>
+      <div class="wordmark">
+        <span class="champ">Champ</span><span class="step">Step</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navbar mock -->
+  <div class="card" style="padding: 28px 40px;">
+    <div class="card-label">Navbar дээр яг ингэж харагдана</div>
+    <div class="navbar">
+      <div class="navbar-left">
+        <div class="nav-icon">
+          <svg width="16" height="16" viewBox="0 0 48 48" fill="none">
+            <defs>
+              <linearGradient id="ng" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#d97706"/>
+                <stop offset="100%" stop-color="#92400e"/>
+              </linearGradient>
+            </defs>
+            <rect x="4" y="32" width="10" height="12" rx="2.5" fill="#d97706" opacity="0.3"/>
+            <rect x="17" y="22" width="10" height="22" rx="2.5" fill="#d97706" opacity="0.6"/>
+            <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#ng)"/>
+            <circle cx="35" cy="7" r="5" fill="white"/>
+          </svg>
+        </div>
+        <div class="wordmark-xs">
+          <span class="champ">Champ</span><span class="step">Step</span>
+        </div>
+      </div>
+      <div class="nav-links">
+        <span class="nav-link">PDF татах</span>
+        <span class="nav-link">Гишүүнчлэл</span>
+        <div class="nav-avatar"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
