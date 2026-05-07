@@ -1,67 +1,153 @@
 // =============================================================================
-// ChampStep — Core Data Schema (TypeScript)
-// =============================================================================
-// All entities used across the application (Firestore documents, props, forms)
-// are typed here so the dashboard, form, and PDF generator share one source
-// of truth.
+// ChampStep — Core Data Schema v2
+// Шинэчлэлт: role-based auth, multi-child, invite code, reflection нууцлал
 // =============================================================================
 
-/** Subscription tiers controlled by Firebase Auth custom claims / Firestore. */
-export type SubscriptionStatus = "free" | "premium";
+/** Subscription тиер */
+export type SubscriptionTier = "free" | "family" | "master" | "coach";
 
-/** Top-level competition categories used for filtering & color coding. */
+/** Хуучин нэртэй нийцтэй байлгах */
+export type SubscriptionStatus = SubscriptionTier;
+
+/** Хэрэглэгчийн үүрэг */
+export type UserRole = "parent" | "teacher";
+
+/** Тэмцээний ангилал */
 export type AchievementCategory = "Sports" | "Arts" | "Academic";
 
-/** Award medal types, used for badges and PDF iconography. */
+/** Медалийн төрөл */
 export type AwardType = "Gold" | "Silver" | "Bronze" | "Participant";
 
-/**
- * Authenticated parent / guardian.
- * `userId` matches the Firebase Auth uid.
- */
-export interface User {
-  userId: string;
-  email: string;
-  subscriptionStatus: SubscriptionStatus;
-  createdAt?: string; // ISO date
-}
+// -----------------------------------------------------------------------------
+// Хэрэглэгч
+// -----------------------------------------------------------------------------
 
 /**
- * A child profile owned by a parent (User).
- * Multiple children can belong to the same `parentId`.
+ * /users/{uid}
+ * Багш болон эцэг эх хоёул энэ collection-д байна.
+ */
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  phone?: string;
+  role: UserRole;
+  subscriptionTier: SubscriptionTier;
+  createdAt?: string;
+}
+
+// Subscription-н хязгаар
+export const TIER_LIMITS: Record<SubscriptionTier, {
+  maxChildren: number;
+  maxAchievements: number; // -1 = хязгааргүй
+  hasPdf: boolean;
+  hasAI: boolean;
+}> = {
+  free:   { maxChildren: 1,   maxAchievements: 30,  hasPdf: false, hasAI: false },
+  family: { maxChildren: 3,   maxAchievements: -1,  hasPdf: true,  hasAI: false },
+  master: { maxChildren: 10,  maxAchievements: -1,  hasPdf: true,  hasAI: true  },
+  coach:  { maxChildren: 100, maxAchievements: -1,  hasPdf: true,  hasAI: true  },
+};
+
+// -----------------------------------------------------------------------------
+// Хүүхэд
+// -----------------------------------------------------------------------------
+
+/**
+ * /children/{childId}
+ * parentId + teacherIds-р хандах эрх тодорхойлно.
  */
 export interface Child {
   childId: string;
-  parentId: string;
+  parentId: string;          // эцэг эхийн uid
+  teacherIds: string[];      // багш нарын uid жагсаалт
   name: string;
-  birthDate: string; // ISO date (YYYY-MM-DD)
+  birthDate: string;         // YYYY-MM-DD
   bio?: string;
   avatarUrl?: string;
+  createdAt?: string;
 }
 
+// -----------------------------------------------------------------------------
+// Урилгын код
+// -----------------------------------------------------------------------------
+
 /**
- * A single competition achievement.
- * Stored in Firestore under: /children/{childId}/achievements/{id}
+ * /inviteCodes/{code}
+ * Багш шавиа нэмэхдээ 6 оронтой код үүсгэнэ.
+ * Эцэг эх тэр кодыг оруулснаар хүүхэд багштай холбогдно.
+ */
+export interface InviteCode {
+  code: string;              // 6 оронтой: "ABC123"
+  teacherId: string;
+  teacherName: string;
+  childId?: string;          // холбогдсоны дараа бөглөгдөнө
+  used: boolean;
+  expiresAt: string;         // ISO date — 7 хоногийн дараа дуусна
+  createdAt: string;
+}
+
+// -----------------------------------------------------------------------------
+// Тэмцээний бүртгэл
+// -----------------------------------------------------------------------------
+
+/**
+ * /achievements/{id}
+ * Багш болон эцэг эх хоёул харна.
  */
 export interface Achievement {
   id: string;
   childId: string;
-  title: string; // Competition name
-  date: string; // ISO date (YYYY-MM-DD)
+  title: string;
+  date: string;              // YYYY-MM-DD
   location: string;
   category: AchievementCategory;
   description: string;
   awardType: AwardType;
-  imageURLs: string[]; // Firebase Storage download URLs
+  imageURLs: string[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-/** Form draft type — `id`, `childId`, and `imageURLs` are filled later. */
+/** Form draft */
 export type AchievementDraft = Omit<
   Achievement,
   "id" | "childId" | "imageURLs" | "createdAt" | "updatedAt"
 > & {
-  /** Local File objects before they are uploaded to Storage. */
   images: File[];
 };
+
+// -----------------------------------------------------------------------------
+// Бэлтгэлийн тэмдэглэл
+// -----------------------------------------------------------------------------
+
+/**
+ * /practiceLogs/{id}
+ * Багш болон эцэг эх хоёул харна.
+ */
+export interface PracticeLog {
+  id: string;
+  childId: string;
+  date: string;              // YYYY-MM-DD
+  duration: number;          // минутаар
+  content: string;
+  createdAt?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Reflection (сэтгэлзүйн тэмдэглэл) — НУУЦ
+// -----------------------------------------------------------------------------
+
+/**
+ * /reflections/{id}
+ * Зөвхөн эцэг эх харна. Багш хандах эрхгүй.
+ */
+export interface Reflection {
+  id: string;
+  childId: string;
+  date: string;              // YYYY-MM-DD
+  mood: 1 | 2 | 3 | 4 | 5;  // 1=маш муу, 5=маш сайн
+  content: string;           // хүүхдийн өөрийн тэмдэглэл
+  parentNote?: string;       // эцэг эхийн нэмэлт тэмдэглэл
+  createdAt?: string;
+}

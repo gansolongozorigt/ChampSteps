@@ -1,18 +1,10 @@
 // =============================================================================
-// AddAchievementForm — Multi-step form with i18next translations.
-// Step 1: Basics (title, date, location, category)
-// Step 2: Award + description
-// Step 3: Photo upload (with client-side compression preview)
-// Step 4: Review & submit
+// AddAchievementForm v2 — initialDraft prop нэмэгдсэн (edit дэмжинэ)
 // =============================================================================
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-  AchievementCategory,
-  AchievementDraft,
-  AwardType,
-} from "../types";
+import type { AchievementCategory, AchievementDraft, AwardType } from "../types";
 import { compressImages } from "../utils/image";
 import { awardStyles, categoryStyles, formatDate } from "../utils/format";
 
@@ -32,6 +24,8 @@ const EMPTY_DRAFT: AchievementDraft = {
 export interface AddAchievementFormProps {
   childId: string;
   childName?: string;
+  /** Edit горимд хуучин утгуудыг урьдчилан бөглөхөд ашиглана */
+  initialDraft?: Partial<AchievementDraft>;
   onSubmit: (draft: AchievementDraft) => Promise<void> | void;
   onCancel?: () => void;
 }
@@ -41,14 +35,20 @@ type Step = 1 | 2 | 3 | 4;
 export default function AddAchievementForm({
   childId,
   childName,
+  initialDraft,
   onSubmit,
   onCancel,
 }: AddAchievementFormProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
+  const isEditing = !!initialDraft;
 
   const [step, setStep] = useState<Step>(1);
-  const [draft, setDraft] = useState<AchievementDraft>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<AchievementDraft>({
+    ...EMPTY_DRAFT,
+    ...initialDraft,
+    images: [],
+  });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof AchievementDraft, string>>>({});
 
@@ -84,17 +84,11 @@ export default function AddAchievementForm({
   }
 
   function removeImage(index: number) {
-    update(
-      "images",
-      draft.images.filter((_, i) => i !== index)
-    );
+    update("images", draft.images.filter((_, i) => i !== index));
   }
 
   async function handleSubmit() {
-    if (!validateStep(2)) {
-      setStep(2);
-      return;
-    }
+    if (!validateStep(2)) { setStep(2); return; }
     setSubmitting(true);
     try {
       await onSubmit(draft);
@@ -107,7 +101,7 @@ export default function AddAchievementForm({
 
   return (
     <div className="mx-auto w-full max-w-2xl rounded-2xl border border-stone-200 bg-stone-50/80 p-6 shadow-sm">
-      <Header step={step} childName={childName} />
+      <Header step={step} childName={childName} isEditing={isEditing} />
 
       <div className="mt-6 space-y-5">
         {step === 1 && (
@@ -120,7 +114,6 @@ export default function AddAchievementForm({
                 className={inputCls}
               />
             </Field>
-
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("form.fields.date")} error={errors.date}>
                 <input
@@ -139,20 +132,14 @@ export default function AddAchievementForm({
                 />
               </Field>
             </div>
-
             <Field label={t("form.fields.category")}>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((c) => {
                   const selected = draft.category === c;
                   return (
-                    <button
-                      type="button"
-                      key={c}
-                      onClick={() => update("category", c)}
+                    <button type="button" key={c} onClick={() => update("category", c)}
                       className={`rounded-full px-4 py-1.5 text-sm font-medium ring-1 transition ${
-                        selected
-                          ? `${categoryStyles[c].chip} ring-2`
-                          : "bg-white text-stone-600 ring-stone-200 hover:bg-stone-100"
+                        selected ? `${categoryStyles[c].chip} ring-2` : "bg-white text-stone-600 ring-stone-200 hover:bg-stone-100"
                       }`}
                     >
                       {t(`categories.${c}`)}
@@ -172,24 +159,18 @@ export default function AddAchievementForm({
                   const selected = draft.awardType === a;
                   const s = awardStyles[a];
                   return (
-                    <button
-                      type="button"
-                      key={a}
-                      onClick={() => update("awardType", a)}
+                    <button type="button" key={a} onClick={() => update("awardType", a)}
                       className={`flex flex-col items-center gap-1 rounded-xl border bg-white p-3 text-sm transition ${
                         selected ? `border-transparent ring-2 ${s.ring} ${s.bg}` : "border-stone-200 hover:bg-stone-50"
                       }`}
                     >
                       <span className="text-2xl" aria-hidden>{s.emoji}</span>
-                      <span className={`font-medium ${selected ? s.text : "text-stone-700"}`}>
-                        {t(`awards.${a}`)}
-                      </span>
+                      <span className={`font-medium ${selected ? s.text : "text-stone-700"}`}>{t(`awards.${a}`)}</span>
                     </button>
                   );
                 })}
               </div>
             </Field>
-
             <Field label={t("form.fields.description")} error={errors.description}>
               <textarea
                 value={draft.description}
@@ -209,24 +190,15 @@ export default function AddAchievementForm({
                 <span className="text-3xl" aria-hidden>📸</span>
                 <span className="text-sm font-medium">{t("form.fields.uploadCta")}</span>
                 <span className="text-xs text-stone-400">{t("form.fields.uploadHint")}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  hidden
-                  onChange={(e) => handleFiles(e.target.files)}
-                />
+                <input type="file" accept="image/*" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
               </label>
             </Field>
-
             {previews.length > 0 && (
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {previews.map((p, i) => (
                   <li key={p.name + i} className="group relative aspect-square overflow-hidden rounded-lg border border-stone-200">
                     <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(i)}
+                    <button type="button" onClick={() => removeImage(i)}
                       className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
                     >
                       {t("form.actions.remove")}
@@ -245,22 +217,15 @@ export default function AddAchievementForm({
             <ReviewRow label={t("form.review.labels.date")} value={formatDate(draft.date, locale)} />
             <ReviewRow label={t("form.review.labels.location")} value={draft.location} />
             <ReviewRow label={t("form.review.labels.category")} value={t(`categories.${draft.category}`)} />
-            <ReviewRow
-              label={t("form.review.labels.award")}
-              value={`${awardStyles[draft.awardType].emoji} ${t(`awards.${draft.awardType}`)}`}
-            />
+            <ReviewRow label={t("form.review.labels.award")} value={`${awardStyles[draft.awardType].emoji} ${t(`awards.${draft.awardType}`)}`} />
             <ReviewRow label={t("form.review.labels.description")} value={draft.description} />
-            <ReviewRow
-              label={t("form.review.labels.photos")}
-              value={t("form.review.photosAttached", { count: draft.images.length })}
-            />
+            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: draft.images.length })} />
           </section>
         )}
       </div>
 
       <div className="mt-8 flex items-center justify-between gap-3">
-        <button
-          type="button"
+        <button type="button"
           onClick={() => (step === 1 ? onCancel?.() : setStep((s) => (s - 1) as Step))}
           className="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
         >
@@ -268,29 +233,26 @@ export default function AddAchievementForm({
         </button>
 
         {step < 4 ? (
-          <button
-            type="button"
+          <button type="button"
             onClick={() => (validateStep(step) ? setStep((s) => (s + 1) as Step) : null)}
             className="rounded-lg bg-stone-900 px-5 py-2 text-sm font-medium text-stone-50 hover:bg-stone-800"
           >
             {t("form.actions.continue")}
           </button>
         ) : (
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={handleSubmit}
+          <button type="button" disabled={submitting} onClick={handleSubmit}
             className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
           >
             {submitting
               ? t("form.actions.saving")
+              : isEditing
+              ? "Өөрчлөлт хадгалах"
               : childName
               ? t("form.actions.saveForChild", { name: childName })
               : t("form.actions.save")}
           </button>
         )}
       </div>
-
       <input type="hidden" name="childId" value={childId} readOnly />
     </div>
   );
@@ -298,26 +260,19 @@ export default function AddAchievementForm({
 
 // -----------------------------------------------------------------------------
 
-const inputCls =
-  "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200";
+const inputCls = "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200";
 
-function Header({ step, childName }: { step: Step; childName?: string }) {
+function Header({ step, childName, isEditing }: { step: Step; childName?: string; isEditing?: boolean }) {
   const { t } = useTranslation();
-  const labels = [
-    t("form.steps.basics"),
-    t("form.steps.story"),
-    t("form.steps.photos"),
-    t("form.steps.review"),
-  ];
+  const labels = [t("form.steps.basics"), t("form.steps.story"), t("form.steps.photos"), t("form.steps.review")];
   return (
     <header>
       <p className="text-xs uppercase tracking-widest text-stone-500">
-        {childName
-          ? t("form.headerEyebrowWithName", { name: childName })
-          : t("form.headerEyebrow")}
+        {childName ? t("form.headerEyebrowWithName", { name: childName }) : t("form.headerEyebrow")}
       </p>
-      <h2 className="mt-1 font-serif text-2xl text-stone-900">{t("form.heading")}</h2>
-
+      <h2 className="mt-1 font-serif text-2xl text-stone-900">
+        {isEditing ? "Бичлэг засах" : t("form.heading")}
+      </h2>
       <ol className="mt-5 flex items-center gap-2">
         {labels.map((label, i) => {
           const idx = (i + 1) as Step;
@@ -325,20 +280,12 @@ function Header({ step, childName }: { step: Step; childName?: string }) {
           const done = idx < step;
           return (
             <li key={label} className="flex flex-1 items-center gap-2">
-              <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
-                  done
-                    ? "bg-emerald-600 text-white"
-                    : active
-                    ? "bg-stone-900 text-white"
-                    : "bg-stone-200 text-stone-500"
-                }`}
-              >
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
+                done ? "bg-emerald-600 text-white" : active ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-500"
+              }`}>
                 {done ? "✓" : idx}
               </span>
-              <span className={`hidden text-xs sm:inline ${active ? "text-stone-800" : "text-stone-500"}`}>
-                {label}
-              </span>
+              <span className={`hidden text-xs sm:inline ${active ? "text-stone-800" : "text-stone-500"}`}>{label}</span>
               {i < labels.length - 1 && <span className="h-px flex-1 bg-stone-200" />}
             </li>
           );
@@ -348,15 +295,7 @@ function Header({ step, childName }: { step: Step; childName?: string }) {
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: ReactNode;
-}) {
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>

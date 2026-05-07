@@ -1,211 +1,397 @@
 // =============================================================================
-// pdfExport — Generates a real downloadable PDF of a child's portfolio using
-// jsPDF (no headless browser, no window.print hack).
-//
-// Layout:
-//   • Cover page — child's name, bio, generated date, total count.
-//   • One entry per achievement with optional first photo.
+// pdfExport v2 — 3 template: official, kids, gold
+// Монгол Кирилл фонт: NotoSans (public/NotoSans-Regular.ttf)
 // =============================================================================
 
 import { jsPDF } from "jspdf";
 import type { Achievement, Child } from "../types";
 
-// Note: Cyrillic rendering in jsPDF's built-in Helvetica is limited. For
-// production-grade Mongolian text, embed a Unicode font with doc.addFileToVFS
-// and doc.addFont(). We keep this dependency-free and use the "Default" font,
-// which handles Latin cleanly and most Cyrillic on modern viewers.
+export type PdfTemplate = "official" | "kids" | "gold";
 
 interface ExportOpts {
+  template?: PdfTemplate;
   filename?: string;
-  locale?: "mn" | "en";
-  /** Translator function — pass t from react-i18next. */
   t?: (key: string, opts?: Record<string, unknown>) => string;
 }
 
 const A4 = { w: 210, h: 297 };
-const MARGIN = 18;
-const CONTENT_W = A4.w - MARGIN * 2;
+const M = 18; // margin
+const CW = A4.w - M * 2; // content width
+
+// -----------------------------------------------------------------------------
+// Фонт ачаалах
+// -----------------------------------------------------------------------------
+
+let fontLoaded = false;
+
+async function loadFont(doc: jsPDF) {
+  if (fontLoaded) return;
+  try {
+    const [regRes, boldRes] = await Promise.all([
+      fetch("/NotoSans-Regular.ttf"),
+      fetch("/NotoSans-Bold.ttf"),
+    ]);
+    const [regBuf, boldBuf] = await Promise.all([
+      regRes.arrayBuffer(),
+      boldRes.arrayBuffer(),
+    ]);
+
+    const toBase64 = (buf: ArrayBuffer) => {
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    };
+
+    doc.addFileToVFS("NotoSans-Regular.ttf", toBase64(regBuf));
+    doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+    doc.addFileToVFS("NotoSans-Bold.ttf", toBase64(boldBuf));
+    doc.addFont("NotoSans-Bold.ttf", "NotoSans", "bold");
+    fontLoaded = true;
+  } catch (e) {
+    console.warn("[champstep] NotoSans фонт ачаалахад алдаа:", e);
+  }
+}
+
+function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
+  if (fontLoaded) {
+    doc.setFont("NotoSans", weight);
+  } else {
+    doc.setFont("helvetica", weight);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Үндсэн export функц
+// -----------------------------------------------------------------------------
 
 export async function exportPortfolio(
   child: Child,
   achievements: Achievement[],
   opts: ExportOpts = {}
 ): Promise<void> {
-  const { t = (k: string) => k, filename } = opts;
+  const { template = "official", t = (k: string) => k, filename } = opts;
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  await loadFont(doc);
 
-  await renderCover(doc, child, achievements.length, t);
-
-  let pageNum = 1;
-  for (const ach of achievements) {
-    doc.addPage();
-    pageNum += 1;
-    await renderAchievement(doc, ach, pageNum, achievements.length, t);
+  if (template === "official") {
+    await renderOfficial(doc, child, achievements, t);
+  } else if (template === "kids") {
+    await renderKids(doc, child, achievements, t);
+  } else {
+    await renderGold(doc, child, achievements, t);
   }
 
   const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
-  doc.save(`${safeName}.pdf`);
+  doc.save(`${safeName}_${template}.pdf`);
 }
 
-// -----------------------------------------------------------------------------
-// Cover page
-// -----------------------------------------------------------------------------
+// =============================================================================
+// Template 1: Албан ёсны (Official)
+// =============================================================================
 
-async function renderCover(
+async function renderOfficial(
   doc: jsPDF,
   child: Child,
-  total: number,
-  t: NonNullable<ExportOpts["t"]>
+  achievements: Achievement[],
+  t: (k: string, o?: Record<string, unknown>) => string
 ) {
-  // Top accent bar
-  doc.setFillColor(28, 25, 23); // stone-900
-  doc.rect(0, 0, A4.w, 28, "F");
+  // Cover
+  doc.setFillColor(28, 25, 23);
+  doc.rect(0, 0, A4.w, 32, "F");
 
+  setFont(doc, "bold");
+  doc.setFontSize(11);
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("CHAMPSTEP", MARGIN, 18);
+  doc.text("CHAMPSTEP", M, 20);
 
-  // Title
+  doc.setFontSize(8);
+  doc.setTextColor(160, 150, 140);
+  doc.text("Хүүхдийн амжилтын портфолио", A4.w - M, 20, { align: "right" });
+
+  // Child info
+  setFont(doc, "bold");
+  doc.setFontSize(26);
   doc.setTextColor(28, 25, 23);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  const title = t("pdf.coverTitle", { name: child.name });
-  doc.text(title, MARGIN, 70, { maxWidth: CONTENT_W });
+  doc.text(child.name, M, 60);
 
-  // Bio
   if (child.bio) {
-    doc.setFont("helvetica", "normal");
+    setFont(doc, "normal");
     doc.setFontSize(12);
-    doc.setTextColor(87, 83, 78); // stone-600
-    doc.text(child.bio, MARGIN, 90, { maxWidth: CONTENT_W });
+    doc.setTextColor(100, 95, 90);
+    doc.text(child.bio, M, 72, { maxWidth: CW });
   }
 
-  // Meta grid
-  const gridY = 120;
-  const metaItems: Array<[string, string]> = [
-    [t("pdf.meta.birthDate"), child.birthDate || "—"],
-    [t("pdf.meta.totalEntries"), String(total)],
-    [t("pdf.meta.generated"), new Date().toLocaleDateString()],
+  // Stats
+  const stats = [
+    ["Нийт бүртгэл", String(achievements.length)],
+    ["Алтан медаль", String(achievements.filter(a => a.awardType === "Gold").length)],
+    ["Гарсан огноо", new Date().toLocaleDateString("mn-MN")],
   ];
-  metaItems.forEach(([label, value], i) => {
-    const colW = CONTENT_W / metaItems.length;
-    const x = MARGIN + i * colW;
 
+  stats.forEach(([label, val], i) => {
+    const x = M + i * (CW / 3);
+    setFont(doc, "normal");
     doc.setFontSize(9);
-    doc.setTextColor(120, 113, 108);
-    doc.text(label, x, gridY);
-
-    doc.setFontSize(13);
+    doc.setTextColor(130, 120, 110);
+    doc.text(label, x, 100);
+    setFont(doc, "bold");
+    doc.setFontSize(16);
     doc.setTextColor(28, 25, 23);
-    doc.setFont("helvetica", "bold");
-    doc.text(value, x, gridY + 7);
-    doc.setFont("helvetica", "normal");
+    doc.text(val, x, 110);
   });
 
-  // Footer
-  doc.setFontSize(9);
-  doc.setTextColor(168, 162, 158);
-  doc.text(t("pdf.coverFooter"), MARGIN, A4.h - 12);
+  // Divider
+  doc.setDrawColor(220, 215, 210);
+  doc.line(M, 120, A4.w - M, 120);
+
+  // Achievements
+  let y = 132;
+  for (let i = 0; i < achievements.length; i++) {
+    const a = achievements[i];
+    if (y > A4.h - 30) {
+      doc.addPage();
+      y = M + 10;
+    }
+
+    // Row
+    setFont(doc, "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(28, 25, 23);
+    doc.text(a.title, M, y);
+
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(120, 113, 108);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${a.category}  ·  ${a.awardType}`, M, y + 6);
+
+    if (a.description) {
+      doc.setFontSize(9);
+      doc.setTextColor(80, 75, 70);
+      const lines = doc.splitTextToSize(a.description, CW - 10);
+      doc.text(lines.slice(0, 2), M, y + 13);
+    }
+
+    doc.setDrawColor(235, 230, 225);
+    doc.line(M, y + 20, A4.w - M, y + 20);
+    y += 26;
+  }
+
+  addPageNumbers(doc);
 }
 
-// -----------------------------------------------------------------------------
-// Achievement page
-// -----------------------------------------------------------------------------
+// =============================================================================
+// Template 2: Хүүхэдлэг (Kids)
+// =============================================================================
 
-async function renderAchievement(
+async function renderKids(
   doc: jsPDF,
-  ach: Achievement,
-  page: number,
-  total: number,
-  t: NonNullable<ExportOpts["t"]>
+  child: Child,
+  achievements: Achievement[],
+  _t: (k: string, o?: Record<string, unknown>) => string
 ) {
-  // Header pill
-  doc.setFillColor(245, 245, 244); // stone-100
-  doc.roundedRect(MARGIN, MARGIN, CONTENT_W, 10, 2, 2, "F");
+  const colors = {
+    Sports: [59, 130, 246] as [number, number, number],
+    Arts: [168, 85, 247] as [number, number, number],
+    Academic: [16, 185, 129] as [number, number, number],
+  };
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(120, 113, 108);
-  doc.text(t("pdf.pageOf", { current: page, total }), MARGIN + 3, MARGIN + 6.5);
+  const awardEmoji: Record<string, string> = {
+    Gold: "🥇", Silver: "🥈", Bronze: "🥉", Participant: "🎖"
+  };
 
-  const awardLabel = t(`awards.${ach.awardType}`);
-  const categoryLabel = t(`categories.${ach.category}`);
-  doc.text(
-    `${categoryLabel} · ${awardLabel}`,
-    A4.w - MARGIN - 3,
-    MARGIN + 6.5,
-    { align: "right" }
-  );
+  // Cover — өнгөлөг
+  doc.setFillColor(255, 247, 237);
+  doc.rect(0, 0, A4.w, A4.h, "F");
 
-  // Title
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(28, 25, 23);
-  doc.text(ach.title, MARGIN, MARGIN + 25, { maxWidth: CONTENT_W });
+  // Тоглоомлог header
+  doc.setFillColor(251, 191, 36);
+  doc.roundedRect(M, M, CW, 40, 5, 5, "F");
 
-  // Sub-line: date · location
-  doc.setFont("helvetica", "normal");
+  setFont(doc, "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(120, 53, 15);
+  doc.text(`⭐ ${child.name}-ийн амжилтууд`, M + 8, M + 16);
+
+  setFont(doc, "normal");
   doc.setFontSize(11);
-  doc.setTextColor(120, 113, 108);
-  const sub = [ach.date, ach.location].filter(Boolean).join(" · ");
-  doc.text(sub, MARGIN, MARGIN + 34);
+  doc.setTextColor(146, 64, 14);
+  if (child.bio) doc.text(child.bio, M + 8, M + 28, { maxWidth: CW - 16 });
 
-  // Description
-  doc.setFontSize(11);
-  doc.setTextColor(68, 64, 60);
-  const descLines = doc.splitTextToSize(ach.description || "", CONTENT_W);
-  doc.text(descLines, MARGIN, MARGIN + 46);
-
-  // Photo (first one only, fitted)
-  const firstPhoto = ach.imageURLs?.[0];
-  if (firstPhoto) {
-    try {
-      const dataUrl = await urlToDataUrl(firstPhoto);
-      const imgY = MARGIN + 46 + descLines.length * 5 + 6;
-      const maxH = A4.h - imgY - MARGIN - 10;
-      const imgH = Math.min(100, maxH);
-      doc.addImage(dataUrl, "JPEG", MARGIN, imgY, CONTENT_W, imgH, undefined, "FAST");
-    } catch (e) {
-      console.warn("[champstep] could not embed image:", e);
+  // Achievements — card хэлбэртэй
+  let y = M + 52;
+  for (const a of achievements) {
+    if (y > A4.h - 50) {
+      doc.addPage();
+      doc.setFillColor(255, 247, 237);
+      doc.rect(0, 0, A4.w, A4.h, "F");
+      y = M;
     }
+
+    const catColor = colors[a.category as keyof typeof colors] ?? [100, 100, 100];
+    doc.setFillColor(...catColor);
+    doc.setDrawColor(...catColor);
+    doc.roundedRect(M, y, CW, 36, 4, 4, "F");
+
+    setFont(doc, "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${awardEmoji[a.awardType] ?? ""} ${a.title}`, M + 5, y + 11);
+
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(220, 220, 220);
+    doc.text(`${a.date}  ·  ${a.location}`, M + 5, y + 20);
+
+    if (a.description) {
+      doc.setTextColor(240, 240, 240);
+      const lines = doc.splitTextToSize(a.description, CW - 10);
+      doc.text(lines[0] ?? "", M + 5, y + 28);
+    }
+
+    y += 42;
   }
 
   // Footer
   doc.setFontSize(8);
-  doc.setTextColor(168, 162, 158);
-  doc.text("ChampStep", MARGIN, A4.h - 8);
-  doc.text(String(page), A4.w - MARGIN, A4.h - 8, { align: "right" });
+  doc.setTextColor(200, 180, 150);
+  doc.text("ChampStep · Хүүхдийн өсөлтийн дэвтэр", M, A4.h - 8);
+}
+
+// =============================================================================
+// Template 3: Алтлаг (Gold/Premium)
+// =============================================================================
+
+async function renderGold(
+  doc: jsPDF,
+  child: Child,
+  achievements: Achievement[],
+  _t: (k: string, o?: Record<string, unknown>) => string
+) {
+  // Dark cover
+  doc.setFillColor(15, 12, 10);
+  doc.rect(0, 0, A4.w, A4.h, "F");
+
+  // Gold accent top bar
+  doc.setFillColor(180, 130, 40);
+  doc.rect(0, 0, A4.w, 3, "F");
+  doc.setFillColor(217, 119, 6);
+  doc.rect(0, 3, A4.w, 1, "F");
+
+  // Logo
+  setFont(doc, "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(180, 130, 40);
+  doc.text("C H A M P S T E P", M, 22);
+
+  // Child name — large gold
+  setFont(doc, "bold");
+  doc.setFontSize(32);
+  doc.setTextColor(217, 179, 80);
+  doc.text(child.name, M, 70);
+
+  setFont(doc, "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(140, 120, 90);
+  if (child.bio) doc.text(child.bio, M, 82, { maxWidth: CW });
+
+  // Gold divider
+  doc.setFillColor(180, 130, 40);
+  doc.rect(M, 92, 40, 0.5, "F");
+
+  // Stats
+  const golds = achievements.filter(a => a.awardType === "Gold").length;
+  const statsData = [
+    ["НИЙТ", String(achievements.length)],
+    ["АЛТАН", String(golds)],
+    ["ОН", new Date().getFullYear().toString()],
+  ];
+
+  statsData.forEach(([label, val], i) => {
+    const x = M + i * 55;
+    setFont(doc, "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(120, 100, 70);
+    doc.text(label, x, 106);
+    setFont(doc, "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(217, 179, 80);
+    doc.text(val, x, 118);
+  });
+
+  // Achievements
+  let y = 136;
+  for (const a of achievements) {
+    if (y > A4.h - 28) {
+      doc.addPage();
+      doc.setFillColor(15, 12, 10);
+      doc.rect(0, 0, A4.w, A4.h, "F");
+      doc.setFillColor(180, 130, 40);
+      doc.rect(0, 0, A4.w, 3, "F");
+      y = 20;
+    }
+
+    // Gold left border
+    doc.setFillColor(217, 119, 6);
+    doc.rect(M, y - 1, 2, 18, "F");
+
+    setFont(doc, "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(217, 179, 80);
+    doc.text(a.title, M + 6, y + 7);
+
+    setFont(doc, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(120, 100, 70);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${a.awardType}`, M + 6, y + 14);
+
+    doc.setDrawColor(40, 35, 25);
+    doc.line(M, y + 20, A4.w - M, y + 20);
+    y += 26;
+  }
+
+  // Gold bottom bar
+  doc.setFillColor(180, 130, 40);
+  doc.rect(0, A4.h - 2, A4.w, 2, "F");
+
+  addPageNumbers(doc, true);
 }
 
 // -----------------------------------------------------------------------------
-// Helpers
+// Page numbers
 // -----------------------------------------------------------------------------
 
-/**
- * Load a remote image URL (Firebase Storage or otherwise) and return a
- * base64 data URL suitable for jsPDF.addImage. Uses the Canvas trick so
- * we don't need a CORS-enabled fetch for every image.
- */
-function urlToDataUrl(url: string): Promise<string> {
+function addPageNumbers(doc: jsPDF, dark = false) {
+  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(dark ? 120 : 160, dark ? 100 : 150, dark ? 70 : 140);
+    doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Image helper
+// -----------------------------------------------------------------------------
+
+export function urlToDataUrl(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("2d context missing");
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      } catch (err) {
-        reject(err);
-      }
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("canvas error")); return; }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
     };
-    img.onerror = () => reject(new Error("image load failed: " + url));
+    img.onerror = () => reject(new Error("image load failed"));
     img.src = url;
   });
 }

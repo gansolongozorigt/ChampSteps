@@ -1,6 +1,5 @@
 // =============================================================================
-// TimelineDashboard — Vertical timeline with summary cards, category filters,
-// search, and sort. All strings are routed through i18next.
+// TimelineDashboard v2 — edit/delete товчтой
 // =============================================================================
 
 import { useMemo, useState } from "react";
@@ -24,7 +23,8 @@ export interface TimelineDashboardProps {
   achievements: Achievement[];
   onAddClick?: () => void;
   onEditProfile?: () => void;
-  onAchievementClick?: (a: Achievement) => void;
+  onEditAchievement?: (a: Achievement) => void;
+  onDeleteAchievement?: (id: string) => void;
 }
 
 export default function TimelineDashboard({
@@ -32,7 +32,8 @@ export default function TimelineDashboard({
   achievements,
   onAddClick,
   onEditProfile,
-  onAchievementClick,
+  onEditAchievement,
+  onDeleteAchievement,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -40,6 +41,7 @@ export default function TimelineDashboard({
   const [filter, setFilter] = useState<CategoryFilter>("All");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
     const arr = [...achievements].sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -73,6 +75,19 @@ export default function TimelineDashboard({
   function resetFilters() {
     setFilter("All");
     setQuery("");
+  }
+
+  function handleDeleteConfirm(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  function handleDeleteCancel() {
+    setDeleteConfirmId(null);
+  }
+
+  function handleDeleteExecute(id: string) {
+    onDeleteAchievement?.(id);
+    setDeleteConfirmId(null);
   }
 
   return (
@@ -134,7 +149,7 @@ export default function TimelineDashboard({
           />
         </section>
 
-        {/* Controls: search + sort */}
+        {/* Controls */}
         {achievements.length > 0 && (
           <section className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -211,7 +226,11 @@ export default function TimelineDashboard({
                         key={a.id}
                         achievement={a}
                         locale={locale}
-                        onClick={() => onAchievementClick?.(a)}
+                        deleteConfirm={deleteConfirmId === a.id}
+                        onEdit={() => onEditAchievement?.(a)}
+                        onDeleteRequest={() => handleDeleteConfirm(a.id)}
+                        onDeleteConfirm={() => handleDeleteExecute(a.id)}
+                        onDeleteCancel={handleDeleteCancel}
                       />
                     ))}
                   </ul>
@@ -231,7 +250,6 @@ export default function TimelineDashboard({
           +
         </button>
 
-        {/* Mute the "filters active but no data" with a hint */}
         {filtersActive && grouped.length === 0 && achievements.length > 0 && (
           <p className="mt-4 text-center text-xs text-stone-400">{t("search.noResults")}</p>
         )}
@@ -242,15 +260,7 @@ export default function TimelineDashboard({
 
 // -----------------------------------------------------------------------------
 
-function SummaryCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: number | string;
-  hint?: string;
-}) {
+function SummaryCard({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
       <p className="text-xs uppercase tracking-widest text-stone-500">{label}</p>
@@ -263,11 +273,19 @@ function SummaryCard({
 function TimelineCard({
   achievement,
   locale,
-  onClick,
+  deleteConfirm,
+  onEdit,
+  onDeleteRequest,
+  onDeleteConfirm,
+  onDeleteCancel,
 }: {
   achievement: Achievement;
   locale: string;
-  onClick?: () => void;
+  deleteConfirm: boolean;
+  onEdit: () => void;
+  onDeleteRequest: () => void;
+  onDeleteConfirm: () => void;
+  onDeleteCancel: () => void;
 }) {
   const { t } = useTranslation();
   const cat = categoryStyles[achievement.category];
@@ -280,54 +298,95 @@ function TimelineCard({
         aria-hidden
         className={`absolute -left-[26px] top-4 h-3 w-3 rounded-full ring-4 ring-stone-100 sm:-left-[30px] ${cat.dot}`}
       />
-      <button
-        type="button"
-        onClick={onClick}
-        className={`group block w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${cat.border}`}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-stone-500">
-              {formatDate(achievement.date, locale)} · {achievement.location}
-            </p>
-            <h3 className="mt-1 font-serif text-lg text-stone-900 group-hover:underline">
-              {achievement.title}
-            </h3>
+      <div className={`group rounded-2xl border bg-white shadow-sm transition hover:shadow-md ${cat.border}`}>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-stone-500">
+                {formatDate(achievement.date, locale)} · {achievement.location}
+              </p>
+              <h3 className="mt-1 font-serif text-lg text-stone-900">
+                {achievement.title}
+              </h3>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${award.bg} ${award.text} ${award.ring}`}>
+                {award.emoji} {t(`awards.${achievement.awardType}`)}
+              </span>
+              {/* Edit/Delete товчлуурууд */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                  title="Засах"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  onClick={onDeleteRequest}
+                  className="rounded-lg p-1.5 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                  title="Устгах"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${award.bg} ${award.text} ${award.ring}`}
-          >
-            {award.emoji} {t(`awards.${achievement.awardType}`)}
-          </span>
-        </div>
 
-        <div className="mt-2 flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${cat.chip}`}>
-            {t(`categories.${achievement.category}`)}
-          </span>
-          {photoCount > 0 && (
-            <span className="text-[11px] text-stone-500">
-              {t("card.photos", { count: photoCount })}
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${cat.chip}`}>
+              {t(`categories.${achievement.category}`)}
             </span>
+            {photoCount > 0 && (
+              <span className="text-[11px] text-stone-500">
+                {t("card.photos", { count: photoCount })}
+              </span>
+            )}
+          </div>
+
+          {achievement.description && (
+            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-stone-600">
+              {achievement.description}
+            </p>
+          )}
+
+          {photoCount > 0 && (
+            <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {achievement.imageURLs.slice(0, 4).map((url, i) => (
+                <li key={url + i} className="aspect-square overflow-hidden rounded-md border border-stone-200">
+                  <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        {achievement.description && (
-          <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-stone-600">
-            {achievement.description}
-          </p>
+        {/* Устгах баталгаажуулалт */}
+        {deleteConfirm && (
+          <div className="border-t border-rose-100 bg-rose-50 px-4 py-3 rounded-b-2xl">
+            <p className="text-sm text-rose-700 font-medium">Энэ бичлэгийг устгах уу?</p>
+            <p className="text-xs text-rose-500 mt-0.5">Устгасны дараа буцаах боломжгүй.</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={onDeleteConfirm}
+                className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
+              >
+                Тийм, устга
+              </button>
+              <button
+                type="button"
+                onClick={onDeleteCancel}
+                className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+              >
+                Болих
+              </button>
+            </div>
+          </div>
         )}
-
-        {photoCount > 0 && (
-          <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {achievement.imageURLs.slice(0, 4).map((url, i) => (
-              <li key={url + i} className="aspect-square overflow-hidden rounded-md border border-stone-200">
-                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </button>
+      </div>
     </li>
   );
 }

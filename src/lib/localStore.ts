@@ -1,12 +1,8 @@
 // =============================================================================
-// localStore — Browser-side persistence for offline / demo mode.
-// When Firebase is not configured we still want:
-//   • The child's name/bio/avatar to survive a page reload
-//   • Added achievements to survive a reload
-// Everything is namespaced by childId so multi-child works later.
+// localStore — offline/demo mode persistence
 // =============================================================================
 
-import type { Achievement, Child } from "../types";
+import type { Achievement, Child, SubscriptionTier, UserRole } from "../types";
 
 const KEY_CHILD = "champstep.child.v1";
 const KEY_ACH = "champstep.achievements.v1";
@@ -15,11 +11,7 @@ const KEY_SUB = "champstep.subscription.v1";
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 
 // ---------------------------------------------------------------------------
@@ -53,13 +45,14 @@ export function saveLocalAchievements(items: Achievement[]): void {
 }
 
 // ---------------------------------------------------------------------------
-// Offline "user" (no real auth)
+// Offline user
 // ---------------------------------------------------------------------------
 
 export interface OfflineUser {
   uid: string;
   email: string;
   displayName: string;
+  role?: UserRole;
   createdAt: string;
 }
 
@@ -78,20 +71,21 @@ export function saveOfflineUser(user: OfflineUser | null): void {
 }
 
 // ---------------------------------------------------------------------------
-// Subscription (offline mock)
+// Subscription
 // ---------------------------------------------------------------------------
 
 export interface LocalSubscription {
-  status: "free" | "premium";
+  status: SubscriptionTier;
   activatedAt?: string;
   expiresAt?: string;
 }
 
 export function loadLocalSubscription(): LocalSubscription {
   if (typeof window === "undefined") return { status: "free" };
-  return safeParse<LocalSubscription>(window.localStorage.getItem(KEY_SUB), {
-    status: "free",
-  });
+  return safeParse<LocalSubscription>(
+    window.localStorage.getItem(KEY_SUB),
+    { status: "free" }
+  );
 }
 
 export function saveLocalSubscription(sub: LocalSubscription): void {
