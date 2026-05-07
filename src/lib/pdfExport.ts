@@ -1,6 +1,5 @@
 // =============================================================================
-// pdfExport v2 — 3 template: official, kids, gold
-// Монгол Кирилл фонт: NotoSans (public/NotoSans-Regular.ttf)
+// pdfExport v3 — i18n бүрэн дэмжсэн, 3 template
 // =============================================================================
 
 import { jsPDF } from "jspdf";
@@ -19,7 +18,7 @@ const M = 18;
 const CW = A4.w - M * 2;
 
 // -----------------------------------------------------------------------------
-// Фонт cache — bytes хадгална, doc-д дахин нэмнэ
+// Font cache
 // -----------------------------------------------------------------------------
 
 interface FontCache {
@@ -30,7 +29,6 @@ interface FontCache {
 const fontCache: FontCache = { regular: null, bold: null };
 
 async function loadFont(doc: jsPDF) {
-  // Bytes татаагүй бол татна
   if (!fontCache.regular || !fontCache.bold) {
     try {
       const [regRes, boldRes] = await Promise.all([
@@ -59,7 +57,6 @@ async function loadFont(doc: jsPDF) {
     }
   }
 
-  // Cache-аас doc-д нэмнэ — doc бүрт заавал хийнэ
   try {
     doc.addFileToVFS("NotoSans-Regular.ttf", fontCache.regular!);
     doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
@@ -80,7 +77,7 @@ function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
 }
 
 // -----------------------------------------------------------------------------
-// Үндсэн export функц
+// Export
 // -----------------------------------------------------------------------------
 
 export async function exportPortfolio(
@@ -106,7 +103,7 @@ export async function exportPortfolio(
 }
 
 // =============================================================================
-// Template 1: Албан ёсны (Official)
+// Template 1: Official
 // =============================================================================
 
 async function renderOfficial(
@@ -115,6 +112,7 @@ async function renderOfficial(
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string
 ) {
+  // Header bar
   doc.setFillColor(28, 25, 23);
   doc.rect(0, 0, A4.w, 32, "F");
 
@@ -125,8 +123,9 @@ async function renderOfficial(
 
   doc.setFontSize(8);
   doc.setTextColor(160, 150, 140);
-  doc.text("Хүүхдийн амжилтын портфолио", A4.w - M, 20, { align: "right" });
+  doc.text(t("pdf.subtitle"), A4.w - M, 20, { align: "right" });
 
+  // Child name
   setFont(doc, "bold");
   doc.setFontSize(26);
   doc.setTextColor(28, 25, 23);
@@ -139,10 +138,11 @@ async function renderOfficial(
     doc.text(child.bio, M, 72, { maxWidth: CW });
   }
 
+  // Stats
   const stats = [
-    ["Нийт бүртгэл", String(achievements.length)],
-    ["Алтан медаль", String(achievements.filter(a => a.awardType === "Gold").length)],
-    ["Төрсөн огноо", new Date().toLocaleDateString("mn-MN")],
+    [t("pdf.totalEntries"), String(achievements.length)],
+    [t("pdf.goldMedals"), String(achievements.filter(a => a.awardType === "Gold").length)],
+    [t("pdf.birthDate"), child.birthDate || new Date().toLocaleDateString()],
   ];
 
   stats.forEach(([label, val], i) => {
@@ -157,12 +157,13 @@ async function renderOfficial(
     doc.text(val, x, 110);
   });
 
+  // Divider
   doc.setDrawColor(220, 215, 210);
   doc.line(M, 120, A4.w - M, 120);
 
+  // Achievements
   let y = 132;
-  for (let i = 0; i < achievements.length; i++) {
-    const a = achievements[i];
+  for (const a of achievements) {
     if (y > A4.h - 30) {
       doc.addPage();
       y = M + 10;
@@ -176,7 +177,7 @@ async function renderOfficial(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(120, 113, 108);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${a.category}  ·  ${a.awardType}`, M, y + 6);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M, y + 6);
 
     if (a.description) {
       doc.setFontSize(9);
@@ -190,18 +191,27 @@ async function renderOfficial(
     y += 26;
   }
 
-  addPageNumbers(doc);
+  // Footer
+  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    setFont(doc, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(160, 150, 140);
+    doc.text(t("pdf.coverFooter"), M, A4.h - 8);
+    doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
+  }
 }
 
 // =============================================================================
-// Template 2: Хүүхэдлэг (Kids)
+// Template 2: Kids
 // =============================================================================
 
 async function renderKids(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  _t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string
 ) {
   const colors = {
     Sports: [59, 130, 246] as [number, number, number],
@@ -222,7 +232,7 @@ async function renderKids(
   setFont(doc, "bold");
   doc.setFontSize(22);
   doc.setTextColor(120, 53, 15);
-  doc.text(`⭐ ${child.name}-ийн амжилтууд`, M + 8, M + 16);
+  doc.text(`⭐ ${t("pdf.achievementsTitle", { name: child.name })}`, M + 8, M + 16);
 
   setFont(doc, "normal");
   doc.setFontSize(11);
@@ -251,7 +261,7 @@ async function renderKids(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(220, 220, 220);
-    doc.text(`${a.date}  ·  ${a.location}`, M + 5, y + 20);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 5, y + 20);
 
     if (a.description) {
       doc.setTextColor(240, 240, 240);
@@ -262,20 +272,22 @@ async function renderKids(
     y += 42;
   }
 
+  // Footer
+  setFont(doc, "normal");
   doc.setFontSize(8);
   doc.setTextColor(200, 180, 150);
-  doc.text("ChampStep · Хүүхдийн өсөлтийн дэвтэр", M, A4.h - 8);
+  doc.text(t("pdf.footer"), M, A4.h - 8);
 }
 
 // =============================================================================
-// Template 3: Алтлаг (Gold/Premium)
+// Template 3: Gold
 // =============================================================================
 
 async function renderGold(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  _t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string
 ) {
   doc.setFillColor(15, 12, 10);
   doc.rect(0, 0, A4.w, A4.h, "F");
@@ -305,9 +317,9 @@ async function renderGold(
 
   const golds = achievements.filter(a => a.awardType === "Gold").length;
   const statsData = [
-    ["НИЙТ", String(achievements.length)],
-    ["АЛТАН", String(golds)],
-    ["ОН", new Date().getFullYear().toString()],
+    [t("pdf.statsTotal"), String(achievements.length)],
+    [t("pdf.statsGold"), String(golds)],
+    [t("pdf.statsYear"), new Date().getFullYear().toString()],
   ];
 
   statsData.forEach(([label, val], i) => {
@@ -344,7 +356,7 @@ async function renderGold(
     setFont(doc, "normal");
     doc.setFontSize(8);
     doc.setTextColor(120, 100, 70);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${a.awardType}`, M + 6, y + 14);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 6, y + 14);
 
     doc.setDrawColor(40, 35, 25);
     doc.line(M, y + 20, A4.w - M, y + 20);
@@ -354,19 +366,12 @@ async function renderGold(
   doc.setFillColor(180, 130, 40);
   doc.rect(0, A4.h - 2, A4.w, 2, "F");
 
-  addPageNumbers(doc, true);
-}
-
-// -----------------------------------------------------------------------------
-// Page numbers
-// -----------------------------------------------------------------------------
-
-function addPageNumbers(doc: jsPDF, dark = false) {
+  // Page numbers
   const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setTextColor(dark ? 120 : 160, dark ? 100 : 150, dark ? 70 : 140);
+    doc.setTextColor(120, 100, 70);
     doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
   }
 }

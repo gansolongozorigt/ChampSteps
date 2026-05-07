@@ -161,19 +161,28 @@
     }
   },
   "pdf": {
-    "generating": "PDF бэлдэж байна…",
-    "success": "PDF амжилттай татагдлаа.",
-    "error": "PDF үүсгэхэд алдаа гарлаа.",
-    "premiumRequired": "PDF татах эрх — Premium-д.",
-    "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
-    "coverFooter": "ChampStep-ээр үүсгэсэн.",
-    "pageOf": "{{current}} / {{total}}",
-    "meta": {
-      "birthDate": "Төрсөн огноо",
-      "totalEntries": "Нийт бичлэг",
-      "generated": "Үүсгэсэн огноо"
-    }
-  },
+  "generating": "PDF бэлдэж байна…",
+  "success": "PDF амжилттай татагдлаа.",
+  "error": "PDF үүсгэхэд алдаа гарлаа.",
+  "premiumRequired": "PDF татах эрх — Premium-д.",
+  "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
+  "coverFooter": "ChampStep-ээр үүсгэсэн.",
+  "pageOf": "{{current}} / {{total}}",
+  "subtitle": "Хүүхдийн амжилтын портфолио",
+  "totalEntries": "Нийт бүртгэл",
+  "goldMedals": "Алтан медаль",
+  "birthDate": "Төрсөн огноо",
+  "achievementsTitle": "{{name}}-ийн амжилтууд",
+  "footer": "ChampStep · Хүүхдийн өсөлтийн дэвтэр",
+  "statsTotal": "НИЙТ",
+  "statsGold": "АЛТАН",
+  "statsYear": "ОН",
+  "meta": {
+    "birthDate": "Төрсөн огноо",
+    "totalEntries": "Нийт бичлэг",
+    "generated": "Үүсгэсэн огноо"
+  }
+},
   "status": {
     "loading": "Ачааллаж байна…",
     "saved": "Амжилттай хадгалагдлаа",
