@@ -18,7 +18,7 @@ export default function PracticeLogSection({
   onAdd,
   onDelete,
 }: PracticeLogSectionProps) {
-  const { t: _t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -50,16 +50,24 @@ export default function PracticeLogSection({
   const totalHours = Math.floor(totalMinutes / 60);
   const remainMins = totalMinutes % 60;
 
+  const totalText = () => {
+    if (totalHours > 0 && remainMins > 0)
+      return t("practice.total", { hours: totalHours, mins: remainMins, count: logs.length });
+    if (totalHours > 0)
+      return t("practice.totalHours", { hours: totalHours, count: logs.length });
+    return t("practice.totalMins", { mins: remainMins, count: logs.length });
+  };
+
+  const locale = i18n.language === "mn" ? "mn-MN" : "en-US";
+
   return (
     <div className="mt-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="font-serif text-xl text-stone-900">Бэлтгэлийн тэмдэглэл</h2>
+          <h2 className="font-serif text-xl text-stone-900">{t("practice.heading")}</h2>
           {logs.length > 0 && (
-            <p className="text-xs text-stone-500 mt-0.5">
-              Нийт: {totalHours > 0 ? `${totalHours} цаг ` : ""}{remainMins > 0 ? `${remainMins} мин` : ""} · {logs.length} удаа
-            </p>
+            <p className="text-xs text-stone-500 mt-0.5">{totalText()}</p>
           )}
         </div>
         <button
@@ -67,7 +75,7 @@ export default function PracticeLogSection({
           onClick={() => setShowForm(!showForm)}
           className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
         >
-          + Тэмдэглэл нэмэх
+          {t("practice.addButton")}
         </button>
       </div>
 
@@ -76,7 +84,9 @@ export default function PracticeLogSection({
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Огноо</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                {t("practice.fields.date")}
+              </label>
               <input
                 type="date"
                 value={date}
@@ -85,7 +95,9 @@ export default function PracticeLogSection({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Хугацаа (минут)</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                {t("practice.fields.duration")}
+              </label>
               <div className="flex items-center gap-2">
                 {[30, 60, 90, 120].map((m) => (
                   <button
@@ -98,7 +110,7 @@ export default function PracticeLogSection({
                         : "border border-stone-200 text-stone-600 hover:bg-stone-50"
                     }`}
                   >
-                    {m < 60 ? `${m}мин` : `${m / 60}ц`}
+                    {m < 60 ? `${m}m` : `${m / 60}h`}
                   </button>
                 ))}
               </div>
@@ -106,12 +118,14 @@ export default function PracticeLogSection({
           </div>
 
           <div className="mb-3">
-            <label className="block text-xs font-medium text-stone-600 mb-1">Тэмдэглэл</label>
+            <label className="block text-xs font-medium text-stone-600 mb-1">
+              {t("practice.fields.notes")}
+            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={3}
-              placeholder="Өнөөдөр юу хийсэн бэ? Юу сайн болсон, юу хэцүү байсан?"
+              placeholder={t("practice.fields.notesPlaceholder")}
               className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-200"
             />
           </div>
@@ -122,7 +136,7 @@ export default function PracticeLogSection({
               onClick={() => setShowForm(false)}
               className="rounded-lg px-3 py-1.5 text-sm text-stone-500 hover:bg-stone-100"
             >
-              Болих
+              {t("practice.actions.cancel")}
             </button>
             <button
               type="button"
@@ -130,7 +144,7 @@ export default function PracticeLogSection({
               disabled={saving || !content.trim()}
               className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? "Хадгалж байна..." : "Хадгалах"}
+              {saving ? t("practice.actions.saving") : t("practice.actions.save")}
             </button>
           </div>
         </div>
@@ -140,8 +154,8 @@ export default function PracticeLogSection({
       {logs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-stone-200 bg-white p-8 text-center">
           <p className="text-3xl mb-2">🏋️</p>
-          <p className="text-sm font-medium text-stone-700">Бэлтгэлийн тэмдэглэл байхгүй</p>
-          <p className="text-xs text-stone-500 mt-1">Өдөр бүрийн бэлтгэлийг тэмдэглэж эхэл</p>
+          <p className="text-sm font-medium text-stone-700">{t("practice.empty.title")}</p>
+          <p className="text-xs text-stone-500 mt-1">{t("practice.empty.subtitle")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -151,11 +165,15 @@ export default function PracticeLogSection({
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 flex-col items-center justify-center rounded-xl bg-stone-100 text-center">
                     <span className="text-xs font-bold text-stone-700 leading-none">
-                      {log.duration >= 60 ? `${log.duration / 60}ц` : `${log.duration}м`}
+                      {log.duration >= 60 ? `${log.duration / 60}h` : `${log.duration}m`}
                     </span>
                   </div>
                   <div>
-                    <p className="text-xs text-stone-500">{formatLogDate(log.date)}</p>
+                    <p className="text-xs text-stone-500">
+                      {new Date(log.date).toLocaleDateString(locale, {
+                        year: "numeric", month: "long", day: "numeric"
+                      })}
+                    </p>
                     <p className="text-sm text-stone-800 mt-0.5 leading-relaxed">{log.content}</p>
                   </div>
                 </div>
@@ -168,14 +186,14 @@ export default function PracticeLogSection({
                         onClick={() => handleDelete(log.id)}
                         className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700"
                       >
-                        Устга
+                        {t("practice.actions.confirmDelete")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteId(null)}
                         className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-600"
                       >
-                        Болих
+                        {t("practice.actions.cancelDelete")}
                       </button>
                     </div>
                   ) : (
@@ -195,10 +213,4 @@ export default function PracticeLogSection({
       )}
     </div>
   );
-}
-
-function formatLogDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 }
