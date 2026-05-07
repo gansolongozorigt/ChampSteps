@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // -----------------------------------------------------------------------------
 // Багшийн тал — код үүсгэх
@@ -17,6 +18,7 @@ export interface TeacherInvitePanelProps {
 }
 
 export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: TeacherInvitePanelProps) {
+  const { t } = useTranslation();
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -45,8 +47,8 @@ export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: Tea
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xl">🏫</span>
         <div>
-          <h3 className="font-semibold text-stone-900 text-sm">Шавь нэмэх</h3>
-          <p className="text-xs text-stone-500">Эцэг эхэд код илгээж, шавиа нэмэ</p>
+          <h3 className="font-semibold text-stone-900 text-sm">{t("invite.teacher.heading")}</h3>
+          <p className="text-xs text-stone-500">{t("invite.teacher.subtitle")}</p>
         </div>
       </div>
 
@@ -57,14 +59,14 @@ export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: Tea
           disabled={loading}
           className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "Үүсгэж байна..." : "Урилгын код үүсгэх"}
+          {loading ? t("invite.teacher.creating") : t("invite.teacher.createButton")}
         </button>
       ) : (
         <div className="space-y-3">
           <div className="rounded-xl bg-white border border-blue-200 p-4 text-center">
-            <p className="text-xs text-stone-500 mb-1">Урилгын код</p>
+            <p className="text-xs text-stone-500 mb-1">{t("invite.teacher.codeLabel")}</p>
             <p className="font-mono text-3xl font-bold tracking-widest text-blue-700">{code}</p>
-            <p className="text-xs text-stone-400 mt-1">7 хоногийн дотор ашиглана</p>
+            <p className="text-xs text-stone-400 mt-1">{t("invite.teacher.codeExpiry")}</p>
           </div>
           <button
             type="button"
@@ -75,14 +77,14 @@ export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: Tea
                 : "bg-white border border-blue-200 text-blue-700 hover:bg-blue-50"
             }`}
           >
-            {copied ? "✓ Хуулагдлаа!" : "Код хуулах"}
+            {copied ? t("invite.teacher.copied") : t("invite.teacher.copyButton")}
           </button>
           <button
             type="button"
             onClick={() => setCode(null)}
             className="w-full text-xs text-stone-400 hover:text-stone-600"
           >
-            Шинэ код үүсгэх
+            {t("invite.teacher.newCode")}
           </button>
         </div>
       )}
@@ -101,6 +103,7 @@ export interface ParentLinkPanelProps {
 }
 
 export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPanelProps) {
+  const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -108,21 +111,25 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
 
   async function handleLink() {
     if (code.trim().length !== 6) {
-      setError("Код 6 тэмдэгт байх ёстой.");
+      setError(t("invite.parent.errors.length"));
       return;
     }
     setLoading(true);
     setError(null);
     try {
       await onUseCode(code.trim().toUpperCase(), childId);
-      setSuccess("Амжилттай холбогдлоо!");
+      setSuccess(t("invite.parent.success"));
       setCode("");
     } catch (e) {
       const msg = (e as Error).message;
-      if (msg.includes("аль хэдийн")) setError("Энэ код аль хэдийн ашиглагдсан байна.");
-      else if (msg.includes("дууссан")) setError("Кодын хугацаа дууссан байна.");
-      else if (msg.includes("олдсонгүй")) setError("Хүүхэд олдсонгүй.");
-      else setError("Код буруу байна. Дахин шалгаарай.");
+      if (msg.includes("аль хэдийн") || msg.includes("already"))
+        setError(t("invite.parent.errors.used"));
+      else if (msg.includes("дууссан") || msg.includes("expired"))
+        setError(t("invite.parent.errors.expired"));
+      else if (msg.includes("олдсонгүй") || msg.includes("not found"))
+        setError(t("invite.parent.errors.notFound"));
+      else
+        setError(t("invite.parent.errors.invalid"));
     } finally {
       setLoading(false);
     }
@@ -133,8 +140,8 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xl">🔗</span>
         <div>
-          <h3 className="font-semibold text-stone-900 text-sm">Багштай холбогдох</h3>
-          <p className="text-xs text-stone-500">{childName}-г багшийн бүртгэлд нэмэх</p>
+          <h3 className="font-semibold text-stone-900 text-sm">{t("invite.parent.heading")}</h3>
+          <p className="text-xs text-stone-500">{t("invite.parent.subtitle", { name: childName })}</p>
         </div>
       </div>
 
@@ -147,7 +154,7 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
             onClick={() => setSuccess(null)}
             className="mt-2 text-xs text-stone-400 hover:text-stone-600"
           >
-            Дахин холбох
+            {t("invite.parent.reconnect")}
           </button>
         </div>
       ) : (
@@ -158,7 +165,7 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
               setCode(e.target.value.toUpperCase().slice(0, 6));
               setError(null);
             }}
-            placeholder="ABC123"
+            placeholder={t("invite.parent.placeholder")}
             maxLength={6}
             className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-widest text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-amber-300"
           />
@@ -169,7 +176,7 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
             disabled={loading || code.length !== 6}
             className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
-            {loading ? "Холбож байна..." : "Багштай холбогдох"}
+            {loading ? t("invite.parent.connecting") : t("invite.parent.connectButton")}
           </button>
         </div>
       )}
