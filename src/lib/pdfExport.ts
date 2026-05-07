@@ -129,7 +129,7 @@ async function renderOfficial(
   const stats = [
     ["Нийт бүртгэл", String(achievements.length)],
     ["Алтан медаль", String(achievements.filter(a => a.awardType === "Gold").length)],
-    ["Гарсан огноо", new Date().toLocaleDateString("mn-MN")],
+    ["Төрсөн огноо", new Date().toLocaleDateString("mn-MN")],
   ];
 
   stats.forEach(([label, val], i) => {

@@ -14,6 +14,7 @@ import {
 } from "../utils/format";
 import EmptyState from "./EmptyState";
 import LanguageToggle from "./LanguageToggle";
+import AIInsightCard from "./AIInsightCard";
 
 type CategoryFilter = AchievementCategory | "All";
 type SortOrder = "newest" | "oldest";
@@ -149,6 +150,11 @@ export default function TimelineDashboard({
           />
         </section>
 
+        {/* AI Insight */}
+        {achievements.length > 0 && (
+          <AIInsightCard child={child} achievements={achievements} />
+        )}
+
         {/* Controls */}
         {achievements.length > 0 && (
           <section className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -258,8 +264,6 @@ export default function TimelineDashboard({
   );
 }
 
-// -----------------------------------------------------------------------------
-
 function SummaryCard({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
@@ -313,7 +317,6 @@ function TimelineCard({
               <span className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${award.bg} ${award.text} ${award.ring}`}>
                 {award.emoji} {t(`awards.${achievement.awardType}`)}
               </span>
-              {/* Edit/Delete товчлуурууд */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   type="button"
@@ -363,7 +366,6 @@ function TimelineCard({
           )}
         </div>
 
-        {/* Устгах баталгаажуулалт */}
         {deleteConfirm && (
           <div className="border-t border-rose-100 bg-rose-50 px-4 py-3 rounded-b-2xl">
             <p className="text-sm text-rose-700 font-medium">Энэ бичлэгийг устгах уу?</p>
