@@ -15,48 +15,64 @@ interface ExportOpts {
 }
 
 const A4 = { w: 210, h: 297 };
-const M = 18; // margin
-const CW = A4.w - M * 2; // content width
+const M = 18;
+const CW = A4.w - M * 2;
 
 // -----------------------------------------------------------------------------
-// Фонт ачаалах
+// Фонт cache — bytes хадгална, doc-д дахин нэмнэ
 // -----------------------------------------------------------------------------
 
-let fontLoaded = false;
+interface FontCache {
+  regular: string | null;
+  bold: string | null;
+}
+
+const fontCache: FontCache = { regular: null, bold: null };
 
 async function loadFont(doc: jsPDF) {
-  if (fontLoaded) return;
+  // Bytes татаагүй бол татна
+  if (!fontCache.regular || !fontCache.bold) {
+    try {
+      const [regRes, boldRes] = await Promise.all([
+        fetch("/NotoSans-Regular.ttf"),
+        fetch("/NotoSans-Bold.ttf"),
+      ]);
+      const [regBuf, boldBuf] = await Promise.all([
+        regRes.arrayBuffer(),
+        boldRes.arrayBuffer(),
+      ]);
+
+      const toBase64 = (buf: ArrayBuffer) => {
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      };
+
+      fontCache.regular = toBase64(regBuf);
+      fontCache.bold = toBase64(boldBuf);
+    } catch (e) {
+      console.warn("[champstep] NotoSans фонт ачаалахад алдаа:", e);
+      return;
+    }
+  }
+
+  // Cache-аас doc-д нэмнэ — doc бүрт заавал хийнэ
   try {
-    const [regRes, boldRes] = await Promise.all([
-      fetch("/NotoSans-Regular.ttf"),
-      fetch("/NotoSans-Bold.ttf"),
-    ]);
-    const [regBuf, boldBuf] = await Promise.all([
-      regRes.arrayBuffer(),
-      boldRes.arrayBuffer(),
-    ]);
-
-    const toBase64 = (buf: ArrayBuffer) => {
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
-    };
-
-    doc.addFileToVFS("NotoSans-Regular.ttf", toBase64(regBuf));
+    doc.addFileToVFS("NotoSans-Regular.ttf", fontCache.regular!);
     doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
-    doc.addFileToVFS("NotoSans-Bold.ttf", toBase64(boldBuf));
+    doc.addFileToVFS("NotoSans-Bold.ttf", fontCache.bold!);
     doc.addFont("NotoSans-Bold.ttf", "NotoSans", "bold");
-    fontLoaded = true;
   } catch (e) {
-    console.warn("[champstep] NotoSans фонт ачаалахад алдаа:", e);
+    console.warn("[champstep] doc-д фонт нэмэхэд алдаа:", e);
   }
 }
 
 function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
-  if (fontLoaded) {
+  const fontList = doc.getFontList();
+  if (fontList["NotoSans"]) {
     doc.setFont("NotoSans", weight);
   } else {
     doc.setFont("helvetica", weight);
@@ -99,7 +115,6 @@ async function renderOfficial(
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string
 ) {
-  // Cover
   doc.setFillColor(28, 25, 23);
   doc.rect(0, 0, A4.w, 32, "F");
 
@@ -112,7 +127,6 @@ async function renderOfficial(
   doc.setTextColor(160, 150, 140);
   doc.text("Хүүхдийн амжилтын портфолио", A4.w - M, 20, { align: "right" });
 
-  // Child info
   setFont(doc, "bold");
   doc.setFontSize(26);
   doc.setTextColor(28, 25, 23);
@@ -125,7 +139,6 @@ async function renderOfficial(
     doc.text(child.bio, M, 72, { maxWidth: CW });
   }
 
-  // Stats
   const stats = [
     ["Нийт бүртгэл", String(achievements.length)],
     ["Алтан медаль", String(achievements.filter(a => a.awardType === "Gold").length)],
@@ -144,11 +157,9 @@ async function renderOfficial(
     doc.text(val, x, 110);
   });
 
-  // Divider
   doc.setDrawColor(220, 215, 210);
   doc.line(M, 120, A4.w - M, 120);
 
-  // Achievements
   let y = 132;
   for (let i = 0; i < achievements.length; i++) {
     const a = achievements[i];
@@ -157,7 +168,6 @@ async function renderOfficial(
       y = M + 10;
     }
 
-    // Row
     setFont(doc, "bold");
     doc.setFontSize(11);
     doc.setTextColor(28, 25, 23);
@@ -203,11 +213,9 @@ async function renderKids(
     Gold: "🥇", Silver: "🥈", Bronze: "🥉", Participant: "🎖"
   };
 
-  // Cover — өнгөлөг
   doc.setFillColor(255, 247, 237);
   doc.rect(0, 0, A4.w, A4.h, "F");
 
-  // Тоглоомлог header
   doc.setFillColor(251, 191, 36);
   doc.roundedRect(M, M, CW, 40, 5, 5, "F");
 
@@ -221,7 +229,6 @@ async function renderKids(
   doc.setTextColor(146, 64, 14);
   if (child.bio) doc.text(child.bio, M + 8, M + 28, { maxWidth: CW - 16 });
 
-  // Achievements — card хэлбэртэй
   let y = M + 52;
   for (const a of achievements) {
     if (y > A4.h - 50) {
@@ -255,7 +262,6 @@ async function renderKids(
     y += 42;
   }
 
-  // Footer
   doc.setFontSize(8);
   doc.setTextColor(200, 180, 150);
   doc.text("ChampStep · Хүүхдийн өсөлтийн дэвтэр", M, A4.h - 8);
@@ -271,23 +277,19 @@ async function renderGold(
   achievements: Achievement[],
   _t: (k: string, o?: Record<string, unknown>) => string
 ) {
-  // Dark cover
   doc.setFillColor(15, 12, 10);
   doc.rect(0, 0, A4.w, A4.h, "F");
 
-  // Gold accent top bar
   doc.setFillColor(180, 130, 40);
   doc.rect(0, 0, A4.w, 3, "F");
   doc.setFillColor(217, 119, 6);
   doc.rect(0, 3, A4.w, 1, "F");
 
-  // Logo
   setFont(doc, "bold");
   doc.setFontSize(9);
   doc.setTextColor(180, 130, 40);
   doc.text("C H A M P S T E P", M, 22);
 
-  // Child name — large gold
   setFont(doc, "bold");
   doc.setFontSize(32);
   doc.setTextColor(217, 179, 80);
@@ -298,11 +300,9 @@ async function renderGold(
   doc.setTextColor(140, 120, 90);
   if (child.bio) doc.text(child.bio, M, 82, { maxWidth: CW });
 
-  // Gold divider
   doc.setFillColor(180, 130, 40);
   doc.rect(M, 92, 40, 0.5, "F");
 
-  // Stats
   const golds = achievements.filter(a => a.awardType === "Gold").length;
   const statsData = [
     ["НИЙТ", String(achievements.length)],
@@ -322,7 +322,6 @@ async function renderGold(
     doc.text(val, x, 118);
   });
 
-  // Achievements
   let y = 136;
   for (const a of achievements) {
     if (y > A4.h - 28) {
@@ -334,7 +333,6 @@ async function renderGold(
       y = 20;
     }
 
-    // Gold left border
     doc.setFillColor(217, 119, 6);
     doc.rect(M, y - 1, 2, 18, "F");
 
@@ -353,7 +351,6 @@ async function renderGold(
     y += 26;
   }
 
-  // Gold bottom bar
   doc.setFillColor(180, 130, 40);
   doc.rect(0, A4.h - 2, A4.w, 2, "F");
 
