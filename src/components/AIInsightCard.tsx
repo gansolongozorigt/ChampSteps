@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Achievement, Child } from "../types";
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function AIInsightCard({ child, achievements }: Props) {
+  const { t } = useTranslation();
   const [insight, setInsight] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -22,25 +24,19 @@ export default function AIInsightCard({ child, achievements }: Props) {
 
       const response = await fetch("/api/ai-insight", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json", // ✅ нэмэгдсэн
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          childName: child.name,   // ✅ serverless функцтэй тааруулсан
+          childName: child.name,
           birthDate: child.birthDate,
           summary,
         }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Серверийн алдаа");
-      }
-
-      setInsight(data.insight); // ✅ data.content[0].text → data.insight
+      if (!response.ok) throw new Error(data.error || "Server error");
+      setInsight(data.insight);
     } catch (e) {
-      setError("AI зөвлөгөө авахад алдаа гарлаа. Дахин оролдоно уу.");
+      setError(t("ai.error"));
     } finally {
       setLoading(false);
     }
@@ -51,32 +47,27 @@ export default function AIInsightCard({ child, achievements }: Props) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">🤖</span>
-          <h3 className="font-semibold text-gray-800">AI зөвлөгөө</h3>
+          <h3 className="font-semibold text-gray-800">{t("ai.heading")}</h3>
         </div>
         <button
           onClick={getInsight}
           disabled={loading}
           className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50"
         >
-          {loading ? "Боловсруулж байна..." : insight ? "Шинэчлэх" : "Авах"}
+          {loading ? t("ai.loading") : insight ? t("ai.refresh") : t("ai.fetch")}
         </button>
       </div>
-
       {insight && (
         <div>
           <p className="text-gray-700 text-sm leading-relaxed">{insight}</p>
           <p className="text-xs text-gray-400 mt-3 border-t pt-2">
-            ⚡ {child.name}-ийн амжилт, дадлагын бичлэгт үндэслэн Claude AI боловсруулсан.
+            ⚡ {t("ai.footer", { name: child.name })}
           </p>
         </div>
       )}
-
       {error && <p className="text-red-500 text-sm">{error}</p>}
-
       {!insight && !loading && (
-        <p className="text-gray-400 text-sm">
-          Хүүхдийн амжилтуудад үндэслэн AI зөвлөгөө авах боломжтой.
-        </p>
+        <p className="text-gray-400 text-sm">{t("ai.empty")}</p>
       )}
     </div>
   );

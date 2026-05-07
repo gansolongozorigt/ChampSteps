@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Reflection } from "../types";
 
 export interface ReflectionSectionProps {
@@ -13,19 +14,18 @@ export interface ReflectionSectionProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-const MOODS: { value: Reflection["mood"]; emoji: string; label: string }[] = [
-  { value: 1, emoji: "😞", label: "Маш муу" },
-  { value: 2, emoji: "😔", label: "Муу" },
-  { value: 3, emoji: "😐", label: "Дунд" },
-  { value: 4, emoji: "😊", label: "Сайн" },
-  { value: 5, emoji: "😄", label: "Маш сайн" },
-];
+const MOOD_VALUES = [1, 2, 3, 4, 5] as const;
+const MOOD_EMOJIS: Record<number, string> = {
+  1: "😞", 2: "😔", 3: "😐", 4: "😊", 5: "😄",
+};
 
 export default function ReflectionSection({
   reflections,
   onAdd,
   onDelete,
 }: ReflectionSectionProps) {
+  const { t, i18n } = useTranslation();
+
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [mood, setMood] = useState<Reflection["mood"]>(3);
@@ -54,20 +54,22 @@ export default function ReflectionSection({
     ? (reflections.reduce((s, r) => s + r.mood, 0) / reflections.length).toFixed(1)
     : null;
 
+  const locale = i18n.language === "mn" ? "mn-MN" : "en-US";
+
   return (
     <div className="mt-8 mb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="font-serif text-xl text-stone-900">Хүүхдийн сэтгэлзүйн тэмдэглэл</h2>
+            <h2 className="font-serif text-xl text-stone-900">{t("reflection.heading")}</h2>
             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700 uppercase tracking-wide">
-              🔒 Нууц
+              🔒 {t("reflection.private")}
             </span>
           </div>
           {avgMood && (
             <p className="text-xs text-stone-500 mt-0.5">
-              Дундаж сэтгэл: {avgMood}/5 · {reflections.length} тэмдэглэл
+              {t("reflection.avgMood", { avg: avgMood, count: reflections.length })}
             </p>
           )}
         </div>
@@ -76,7 +78,7 @@ export default function ReflectionSection({
           onClick={() => setShowForm(!showForm)}
           className="rounded-full bg-purple-700 px-4 py-1.5 text-xs font-medium text-white hover:bg-purple-800"
         >
-          + Тэмдэглэл нэмэх
+          {t("reflection.addButton")}
         </button>
       </div>
 
@@ -85,7 +87,9 @@ export default function ReflectionSection({
         <div className="mb-4 rounded-2xl border border-purple-100 bg-purple-50/50 p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Огноо</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                {t("reflection.fields.date")}
+              </label>
               <input
                 type="date"
                 value={date}
@@ -94,21 +98,23 @@ export default function ReflectionSection({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Сэтгэл хэр байна?</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                {t("reflection.fields.mood")}
+              </label>
               <div className="flex gap-1.5">
-                {MOODS.map((m) => (
+                {MOOD_VALUES.map((v) => (
                   <button
-                    key={m.value}
+                    key={v}
                     type="button"
-                    onClick={() => setMood(m.value)}
-                    title={m.label}
+                    onClick={() => setMood(v)}
+                    title={t(`reflection.moods.${v}`)}
                     className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${
-                      mood === m.value
+                      mood === v
                         ? "bg-purple-700 ring-2 ring-purple-300 scale-110"
                         : "bg-white border border-stone-200 hover:bg-purple-50"
                     }`}
                   >
-                    {m.emoji}
+                    {MOOD_EMOJIS[v]}
                   </button>
                 ))}
               </div>
@@ -117,26 +123,27 @@ export default function ReflectionSection({
 
           <div className="mb-3">
             <label className="block text-xs font-medium text-stone-600 mb-1">
-              Хүүхдийн тэмдэглэл
+              {t("reflection.fields.childNote")}
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={3}
-              placeholder="Өнөөдөр юу мэдэрсэн бэ? Юу сайн байсан, юу хэцүү байсан?"
+              placeholder={t("reflection.fields.childNotePlaceholder")}
               className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-200"
             />
           </div>
 
           <div className="mb-3">
             <label className="block text-xs font-medium text-stone-600 mb-1">
-              Эцэг эхийн нэмэлт тэмдэглэл <span className="text-stone-400">(заавал биш)</span>
+              {t("reflection.fields.parentNote")}{" "}
+              <span className="text-stone-400">{t("reflection.fields.parentNoteOptional")}</span>
             </label>
             <textarea
               value={parentNote}
               onChange={(e) => setParentNote(e.target.value)}
               rows={2}
-              placeholder="Эцэг эхийн ажиглалт, санал..."
+              placeholder={t("reflection.fields.parentNotePlaceholder")}
               className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-200"
             />
           </div>
@@ -147,7 +154,7 @@ export default function ReflectionSection({
               onClick={() => setShowForm(false)}
               className="rounded-lg px-3 py-1.5 text-sm text-stone-500 hover:bg-stone-100"
             >
-              Болих
+              {t("reflection.actions.cancel")}
             </button>
             <button
               type="button"
@@ -155,7 +162,7 @@ export default function ReflectionSection({
               disabled={saving || !content.trim()}
               className="rounded-lg bg-purple-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-purple-800 disabled:opacity-50"
             >
-              {saving ? "Хадгалж байна..." : "Хадгалах"}
+              {saving ? t("reflection.actions.saving") : t("reflection.actions.save")}
             </button>
           </div>
         </div>
@@ -165,13 +172,13 @@ export default function ReflectionSection({
       {reflections.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-8 text-center">
           <p className="text-3xl mb-2">💜</p>
-          <p className="text-sm font-medium text-stone-700">Сэтгэлзүйн тэмдэглэл байхгүй</p>
-          <p className="text-xs text-stone-500 mt-1">Хүүхдийнхээ сэтгэл санааг тогтмол тэмдэглэ</p>
+          <p className="text-sm font-medium text-stone-700">{t("reflection.empty.title")}</p>
+          <p className="text-xs text-stone-500 mt-1">{t("reflection.empty.subtitle")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
           {reflections.map((r) => {
-            const moodInfo = MOODS.find((m) => m.value === r.mood);
+            const moodLabel = t(`reflection.moods.${r.mood}`);
             const isExpanded = expandedId === r.id;
             return (
               <li key={r.id} className="rounded-2xl border border-purple-100 bg-white shadow-sm overflow-hidden">
@@ -179,10 +186,14 @@ export default function ReflectionSection({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="flex h-10 w-10 flex-col items-center justify-center rounded-xl bg-purple-50 text-xl shrink-0">
-                        {moodInfo?.emoji}
+                        {MOOD_EMOJIS[r.mood]}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-stone-500">{formatDate(r.date)} · {moodInfo?.label}</p>
+                        <p className="text-xs text-stone-500">
+                          {new Date(r.date).toLocaleDateString(locale, {
+                            year: "numeric", month: "long", day: "numeric"
+                          })} · {moodLabel}
+                        </p>
                         <p className={`text-sm text-stone-800 mt-0.5 leading-relaxed ${!isExpanded ? "line-clamp-2" : ""}`}>
                           {r.content}
                         </p>
@@ -192,12 +203,14 @@ export default function ReflectionSection({
                             onClick={() => setExpandedId(isExpanded ? null : r.id)}
                             className="text-xs text-purple-600 mt-1 hover:underline"
                           >
-                            {isExpanded ? "Хураах" : "Дэлгэрэнгүй"}
+                            {isExpanded ? t("reflection.actions.collapse") : t("reflection.actions.expand")}
                           </button>
                         )}
                         {isExpanded && r.parentNote && (
                           <div className="mt-2 rounded-lg bg-stone-50 px-3 py-2">
-                            <p className="text-xs text-stone-500 font-medium mb-0.5">Эцэг эхийн тэмдэглэл:</p>
+                            <p className="text-xs text-stone-500 font-medium mb-0.5">
+                              {t("reflection.parentNoteLabel")}
+                            </p>
                             <p className="text-xs text-stone-700">{r.parentNote}</p>
                           </div>
                         )}
@@ -212,14 +225,14 @@ export default function ReflectionSection({
                             onClick={() => { onDelete(r.id); setDeleteId(null); }}
                             className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700"
                           >
-                            Устга
+                            {t("reflection.actions.delete")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeleteId(null)}
                             className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-600"
                           >
-                            Болих
+                            {t("reflection.actions.cancelDelete")}
                           </button>
                         </div>
                       ) : (
@@ -241,10 +254,4 @@ export default function ReflectionSection({
       )}
     </div>
   );
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("mn-MN", { year: "numeric", month: "long", day: "numeric" });
 }
