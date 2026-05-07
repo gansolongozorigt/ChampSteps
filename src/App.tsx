@@ -44,10 +44,6 @@ import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./t
 import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
-// -----------------------------------------------------------------------------
-// Seed data
-// -----------------------------------------------------------------------------
-
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
   parentId,
@@ -62,13 +58,8 @@ const seedAchievements: Achievement[] = [];
 
 type ToastState = { kind: ToastKind; message: string } | null;
 
-// -----------------------------------------------------------------------------
-// Root
-// -----------------------------------------------------------------------------
-
 export default function App() {
   const { user, loading: authLoading } = useAuth();
-
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <LoginPage />;
   return <Dashboard />;
@@ -97,40 +88,24 @@ function Dashboard() {
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
 
   const child = children[activeChildIdx];
-
   const tierLimits = TIER_LIMITS[subscription as SubscriptionTier] ?? TIER_LIMITS.free;
 
-  const {
-    achievements,
-    loading: loadingAch,
-    error: achError,
-    addLocal,
-  } = useAchievements(child?.childId ?? "", seedAchievements);
+  const { achievements, loading: loadingAch, error: achError, addLocal } =
+    useAchievements(child?.childId ?? "", seedAchievements);
+  const { logs: practiceLogs, addLocal: addLocalLog, removeLocal: removeLocalLog } =
+    usePracticeLogs(child?.childId ?? "");
+  const { reflections, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
+    useReflections(child?.childId ?? "");
 
-  const {
-    logs: practiceLogs,
-    addLocal: addLocalLog,
-    removeLocal: removeLocalLog,
-  } = usePracticeLogs(child?.childId ?? "");
-
-  const {
-    reflections,
-    addLocal: addLocalReflection,
-    removeLocal: removeLocalReflection,
-  } = useReflections(child?.childId ?? "");
-
-  // Load children
   useEffect(() => {
     async function load() {
       if (!user) return;
-
       if (!isFirebaseConfigured) {
         const localChild = loadLocalChild(makeInitialChild(user.uid));
         setChildren([localChild]);
         setLoadingChildren(false);
         return;
       }
-
       try {
         let list: Child[] = [];
         if (user.role === "teacher") {
@@ -163,26 +138,21 @@ function Dashboard() {
 
   async function handleAddAchievement(draft: AchievementDraft) {
     if (!child) return;
-
-    // Tier хязгаар шалгах
     if (tierLimits.maxAchievements !== -1 && achievements.length >= tierLimits.maxAchievements) {
       setShowSubscription(true);
       setToast({ kind: "info", message: `Үнэгүй эрхэд ${tierLimits.maxAchievements} бүртгэл хүртэл боломжтой.` });
       return;
     }
-
     if (isFirebaseConfigured) {
       try {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
       } catch (e) {
-        console.error("[champstep] createAchievement failed:", e);
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
       return;
     }
-
     const newItem: Achievement = {
       id: crypto.randomUUID(),
       childId: child.childId,
@@ -207,12 +177,10 @@ function Dashboard() {
         setChildren((prev) => prev.map((c) => c.childId === saved.childId ? saved : c));
         setToast({ kind: "success", message: t("status.savedProfile") });
       } catch (e) {
-        console.error("[champstep] updateChild failed:", e);
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
       return;
     }
-
     let nextWithAvatar = next;
     if (avatarFile) {
       try {
@@ -229,13 +197,11 @@ function Dashboard() {
 
   async function handleAddNewChild(name: string) {
     if (!user) return;
-
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
       setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
       return;
     }
-
     const newChild: Child = {
       childId: `child_${user.uid.slice(0, 8)}_${Date.now()}`,
       parentId: user.uid,
@@ -245,11 +211,7 @@ function Dashboard() {
       bio: "",
       avatarUrl: undefined,
     };
-
-    if (isFirebaseConfigured) {
-      await createChild(newChild);
-    }
-
+    if (isFirebaseConfigured) await createChild(newChild);
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
@@ -262,12 +224,10 @@ function Dashboard() {
         await deleteAchievement(id);
         setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
       } catch (e) {
-        console.error("[champstep] deleteAchievement failed:", e);
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
       return;
     }
-    // Offline mode
     const updated = achievements.filter((a) => a.id !== id);
     saveLocalAchievements(updated);
     setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
@@ -276,46 +236,27 @@ function Dashboard() {
   async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
     if (!child) return;
     if (isFirebaseConfigured) {
-      try {
-        await createPracticeLog(child.childId, log);
-      } catch (e) {
-        setToast({ kind: "error", message: t("status.errorSaving") });
-      }
+      try { await createPracticeLog(child.childId, log); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
     }
-    addLocalLog({
-      id: crypto.randomUUID(),
-      childId: child.childId,
-      ...log,
-      createdAt: new Date().toISOString(),
-    });
+    addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
   }
 
   async function handleAddReflection(r: { date: string; mood: 1|2|3|4|5; content: string; parentNote?: string }) {
     if (!child) return;
     if (isFirebaseConfigured) {
-      try {
-        await createReflection(child.childId, r);
-      } catch (e) {
-        setToast({ kind: "error", message: t("status.errorSaving") });
-      }
+      try { await createReflection(child.childId, r); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
     }
-    addLocalReflection({
-      id: crypto.randomUUID(),
-      childId: child.childId,
-      ...r,
-      createdAt: new Date().toISOString(),
-    });
+    addLocalReflection({ id: crypto.randomUUID(), childId: child.childId, ...r, createdAt: new Date().toISOString() });
   }
 
   async function handleDeleteReflection(id: string) {
     if (isFirebaseConfigured) {
-      try {
-        await deleteReflection(id);
-      } catch (e) {
-        setToast({ kind: "error", message: t("status.errorSaving") });
-      }
+      try { await deleteReflection(id); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
     }
     removeLocalReflection(id);
@@ -323,11 +264,8 @@ function Dashboard() {
 
   async function handleDeletePracticeLog(id: string) {
     if (isFirebaseConfigured) {
-      try {
-        await deletePracticeLog(id);
-      } catch (e) {
-        setToast({ kind: "error", message: t("status.errorSaving") });
-      }
+      try { await deletePracticeLog(id); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
     }
     removeLocalLog(id);
@@ -345,7 +283,6 @@ function Dashboard() {
       await exportPortfolio(child, achievements, { t, template: pdfTemplate });
       setToast({ kind: "success", message: t("pdf.success") });
     } catch (e) {
-      console.error("[champstep] pdf export failed:", e);
       setToast({ kind: "error", message: t("pdf.error") });
     } finally {
       setPdfBusy(false);
@@ -353,15 +290,9 @@ function Dashboard() {
   }
 
   async function handleSignOut() {
-    if (!isFirebaseConfigured) {
-      saveLocalAchievements([]);
-    }
+    if (!isFirebaseConfigured) saveLocalAchievements([]);
     await signOut();
   }
-
-  // ---------------------------------------------------------------------------
-  // Loading state
-  // ---------------------------------------------------------------------------
 
   if (loadingChildren) return <FullScreenLoader />;
 
@@ -374,10 +305,13 @@ function Dashboard() {
   }
 
   const isPremium = subscription !== "free";
+  const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 font-sans">
-      {/* Navbar */}
+      {/* ================================================================
+          NAVBAR
+      ================================================================ */}
       <nav className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-md print:hidden">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
           {/* Logo */}
@@ -410,8 +344,8 @@ function Dashboard() {
             )}
           </div>
 
-          {/* Child switcher — олон хүүхэд байвал */}
-          {children.length > 1 && (
+          {/* Child switcher — desktop only */}
+          {children.length > 0 && (
             <div className="hidden sm:flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 p-1">
               {children.map((c, i) => (
                 <button
@@ -426,12 +360,13 @@ function Dashboard() {
                   {c.name}
                 </button>
               ))}
-              {user?.role === "parent" && children.length < tierLimits.maxChildren && (
+              {canAddChild && (
                 <button
                   onClick={() => setShowAddChild(true)}
                   className="rounded-full px-2 py-1 text-xs text-stone-400 hover:text-stone-700"
+                  title={t("children.addChild")}
                 >
-                  + Нэмэх
+                  +
                 </button>
               )}
             </div>
@@ -479,14 +414,14 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => setShowSubscription(true)}
-              className="text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
+              className="hidden sm:block text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
             >
               {t("nav.subscription")}
             </button>
             <button
               type="button"
               onClick={handleSignOut}
-              className="text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
+              className="hidden sm:block text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
             >
               {t("auth.signOut")}
             </button>
@@ -504,6 +439,40 @@ function Dashboard() {
               )}
             </button>
           </div>
+        </div>
+
+        {/* ============================================================
+            MOBILE CHILD TAB BAR — navbar-ын доор
+        ============================================================ */}
+        <div className="sm:hidden border-t border-stone-100 bg-white px-4 py-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          {children.map((c, i) => (
+            <button
+              key={c.childId}
+              onClick={() => setActiveChildIdx(i)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition shrink-0 ${
+                i === activeChildIdx
+                  ? "bg-stone-900 text-white"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+              }`}
+            >
+              {c.avatarUrl ? (
+                <img src={c.avatarUrl} alt={c.name} className="h-4 w-4 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-stone-300 text-[9px] font-bold text-stone-600">
+                  {c.name.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              {c.name}
+            </button>
+          ))}
+          {canAddChild && (
+            <button
+              onClick={() => setShowAddChild(true)}
+              className="flex items-center gap-1 rounded-full border border-dashed border-stone-300 px-3 py-1.5 text-xs text-stone-400 hover:border-stone-400 hover:text-stone-600 whitespace-nowrap shrink-0 transition"
+            >
+              + {t("children.addChild")}
+            </button>
+          )}
         </div>
       </nav>
 
@@ -543,7 +512,7 @@ function Dashboard() {
         />
       </div>
 
-      {/* Reflection — зөвхөн эцэг эх харна */}
+      {/* Reflection */}
       {user?.role === "parent" && (
         <div className="mx-auto max-w-3xl px-4 pb-10 sm:px-6">
           <ReflectionSection
@@ -558,7 +527,7 @@ function Dashboard() {
       {/* Invite section */}
       <div className="mx-auto max-w-3xl px-4 pb-10 sm:px-6">
         <div className="mt-2 mb-6">
-          <h2 className="font-serif text-xl text-stone-900 mb-4">Холболт</h2>
+          <h2 className="font-serif text-xl text-stone-900 mb-4">{t("invite.parent.heading")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {user?.role === "teacher" && (
               <TeacherInvitePanel
@@ -674,11 +643,12 @@ function Dashboard() {
 // -----------------------------------------------------------------------------
 
 function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 backdrop-blur-sm" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="font-serif text-xl text-stone-900">Хүүхэд нэмэх</h2>
+        <h2 className="font-serif text-xl text-stone-900">{t("children.addChild")}</h2>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -688,14 +658,14 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
         />
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm text-stone-500 hover:bg-stone-100">
-            Болих
+            {t("form.actions.cancel")}
           </button>
           <button
             onClick={() => name.trim() && onAdd(name.trim())}
             disabled={!name.trim()}
             className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
           >
-            Нэмэх
+            {t("children.addChild")}
           </button>
         </div>
       </div>
