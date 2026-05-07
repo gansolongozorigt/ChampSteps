@@ -23,25 +23,22 @@ export default function AIInsightCard({ child, achievements }: Props) {
       const response = await fetch("/api/ai-insight", {
         method: "POST",
         headers: {
+          "Content-Type": "application/json", // ✅ нэмэгдсэн
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 500,
-          messages: [
-            {
-              role: "user",
-              content: `Та хүүхдийн хөгжлийн мэргэжилтэн. Дараах хүүхдийн амжилтуудад үндэслэн монгол хэлээр богино, урам зориг өгөх зөвлөгөө өг (3-4 өгүүлбэр):
-
-Хүүхэд: ${child.name}, ${child.birthDate} настай
-Амжилтууд:
-${summary}`,
-            },
-          ],
+          childName: child.name,   // ✅ serverless функцтэй тааруулсан
+          birthDate: child.birthDate,
+          summary,
         }),
       });
 
       const data = await response.json();
-      setInsight(data.content[0].text);
+
+      if (!response.ok) {
+        throw new Error(data.error || "Серверийн алдаа");
+      }
+
+      setInsight(data.insight); // ✅ data.content[0].text → data.insight
     } catch (e) {
       setError("AI зөвлөгөө авахад алдаа гарлаа. Дахин оролдоно уу.");
     } finally {
