@@ -301,5 +301,11 @@
   "children": {
     "addChild": "+ Add child",
     "switchChild": "Switch child"
+  },
+  "delete": {
+    "confirmTitle": "Delete this entry?",
+    "confirmSubtitle": "This action cannot be undone.",
+    "confirm": "Yes, delete",
+    "cancel": "Cancel"
   }
 }

@@ -322,7 +322,7 @@ function TimelineCard({
                   type="button"
                   onClick={onEdit}
                   className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                  title="Засах"
+                  title={t("form.actions.save")}
                 >
                   ✏️
                 </button>
@@ -330,7 +330,7 @@ function TimelineCard({
                   type="button"
                   onClick={onDeleteRequest}
                   className="rounded-lg p-1.5 text-stone-400 hover:bg-rose-50 hover:text-rose-600"
-                  title="Устгах"
+                  title={t("form.actions.remove")}
                 >
                   🗑️
                 </button>
@@ -366,24 +366,25 @@ function TimelineCard({
           )}
         </div>
 
+        {/* ✅ Delete confirmation — i18n ашигласан */}
         {deleteConfirm && (
           <div className="border-t border-rose-100 bg-rose-50 px-4 py-3 rounded-b-2xl">
-            <p className="text-sm text-rose-700 font-medium">Энэ бичлэгийг устгах уу?</p>
-            <p className="text-xs text-rose-500 mt-0.5">Устгасны дараа буцаах боломжгүй.</p>
+            <p className="text-sm text-rose-700 font-medium">{t("delete.confirmTitle")}</p>
+            <p className="text-xs text-rose-500 mt-0.5">{t("delete.confirmSubtitle")}</p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 onClick={onDeleteConfirm}
                 className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
               >
-                Тийм, устга
+                {t("delete.confirm")}
               </button>
               <button
                 type="button"
                 onClick={onDeleteCancel}
                 className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
               >
-                Болих
+                {t("delete.cancel")}
               </button>
             </div>
           </div>

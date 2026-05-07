@@ -33,7 +33,7 @@ export default function AIInsightCard({ child, achievements }: Props) {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Server error");
+      if (!response.ok) throw new Error(data.error || t("ai.error"));
       setInsight(data.insight);
     } catch (e) {
       setError(t("ai.error"));
@@ -57,6 +57,7 @@ export default function AIInsightCard({ child, achievements }: Props) {
           {loading ? t("ai.loading") : insight ? t("ai.refresh") : t("ai.fetch")}
         </button>
       </div>
+
       {insight && (
         <div>
           <p className="text-gray-700 text-sm leading-relaxed">{insight}</p>
@@ -65,7 +66,9 @@ export default function AIInsightCard({ child, achievements }: Props) {
           </p>
         </div>
       )}
+
       {error && <p className="text-red-500 text-sm">{error}</p>}
+
       {!insight && !loading && (
         <p className="text-gray-400 text-sm">{t("ai.empty")}</p>
       )}

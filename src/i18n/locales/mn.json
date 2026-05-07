@@ -301,5 +301,11 @@
   "children": {
     "addChild": "+ Хүүхэд нэмэх",
     "switchChild": "Хүүхэд солих"
+  },
+  "delete": {
+    "confirmTitle": "Энэ бичлэгийг устгах уу?",
+    "confirmSubtitle": "Устгасны дараа буцаах боломжгүй.",
+    "confirm": "Тийм, устга",
+    "cancel": "Болих"
   }
 }
