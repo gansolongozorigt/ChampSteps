@@ -2,14 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Journal-style typography defaults. */
 :root {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Use a serif accent font for headings tagged with `font-serif`. */
 .font-serif {
   font-family: "Source Serif Pro", "Georgia", ui-serif, serif;
   letter-spacing: -0.01em;
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area bottom padding for iOS PWA */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
