@@ -63,7 +63,7 @@ export default function TimelineDashboard({
 
   const stats = useMemo(() => {
     const total = achievements.length;
-    const awards = achievements.filter((a) => a.awardType && a.awardType !== "None").length;
+    const awards = achievements.filter((a) => a.awardType && a.awardType !== "Participant").length;
     const byCat: Record<AchievementCategory, number> = { Sports: 0, Arts: 0, Academic: 0 };
     for (const a of achievements) byCat[a.category] += 1;
     const topCategory = (Object.entries(byCat) as [AchievementCategory, number][])
