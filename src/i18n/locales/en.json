@@ -98,13 +98,7 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription",
-    "upgrade": "Pro",
-    "achievements": "Achievements",
-    "practice": "Practice",
-    "reflection": "Journal",
-    "coach": "Coach",
-    "ai": "AI"
+    "subscription": "Subscription"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -174,6 +168,15 @@
     "coverTitle": "{{name}} — Achievement Journal",
     "coverFooter": "Generated with ChampStep.",
     "pageOf": "{{current}} / {{total}}",
+    "subtitle": "Children's Achievement Portfolio",
+    "totalEntries": "Total entries",
+    "goldMedals": "Gold medals",
+    "birthDate": "Birth date",
+    "achievementsTitle": "{{name}}'s achievements",
+    "footer": "ChampStep · Children's Achievement Journal",
+    "statsTotal": "TOTAL",
+    "statsGold": "GOLD",
+    "statsYear": "YEAR",
     "meta": {
       "birthDate": "Birth date",
       "totalEntries": "Total entries",

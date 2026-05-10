@@ -10,6 +10,7 @@ export type PdfTemplate = "official" | "kids" | "gold";
 interface ExportOpts {
   template?: PdfTemplate;
   filename?: string;
+  language?: "mn" | "en";
   t?: (key: string, opts?: Record<string, unknown>) => string;
 }
 
@@ -85,17 +86,27 @@ export async function exportPortfolio(
   achievements: Achievement[],
   opts: ExportOpts = {}
 ): Promise<void> {
-  const { template = "official", t = (k: string) => k, filename } = opts;
+  const { template = "official", t = (k: string) => k, language = "mn", filename } = opts;
+
+  // Огноог хэлтэй уялдуулан форматлах тусламжийн функц
+  const formatDate = (iso: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(language === "en" ? "en-US" : "mn-MN", {
+      year: "numeric", month: "long", day: "numeric",
+    });
+  };
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   await loadFont(doc);
 
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t);
+    await renderOfficial(doc, child, achievements, t, formatDate);
   } else if (template === "kids") {
-    await renderKids(doc, child, achievements, t);
+    await renderKids(doc, child, achievements, t, formatDate);
   } else {
-    await renderGold(doc, child, achievements, t);
+    await renderGold(doc, child, achievements, t, formatDate);
   }
 
   const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
@@ -110,7 +121,8 @@ async function renderOfficial(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  formatDate: (iso: string) => string
 ) {
   // Header bar
   doc.setFillColor(28, 25, 23);
@@ -142,7 +154,7 @@ async function renderOfficial(
   const stats = [
     [t("pdf.totalEntries"), String(achievements.length)],
     [t("pdf.goldMedals"), String(achievements.filter(a => a.awardType === "Gold").length)],
-    [t("pdf.birthDate"), child.birthDate || new Date().toLocaleDateString()],
+    [t("pdf.birthDate"), child.birthDate ? formatDate(child.birthDate) : "—"],
   ];
 
   stats.forEach(([label, val], i) => {
@@ -177,7 +189,7 @@ async function renderOfficial(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(120, 113, 108);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M, y + 6);
+    doc.text(`${formatDate(a.date)}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M, y + 6);
 
     if (a.description) {
       doc.setFontSize(9);
@@ -211,7 +223,8 @@ async function renderKids(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  formatDate: (iso: string) => string
 ) {
   const colors = {
     Sports: [59, 130, 246] as [number, number, number],
@@ -261,7 +274,7 @@ async function renderKids(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(220, 220, 220);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 5, y + 20);
+    doc.text(`${formatDate(a.date)}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 5, y + 20);
 
     if (a.description) {
       doc.setTextColor(240, 240, 240);
@@ -287,7 +300,8 @@ async function renderGold(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  formatDate: (iso: string) => string
 ) {
   doc.setFillColor(15, 12, 10);
   doc.rect(0, 0, A4.w, A4.h, "F");
@@ -356,7 +370,7 @@ async function renderGold(
     setFont(doc, "normal");
     doc.setFontSize(8);
     doc.setTextColor(120, 100, 70);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 6, y + 14);
+    doc.text(`${formatDate(a.date)}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 6, y + 14);
 
     doc.setDrawColor(40, 35, 25);
     doc.line(M, y + 20, A4.w - M, y + 20);

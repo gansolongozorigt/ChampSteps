@@ -98,13 +98,7 @@
   },
   "nav": {
     "pdfDownload": "PDF Татах",
-    "subscription": "Сарын эрх",
-    "upgrade": "Pro",
-    "achievements": "Амжилт",
-    "practice": "Бэлтгэл",
-    "reflection": "Сэтгэл",
-    "coach": "Багш",
-    "ai": "AI"
+    "subscription": "Сарын эрх"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
@@ -174,6 +168,15 @@
     "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
     "coverFooter": "ChampStep-ээр үүсгэсэн.",
     "pageOf": "{{current}} / {{total}}",
+    "subtitle": "Хүүхдийн амжилтын портфолио",
+    "totalEntries": "Нийт бүртгэл",
+    "goldMedals": "Алтан медаль",
+    "birthDate": "Төрсөн огноо",
+    "achievementsTitle": "{{name}}-ийн амжилтууд",
+    "footer": "ChampStep · Хүүхдийн өсөлтийн дэвтэр",
+    "statsTotal": "НИЙТ",
+    "statsGold": "АЛТАН",
+    "statsYear": "ОН",
     "meta": {
       "birthDate": "Төрсөн огноо",
       "totalEntries": "Нийт бичлэг",
