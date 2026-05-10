@@ -98,7 +98,13 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "upgrade": "Pro",
+    "achievements": "Achievements",
+    "practice": "Practice",
+    "reflection": "Journal",
+    "coach": "Coach",
+    "ai": "AI"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -161,28 +167,19 @@
     }
   },
   "pdf": {
-  "generating": "Building PDF…",
-  "success": "PDF downloaded.",
-  "error": "Could not generate PDF.",
-  "premiumRequired": "PDF export is a Premium feature.",
-  "coverTitle": "{{name}} — Achievement Journal",
-  "coverFooter": "Generated with ChampStep.",
-  "pageOf": "{{current}} / {{total}}",
-  "subtitle": "Children's Achievement Portfolio",
-  "totalEntries": "Total entries",
-  "goldMedals": "Gold medals",
-  "birthDate": "Birth date",
-  "achievementsTitle": "{{name}}'s achievements",
-  "footer": "ChampStep · Children's Achievement Journal",
-  "statsTotal": "TOTAL",
-  "statsGold": "GOLD",
-  "statsYear": "YEAR",
-  "meta": {
-    "birthDate": "Birth date",
-    "totalEntries": "Total entries",
-    "generated": "Generated on"
-  }
-},
+    "generating": "Building PDF…",
+    "success": "PDF downloaded.",
+    "error": "Could not generate PDF.",
+    "premiumRequired": "PDF export is a Premium feature.",
+    "coverTitle": "{{name}} — Achievement Journal",
+    "coverFooter": "Generated with ChampStep.",
+    "pageOf": "{{current}} / {{total}}",
+    "meta": {
+      "birthDate": "Birth date",
+      "totalEntries": "Total entries",
+      "generated": "Generated on"
+    }
+  },
   "status": {
     "loading": "Loading…",
     "saved": "Saved successfully",
@@ -310,11 +307,5 @@
   "children": {
     "addChild": "+ Add child",
     "switchChild": "Switch child"
-  },
-  "delete": {
-    "confirmTitle": "Delete this entry?",
-    "confirmSubtitle": "This action cannot be undone.",
-    "confirm": "Yes, delete",
-    "cancel": "Cancel"
   }
 }
