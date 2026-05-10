@@ -63,7 +63,7 @@ export default function TimelineDashboard({
 
   const stats = useMemo(() => {
     const total = achievements.length;
-    const awards = achievements.filter((a) => a.awardType && a.awardType !== "Participant").length;
+    const awards = achievements.filter((a) => a.awardType && a.awardType !== "None").length;
     const byCat: Record<AchievementCategory, number> = { Sports: 0, Arts: 0, Academic: 0 };
     for (const a of achievements) byCat[a.category] += 1;
     const topCategory = (Object.entries(byCat) as [AchievementCategory, number][])
@@ -142,9 +142,11 @@ export default function TimelineDashboard({
               {stats.awards}
             </span>
             <p className="text-[10px] text-amber-700 mt-1.5 font-medium">
-              Нийт шагнал
+              {t("summary.gold") || "Нийт шагнал"}
             </p>
-            <p className="text-[9px] text-amber-500 mt-0.5">Медаль болон тэмдэглэл</p>
+            <p className="text-[9px] text-amber-500 mt-0.5">
+              {t("summary.goldSub") || "Медаль болон тэмдэглэл"}
+            </p>
           </div>
 
           {/* Тэргүүн ангилал */}

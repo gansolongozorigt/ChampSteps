@@ -9,8 +9,9 @@
   "summary": {
     "total": "Total",
     "entries": "entries",
-    "gold": "Gold medals",
-    "topCategory": "Top category"
+    "gold": "Total awards",
+    "topCategory": "Top category",
+    "goldSub": "Medals and entries"
   },
   "categories": {
     "All": "All",

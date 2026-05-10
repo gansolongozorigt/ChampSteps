@@ -9,8 +9,9 @@
   "summary": {
     "total": "Нийт",
     "entries": "бичлэг",
-    "gold": "Алтан медаль",
-    "topCategory": "Тэргүүн ангилал"
+    "gold": "Нийт шагнал",
+    "topCategory": "Тэргүүн ангилал",
+    "goldSub": "Медаль болон тэмдэглэл"
   },
   "categories": {
     "All": "Бүгд",
