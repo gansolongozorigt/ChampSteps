@@ -363,40 +363,81 @@ function Dashboard() {
       {/* TOP BAR */}
       <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
         <div className="px-4 py-2.5 flex items-center justify-between">
+
+          {/* ── Лого ── */}
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-amber-600 rounded-md flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h4v8H3v-8zm6-6h4v14H9V7zm6-4h4v18h-4V3z" />
-              </svg>
-            </div>
-            <span className="text-[14px] font-semibold text-white tracking-tight">
-              Champ<span className="text-amber-400">Step</span>
+            {/* Хуучин gradient bar + star лого */}
+            <svg width="22" height="22" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="hg1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.12" />
+                </linearGradient>
+                <linearGradient id="hg2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.65" />
+                  <stop offset="100%" stopColor="#b45309" stopOpacity="0.5" />
+                </linearGradient>
+                <linearGradient id="hg3" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fbbf24" />
+                  <stop offset="100%" stopColor="#92400e" />
+                </linearGradient>
+                <linearGradient id="hstar" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#fbbf24" />
+                  <stop offset="100%" stopColor="#d97706" />
+                </linearGradient>
+              </defs>
+              <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#hg1)" />
+              <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#hg2)" />
+              <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#hg3)" />
+              <circle cx="35" cy="7" r="5.5" fill="white" fillOpacity="0.1" />
+              <path d="M35 4.2L36.1 6.7H38.7L36.6 8.2L37.4 10.8L35 9.3L32.6 10.8L33.4 8.2L31.3 6.7H33.9Z" fill="url(#hstar)" />
+            </svg>
+
+            {/* Wordmark */}
+            <span className="text-[15px] font-bold tracking-tight leading-none">
+              <span className="text-white">Champ</span>
+              <span style={{
+                background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>Step</span>
             </span>
+
             {isPremium && (
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-600/20 text-amber-400 border border-amber-600/30">
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400 border border-amber-600/30">
                 {subscription}
               </span>
             )}
           </div>
+
+          {/* ── Баруун товчлуурууд — цэгцтэй ── */}
           <div className="flex items-center gap-1.5">
+            {/* MN / EN */}
             <LanguageChip />
+
+            {/* PDF dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowPdfMenu(!showPdfMenu)}
                 disabled={pdfBusy}
+                title="PDF татах"
                 className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all disabled:opacity-50"
               >
                 {pdfBusy ? (
-                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
                 ) : (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                   </svg>
                 )}
-                PDF
+                <span>PDF</span>
+                <svg className="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
               {showPdfMenu && (
                 <div className="absolute right-0 top-9 z-50 w-44 rounded-xl border border-stone-200 bg-white shadow-xl overflow-hidden">
@@ -422,29 +463,28 @@ function Dashboard() {
                 </div>
               )}
             </div>
-            <button
-              onClick={() => setShowSubscription(true)}
-              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all"
-              title={t("nav.subscription")}
-            >
-              ★
-            </button>
+
+            {/* Avatar — профайл + subscription нэгдсэн */}
             <button
               onClick={() => setShowProfile(true)}
-              className="w-7 h-7 rounded-full overflow-hidden border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
+              className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
+              title="Профайл"
             >
               {child.avatarUrl ? (
                 <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">
+                <div className="w-full h-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-[12px] font-bold text-white">
                   {child.name.slice(0, 1).toUpperCase()}
                 </div>
+              )}
+              {isPremium && (
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-amber-400 border-2 border-stone-950 rounded-full" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Child tabs */}
+        {/* ── Хүүхдийн tab мөр ── */}
         <div className="bg-stone-900 px-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide border-b border-stone-800">
           {children.map((c, i) => (
             <button
@@ -452,14 +492,14 @@ function Dashboard() {
               onClick={() => setActiveChildIdx(i)}
               className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-all ${
                 i === activeChildIdx
-                  ? "bg-amber-600 text-white"
+                  ? "bg-amber-600 text-white shadow-sm"
                   : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"
               }`}
             >
               {c.avatarUrl ? (
                 <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover" />
               ) : (
-                <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center">
+                <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center shrink-0">
                   {c.name.slice(0, 1).toUpperCase()}
                 </span>
               )}
@@ -469,11 +509,22 @@ function Dashboard() {
           {canAddChild && (
             <button
               onClick={() => setShowAddChild(true)}
-              className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors"
+              className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-amber-600/60 hover:text-amber-400 transition-colors"
             >
               + {t("children.addChild")}
             </button>
           )}
+          {/* Subscription дотор tab мөрөнд — давхардал арилсан */}
+          <button
+            onClick={() => setShowSubscription(true)}
+            className="ml-auto shrink-0 flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md text-amber-400/60 hover:text-amber-400 transition-colors"
+            title={t("nav.subscription")}
+          >
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            {isPremium ? subscription?.toUpperCase() : "Pro"}
+          </button>
         </div>
       </header>
 

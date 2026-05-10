@@ -1,3 +1,5 @@
+// AIInsightCard.tsx — хэл дамжуулж, зөв хэлээр хариу авна
+
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Achievement, Child } from "../types";
@@ -8,7 +10,7 @@ interface Props {
 }
 
 export default function AIInsightCard({ child, achievements }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [insight, setInsight] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -22,6 +24,9 @@ export default function AIInsightCard({ child, achievements }: Props) {
         .map((a) => `- ${a.title} (${a.date}, ${a.category}, ${a.awardType})`)
         .join("\n");
 
+      // i18n.language нь "mn" эсвэл "en" байна — API-д дамжуулна
+      const language = i18n.language?.startsWith("en") ? "en" : "mn";
+
       const response = await fetch("/api/ai-insight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,6 +34,7 @@ export default function AIInsightCard({ child, achievements }: Props) {
           childName: child.name,
           birthDate: child.birthDate,
           summary,
+          language, // ← шинэ: хэл дамжуулна
         }),
       });
 
@@ -43,16 +49,16 @@ export default function AIInsightCard({ child, achievements }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mt-4">
+    <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mt-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">🤖</span>
-          <h3 className="font-semibold text-gray-800">{t("ai.heading")}</h3>
+          <h3 className="font-semibold text-stone-800">{t("ai.heading")}</h3>
         </div>
         <button
           onClick={getInsight}
           disabled={loading}
-          className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50"
+          className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50 active:scale-95 transition-all"
         >
           {loading ? t("ai.loading") : insight ? t("ai.refresh") : t("ai.fetch")}
         </button>
@@ -60,8 +66,8 @@ export default function AIInsightCard({ child, achievements }: Props) {
 
       {insight && (
         <div>
-          <p className="text-gray-700 text-sm leading-relaxed">{insight}</p>
-          <p className="text-xs text-gray-400 mt-3 border-t pt-2">
+          <p className="text-stone-700 text-sm leading-relaxed">{insight}</p>
+          <p className="text-xs text-stone-400 mt-3 border-t pt-2">
             ⚡ {t("ai.footer", { name: child.name })}
           </p>
         </div>
@@ -70,7 +76,7 @@ export default function AIInsightCard({ child, achievements }: Props) {
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
       {!insight && !loading && (
-        <p className="text-gray-400 text-sm">{t("ai.empty")}</p>
+        <p className="text-stone-400 text-sm">{t("ai.empty")}</p>
       )}
     </div>
   );
