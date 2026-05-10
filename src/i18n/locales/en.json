@@ -98,7 +98,13 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "upgrade": "Pro",
+    "achievements": "Achievements",
+    "practice": "Practice",
+    "reflection": "Journal",
+    "coach": "Coach",
+    "ai": "AI"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",

@@ -98,7 +98,13 @@
   },
   "nav": {
     "pdfDownload": "PDF Татах",
-    "subscription": "Сарын эрх"
+    "subscription": "Сарын эрх",
+     "upgrade": "Pro",
+    "achievements": "Амжилт",
+    "practice": "Бэлтгэл",
+    "reflection": "Сэтгэл",
+    "coach": "Багш",
+    "ai": "AI"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
