@@ -89,6 +89,7 @@ function Dashboard() {
   const [showSubscription, setShowSubscription] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showPdfMenu, setShowPdfMenu] = useState(false);
+  const [includeImages, setIncludeImages] = useState(true);
   const [toast, setToast] = useState<ToastState>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
@@ -283,9 +284,13 @@ function Dashboard() {
     }
     setPdfBusy(true);
     try {
-      // i18n.language дамжуулснаар PDF доторх текст апп-н хэлтэй уялдана
       const lang = i18n.language?.startsWith("en") ? "en" : "mn";
-      await exportPortfolio(child, achievements, { t, template: template ?? pdfTemplate, language: lang });
+      await exportPortfolio(child, achievements, {
+        t,
+        template: template ?? pdfTemplate,
+        language: lang,
+        includeImages,
+      });
       setToast({ kind: "success", message: t("pdf.success") });
     } catch {
       setToast({ kind: "error", message: t("pdf.error") });
@@ -401,7 +406,7 @@ function Dashboard() {
                 PDF
               </button>
               {showPdfMenu && (
-                <div className="absolute right-0 top-9 z-50 w-44 rounded-xl border border-stone-200 bg-white shadow-xl overflow-hidden">
+                <div className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-stone-200 bg-white shadow-xl overflow-hidden">
                   {([
                     { id: "official", label: "📄 Албан ёсны" },
                     { id: "kids",     label: "🎨 Хүүхэдлэг" },
@@ -421,6 +426,31 @@ function Dashboard() {
                       {tmpl.label}
                     </button>
                   ))}
+                  {/* Зураг оруулах checkbox */}
+                  <div className="border-t border-stone-100 px-4 py-2.5">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <div
+                        onClick={() => setIncludeImages(!includeImages)}
+                        className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                          includeImages
+                            ? "bg-amber-500 border-amber-500"
+                            : "bg-white border-stone-300"
+                        }`}
+                      >
+                        {includeImages && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span
+                        onClick={() => setIncludeImages(!includeImages)}
+                        className="text-[11px] text-stone-600"
+                      >
+                        Зураг оруулах
+                      </span>
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
