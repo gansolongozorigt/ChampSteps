@@ -99,7 +99,7 @@
   "nav": {
     "pdfDownload": "Download PDF",
     "subscription": "Subscription",
-    "upgrade": "Pro",
+    "upgrade": "Go Pro",
     "achievements": "Achievements",
     "practice": "Practice",
     "reflection": "Journal",
@@ -174,6 +174,11 @@
     "coverTitle": "{{name}} — Achievement Journal",
     "coverFooter": "Generated with ChampStep.",
     "pageOf": "{{current}} / {{total}}",
+    "meta": {
+      "birthDate": "Birth date",
+      "totalEntries": "Total entries",
+      "generated": "Generated on"
+    },
     "subtitle": "Children's Achievement Portfolio",
     "totalEntries": "Total entries",
     "goldMedals": "Gold medals",
@@ -182,12 +187,7 @@
     "footer": "ChampStep · Children's Achievement Journal",
     "statsTotal": "TOTAL",
     "statsGold": "GOLD",
-    "statsYear": "YEAR",
-    "meta": {
-      "birthDate": "Birth date",
-      "totalEntries": "Total entries",
-      "generated": "Generated on"
-    }
+    "statsYear": "YEAR"
   },
   "status": {
     "loading": "Loading…",
@@ -237,7 +237,8 @@
     "empty": {
       "title": "No practice entries yet",
       "subtitle": "Start logging daily practice sessions"
-    }
+    },
+    "title": "Practice log"
   },
   "reflection": {
     "heading": "Child's journal",
@@ -273,7 +274,8 @@
       "3": "Okay",
       "4": "Good",
       "5": "Great"
-    }
+    },
+    "title": "Child's journal"
   },
   "invite": {
     "teacher": {
@@ -316,5 +318,11 @@
   "children": {
     "addChild": "+ Add child",
     "switchChild": "Switch child"
+  },
+  "delete": {
+    "cancel": "Cancel",
+    "confirm": "Delete",
+    "confirmTitle": "Delete this entry?",
+    "confirmSubtitle": "This action cannot be undone."
   }
 }

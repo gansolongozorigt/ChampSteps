@@ -99,7 +99,7 @@
   "nav": {
     "pdfDownload": "PDF Татах",
     "subscription": "Сарын эрх",
-     "upgrade": "Pro",
+    "upgrade": "Pro болгох",
     "achievements": "Амжилт",
     "practice": "Бэлтгэл",
     "reflection": "Сэтгэл",
@@ -174,6 +174,11 @@
     "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
     "coverFooter": "ChampStep-ээр үүсгэсэн.",
     "pageOf": "{{current}} / {{total}}",
+    "meta": {
+      "birthDate": "Төрсөн огноо",
+      "totalEntries": "Нийт бичлэг",
+      "generated": "Үүсгэсэн огноо"
+    },
     "subtitle": "Хүүхдийн амжилтын портфолио",
     "totalEntries": "Нийт бүртгэл",
     "goldMedals": "Алтан медаль",
@@ -182,12 +187,7 @@
     "footer": "ChampStep · Хүүхдийн өсөлтийн дэвтэр",
     "statsTotal": "НИЙТ",
     "statsGold": "АЛТАН",
-    "statsYear": "ОН",
-    "meta": {
-      "birthDate": "Төрсөн огноо",
-      "totalEntries": "Нийт бичлэг",
-      "generated": "Үүсгэсэн огноо"
-    }
+    "statsYear": "ОН"
   },
   "status": {
     "loading": "Ачааллаж байна…",
@@ -237,7 +237,8 @@
     "empty": {
       "title": "Бэлтгэлийн тэмдэглэл байхгүй",
       "subtitle": "Өдөр бүрийн бэлтгэлийг тэмдэглэж эхэл"
-    }
+    },
+    "title": "Бэлтгэлийн тэмдэглэл"
   },
   "reflection": {
     "heading": "Хүүхдийн сэтгэлзүйн тэмдэглэл",
@@ -273,7 +274,8 @@
       "3": "Дунд",
       "4": "Сайн",
       "5": "Маш сайн"
-    }
+    },
+    "title": "Хүүхдийн сэтгэлзүйн тэмдэглэл"
   },
   "invite": {
     "teacher": {
@@ -316,5 +318,11 @@
   "children": {
     "addChild": "+ Хүүхэд нэмэх",
     "switchChild": "Хүүхэд солих"
+  },
+  "delete": {
+    "cancel": "Болих",
+    "confirm": "Устгах",
+    "confirmTitle": "Устгах уу?",
+    "confirmSubtitle": "Энэ үйлдлийг буцаах боломжгүй."
   }
 }
