@@ -10,6 +10,8 @@ export type PdfTemplate = "official" | "kids" | "gold";
 interface ExportOpts {
   template?: PdfTemplate;
   filename?: string;
+  language?: "mn" | "en";
+  includeImages?: boolean;
   t?: (key: string, opts?: Record<string, unknown>) => string;
 }
 
