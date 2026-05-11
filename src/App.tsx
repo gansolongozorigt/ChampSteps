@@ -477,7 +477,7 @@ function Dashboard() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
