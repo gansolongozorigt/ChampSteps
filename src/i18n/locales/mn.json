@@ -9,9 +9,8 @@
   "summary": {
     "total": "Нийт",
     "entries": "бичлэг",
-    "gold": "Нийт шагнал",
-    "topCategory": "Тэргүүн ангилал",
-    "goldSub": "Медаль болон тэмдэглэл"
+    "gold": "Алтан медаль",
+    "topCategory": "Тэргүүн ангилал"
   },
   "categories": {
     "All": "Бүгд",
@@ -99,13 +98,7 @@
   },
   "nav": {
     "pdfDownload": "PDF Татах",
-    "subscription": "Сарын эрх",
-    "upgrade": "Pro болгох",
-    "achievements": "Амжилт",
-    "practice": "Бэлтгэл",
-    "reflection": "Сэтгэл",
-    "coach": "Багш",
-    "ai": "AI"
+    "subscription": "Сарын эрх"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
@@ -179,16 +172,7 @@
       "birthDate": "Төрсөн огноо",
       "totalEntries": "Нийт бичлэг",
       "generated": "Үүсгэсэн огноо"
-    },
-    "subtitle": "Хүүхдийн амжилтын портфолио",
-    "totalEntries": "Нийт бүртгэл",
-    "goldMedals": "Алтан медаль",
-    "birthDate": "Төрсөн огноо",
-    "achievementsTitle": "{{name}}-ийн амжилтууд",
-    "footer": "ChampStep · Хүүхдийн өсөлтийн дэвтэр",
-    "statsTotal": "НИЙТ",
-    "statsGold": "АЛТАН",
-    "statsYear": "ОН"
+    }
   },
   "status": {
     "loading": "Ачааллаж байна…",
@@ -238,8 +222,7 @@
     "empty": {
       "title": "Бэлтгэлийн тэмдэглэл байхгүй",
       "subtitle": "Өдөр бүрийн бэлтгэлийг тэмдэглэж эхэл"
-    },
-    "title": "Бэлтгэлийн тэмдэглэл"
+    }
   },
   "reflection": {
     "heading": "Хүүхдийн сэтгэлзүйн тэмдэглэл",
@@ -275,8 +258,7 @@
       "3": "Дунд",
       "4": "Сайн",
       "5": "Маш сайн"
-    },
-    "title": "Хүүхдийн сэтгэлзүйн тэмдэглэл"
+    }
   },
   "invite": {
     "teacher": {
@@ -320,10 +302,34 @@
     "addChild": "+ Хүүхэд нэмэх",
     "switchChild": "Хүүхэд солих"
   },
-  "delete": {
-    "cancel": "Болих",
-    "confirm": "Устгах",
-    "confirmTitle": "Устгах уу?",
-    "confirmSubtitle": "Энэ үйлдлийг буцаах боломжгүй."
+  "sub": {
+    "title": "ChampStep гишүүнчлэл",
+    "subtitle": "Өөртөө тохирох эрхийг сонгоорой.",
+    "current": "Одоогийн",
+    "popular": "Алдартай",
+    "perMonth": "/сар",
+    "free": "Үнэгүй",
+    "freePlan": "Үнэгүй эрх сонгосон",
+    "currentPlan": "Одоогийн эрх",
+    "pay": "Төлбөр хийх →",
+    "payWith": "QPay-р төлөх:",
+    "scanQr": "QPay апп-аар скан хийнэ үү",
+    "back": "Буцах",
+    "confirm": "Төлбөрийг баталгаажуулах",
+    "processing": "Боловсруулж байна...",
+    "demo": "Demo горим — бодит төлбөр хийгдэхгүй",
+    "error": "Төлбөр хийхэд алдаа гарлаа. Дахин оролдоно уу.",
+    "success": "Амжилттай!",
+    "successMsg": "{{name}} эрх идэвхжлээ. Бүх боломжоо ашиглаарай!",
+    "close": "Хаах",
+    "unlimited": "Хязгааргүй",
+    "tierNames": {
+      "free": "Үнэгүй",
+      "family": "Гэр бүл",
+      "master": "Мастер",
+      "coach": "Багш/Клуб"
+    },
+    "children": "{{n}} хүүхэд",
+    "entries": "{{n}} бүртгэл"
   }
 }

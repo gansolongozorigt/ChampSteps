@@ -9,9 +9,8 @@
   "summary": {
     "total": "Total",
     "entries": "entries",
-    "gold": "Total awards",
-    "topCategory": "Top category",
-    "goldSub": "Medals and entries"
+    "gold": "Gold medals",
+    "topCategory": "Top category"
   },
   "categories": {
     "All": "All",
@@ -99,13 +98,7 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription",
-    "upgrade": "Go Pro",
-    "achievements": "Achievements",
-    "practice": "Practice",
-    "reflection": "Journal",
-    "coach": "Coach",
-    "ai": "AI"
+    "subscription": "Subscription"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -179,16 +172,7 @@
       "birthDate": "Birth date",
       "totalEntries": "Total entries",
       "generated": "Generated on"
-    },
-    "subtitle": "Children's Achievement Portfolio",
-    "totalEntries": "Total entries",
-    "goldMedals": "Gold medals",
-    "birthDate": "Birth date",
-    "achievementsTitle": "{{name}}'s achievements",
-    "footer": "ChampStep · Children's Achievement Journal",
-    "statsTotal": "TOTAL",
-    "statsGold": "GOLD",
-    "statsYear": "YEAR"
+    }
   },
   "status": {
     "loading": "Loading…",
@@ -238,8 +222,7 @@
     "empty": {
       "title": "No practice entries yet",
       "subtitle": "Start logging daily practice sessions"
-    },
-    "title": "Practice log"
+    }
   },
   "reflection": {
     "heading": "Child's journal",
@@ -275,8 +258,7 @@
       "3": "Okay",
       "4": "Good",
       "5": "Great"
-    },
-    "title": "Child's journal"
+    }
   },
   "invite": {
     "teacher": {
@@ -320,10 +302,34 @@
     "addChild": "+ Add child",
     "switchChild": "Switch child"
   },
-  "delete": {
-    "cancel": "Cancel",
-    "confirm": "Delete",
-    "confirmTitle": "Delete this entry?",
-    "confirmSubtitle": "This action cannot be undone."
+  "sub": {
+    "title": "ChampStep Membership",
+    "subtitle": "Choose the plan that suits you.",
+    "current": "Current",
+    "popular": "Popular",
+    "perMonth": "/mo",
+    "free": "Free",
+    "freePlan": "Free plan selected",
+    "currentPlan": "Current plan",
+    "pay": "Continue to payment →",
+    "payWith": "Pay with QPay:",
+    "scanQr": "Scan with the QPay app",
+    "back": "Back",
+    "confirm": "Confirm payment",
+    "processing": "Processing...",
+    "demo": "Demo mode — no real payment",
+    "error": "Payment failed. Please try again.",
+    "success": "Success!",
+    "successMsg": "{{name}} plan activated. Enjoy all features!",
+    "close": "Close",
+    "unlimited": "Unlimited",
+    "tierNames": {
+      "free": "Free",
+      "family": "Family",
+      "master": "Master",
+      "coach": "Coach/Club"
+    },
+    "children": "{{n}} children",
+    "entries": "{{n}} entries"
   }
 }
