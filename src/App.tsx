@@ -285,12 +285,7 @@ function Dashboard() {
     setPdfBusy(true);
     try {
       const lang = i18n.language?.startsWith("en") ? "en" : "mn";
-      await exportPortfolio(child, achievements, {
-        t,
-        template: template ?? pdfTemplate,
-        language: lang,
-        includeImages,
-      });
+      await exportPortfolio(child, achievements, { t, template: template ?? pdfTemplate, language: lang, includeImages });
       setToast({ kind: "success", message: t("pdf.success") });
     } catch {
       setToast({ kind: "error", message: t("pdf.error") });
@@ -315,17 +310,6 @@ function Dashboard() {
 
   const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
   const isPremium = subscription !== "free";
-
-  // Tier тохиргоо
-  const tierConfig: Record<string, { label: string; dotColor: string; badgeClass: string }> = {
-    free:   { label: "ҮНЭГҮЙ",  dotColor: "",        badgeClass: "bg-stone-800 text-stone-500 border-stone-700" },
-    family: { label: "ГЭР БҮЛ", dotColor: "#3b82f6", badgeClass: "bg-blue-950 text-blue-300 border-blue-700" },
-    master: { label: "МАСТЕР",  dotColor: "#7c3aed", badgeClass: "bg-violet-950 text-violet-300 border-violet-700" },
-    coach:  { label: "★ БАГШ",  dotColor: "#f59e0b", badgeClass: "bg-amber-950 text-amber-400 border-amber-700" },
-  };
-  const tier = tierConfig[subscription ?? "free"] ?? tierConfig.free;
-
-  // Хязгаарын анхааруулга
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
@@ -381,7 +365,7 @@ function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-stone-100 font-sans">
 
-      {/* TOP BAR */}
+      {/* TOP BAR — мобайл + desktop header */}
       <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -400,10 +384,17 @@ function Dashboard() {
             </svg>
             <span className="text-[15px] font-bold tracking-tight leading-none">
               <span className="text-white">Champ</span>
-              <span style={{ background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Step</span>
+              <span style={{ background:"linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>Step</span>
             </span>
-            <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${tier.badgeClass}`}>
-              {tier.label}
+            <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${
+              subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
+              subscription === "master" ? "bg-violet-950 text-violet-300 border-violet-700" :
+              subscription === "coach"  ? "bg-amber-950 text-amber-400 border-amber-700" :
+              "bg-stone-800 text-stone-500 border-stone-700"
+            }`}>
+              {subscription === "family" ? "ГЭР БҮЛ" :
+               subscription === "master" ? "МАСТЕР" :
+               subscription === "coach"  ? "★ БАГШ" : "ҮНЭГҮЙ"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -435,27 +426,16 @@ function Dashboard() {
                   ] as { id: PdfTemplate; label: string }[]).map((tmpl) => (
                     <button
                       key={tmpl.id}
-                      onClick={() => {
-                        setPdfTemplate(tmpl.id);
-                        setShowPdfMenu(false);
-                        handleDownloadPdf(tmpl.id);
-                      }}
-                      className={`w-full px-4 py-2.5 text-left text-[12px] transition hover:bg-stone-50 ${
-                        pdfTemplate === tmpl.id ? "font-semibold text-stone-900 bg-amber-50" : "text-stone-600"
-                      }`}
+                      onClick={() => { setPdfTemplate(tmpl.id); setShowPdfMenu(false); handleDownloadPdf(tmpl.id); }}
+                      className={`w-full px-4 py-2.5 text-left text-[12px] transition hover:bg-stone-50 ${pdfTemplate === tmpl.id ? "font-semibold text-stone-900 bg-amber-50" : "text-stone-600"}`}
                     >
                       {tmpl.label}
                     </button>
                   ))}
-                  {/* Зураг оруулах checkbox */}
                   <div className="border-t border-stone-100 px-4 py-2.5">
                     <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setIncludeImages(!includeImages)}>
                       <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}>
-                        {includeImages && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                          </svg>
-                        )}
+                        {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                       </div>
                       <span className="text-[11px] text-stone-600">Зураг оруулах</span>
                     </label>
@@ -463,60 +443,26 @@ function Dashboard() {
                 </div>
               )}
             </div>
-            <button
-              onClick={() => setShowSubscription(true)}
-              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all"
-              title={t("nav.subscription")}
-            >
-              ★
-            </button>
-            <button
-              onClick={() => setShowProfile(true)}
-              className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
-            >
+            <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
+            <button onClick={() => setShowProfile(true)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
               <div className="w-full h-full rounded-full overflow-hidden">
-                {child.avatarUrl ? (
-                  <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">
-                    {child.name.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
               </div>
-              {isPremium && tier.dotColor && (
-                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full border-2 border-stone-950" style={{ background: tier.dotColor }}/>
-              )}
             </button>
           </div>
         </div>
 
-        {/* Child tabs */}
-        <div className="bg-stone-900 px-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide border-b border-stone-800">
+        {/* Child tabs — мобайлд харагдана, desktop-д sidebar-д байна */}
+        <div className="md:hidden bg-stone-900 px-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide border-b border-stone-800">
           {children.map((c, i) => (
-            <button
-              key={c.childId}
-              onClick={() => setActiveChildIdx(i)}
-              className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-all ${
-                i === activeChildIdx
-                  ? "bg-amber-600 text-white"
-                  : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"
-              }`}
-            >
-              {c.avatarUrl ? (
-                <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover" />
-              ) : (
-                <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center">
-                  {c.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
+            <button key={c.childId} onClick={() => setActiveChildIdx(i)}
+              className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
+              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center">{c.name.slice(0,1).toUpperCase()}</span>}
               {c.name}
             </button>
           ))}
           {canAddChild && (
-            <button
-              onClick={() => setShowAddChild(true)}
-              className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors"
-            >
+            <button onClick={() => setShowAddChild(true)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors">
               + {t("children.addChild")}
             </button>
           )}
@@ -524,116 +470,154 @@ function Dashboard() {
       </header>
 
       {!isFirebaseConfigured && (
-        <div className="bg-amber-100 px-4 py-2 text-center text-[11px] text-amber-800 print:hidden">
-          ⚠️ {t("status.offlineBanner")}
-        </div>
-      )}
-      {user?.role === "teacher" && (
-        <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
-          🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
-        </div>
+        <div className="bg-amber-100 px-4 py-2 text-center text-[11px] text-amber-800 print:hidden">⚠️ {t("status.offlineBanner")}</div>
       )}
 
-      {/* MAIN */}
-      <main className="flex-grow pb-20 print:p-0">
-        {activeSection === "achievements" && (
-          <TimelineDashboard
-            child={child}
-            achievements={achievements}
-            onAddClick={() => setShowForm(true)}
-            onEditProfile={() => setShowProfile(true)}
-            onEditAchievement={(a) => setEditingAchievement(a)}
-            onDeleteAchievement={handleDeleteAchievement}
-          />
-        )}
-        {activeSection === "practice" && (
-          <div className="px-4 py-6 max-w-3xl mx-auto">
-            <SectionHeader title={t("practice.title") || "Бэлтгэлийн тэмдэглэл"} subtitle={child.name} />
-            <PracticeLogSection
-              childId={child.childId}
-              logs={practiceLogs}
-              onAdd={handleAddPracticeLog}
-              onDelete={handleDeletePracticeLog}
-            />
+      {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+
+        {/* ══ DESKTOP SIDEBAR ══ */}
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
+
+          {/* Хүүхдийн жагсаалт */}
+          <div className="px-3 pt-4 pb-3 border-b border-stone-800">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">{t("children.title") || "Хүүхдүүд"}</p>
+            <div className="space-y-1">
+              {children.map((c, i) => (
+                <button key={c.childId} onClick={() => setActiveChildIdx(i)}
+                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "text-stone-400 hover:bg-stone-800 hover:text-stone-200"}`}>
+                  {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-6 h-6 rounded-full object-cover shrink-0"/> : <span className="w-6 h-6 rounded-full bg-stone-700 text-[9px] font-bold text-stone-300 flex items-center justify-center shrink-0">{c.name.slice(0,1).toUpperCase()}</span>}
+                  <span className="text-[12px] font-medium truncate">{c.name}</span>
+                </button>
+              ))}
+              {canAddChild && (
+                <button onClick={() => setShowAddChild(true)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-stone-600 border border-dashed border-stone-800 hover:border-stone-600 hover:text-stone-400 transition-colors text-[11px]">
+                  + {t("children.addChild")}
+                </button>
+              )}
+            </div>
           </div>
-        )}
-        {activeSection === "reflection" && (
-          <div className="px-4 py-6 max-w-3xl mx-auto">
-            <SectionHeader title={t("reflection.title") || "Хүүхдийн сэтгэлзүйн тэмдэглэл"} subtitle={child.name} />
-            {user?.role === "parent" ? (
-              <ReflectionSection
-                childId={child.childId}
-                reflections={reflections}
-                onAdd={handleAddReflection}
-                onDelete={handleDeleteReflection}
-              />
+
+          {/* Nav items */}
+          <nav className="px-3 py-3 flex-1">
+            {navItems.map((item) => {
+              const active = activeSection === item.id;
+              const colors: Record<string, string> = {
+                achievements: "bg-amber-600/15 text-amber-400 border-l-2 border-amber-500",
+                practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
+                reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
+                coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
+                ai:           "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
+              };
+              return (
+                <button key={item.id} onClick={() => setActiveSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300"}`}>
+                  <span className="w-5 h-5 flex items-center justify-center shrink-0">{item.icon}</span>
+                  <span className="text-[12px] font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Sidebar доод хэсэг — subscription */}
+          <div className="px-3 pb-4 border-t border-stone-800 pt-3">
+            {isPremium ? (
+              <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
+                <p className="text-[10px] font-semibold text-amber-400 mb-1">
+                  {subscription === "family" ? "★ Гэр бүл" : subscription === "master" ? "★ Мастер" : "★ Багш"}
+                </p>
+                <p className="text-[10px] text-stone-500">Хязгааргүй амжилт · PDF · AI</p>
+              </div>
             ) : (
-              <div className="text-center py-12 text-stone-400 text-sm">
-                Энэ хэсэг зөвхөн эцэг эхэд харагдана.
+              <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-stone-400 font-medium">ҮНЭГҮЙ · {achCount}/{maxAch}</span>
+                </div>
+                <div className="h-1 bg-stone-800 rounded-full overflow-hidden mb-2">
+                  <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-stone-600"}`}
+                    style={{ width: `${Math.min(100, (achCount / maxAch) * 100)}%` }}/>
+                </div>
+                <button onClick={() => setShowSubscription(true)}
+                  className="w-full text-[11px] font-bold py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 transition-colors">
+                  ⬆ Upgrade
+                </button>
               </div>
             )}
           </div>
-        )}
-        {activeSection === "coach" && (
-          <div className="px-4 py-6 max-w-3xl mx-auto">
-            <SectionHeader title={t("invite.parent.heading") || "Багштай холбогдох"} subtitle={child.name} />
-            <div className="grid gap-4">
-              {user?.role === "teacher" && (
-                <TeacherInvitePanel
-                  teacherId={user.uid}
-                  teacherName={user.displayName}
-                  onCreateCode={createInviteCode}
-                />
-              )}
-              {user?.role === "parent" && child && (
-                <ParentLinkPanel
-                  childId={child.childId}
-                  childName={child.name}
-                  onUseCode={useInviteCode}
-                />
-              )}
-            </div>
-          </div>
-        )}
-        {activeSection === "ai" && (
-          <div className="px-4 py-6 max-w-3xl mx-auto">
-            <SectionHeader title="AI зөвлөгөө" subtitle={child.name} />
-            <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100 text-center">
-              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
-                </svg>
-              </div>
-              <p className="text-[13px] font-medium text-indigo-900 mb-1">AI зөвлөгөө</p>
-              <p className="text-[12px] text-indigo-500 mb-4 leading-relaxed">
-                Хүүхдийн амжилтуудад үндэслэн хувийн зөвлөгөө авах боломжтой.
-              </p>
-              <button
-                onClick={() => setActiveSection("achievements")}
-                className="text-[12px] font-medium px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all"
-              >
-                Амжилтын хэсэгт харах
-              </button>
-            </div>
-          </div>
-        )}
-      </main>
+        </aside>
 
-      {/* BOTTOM NAV */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {/* Free tier upgrade banner */}
+        {/* ══ MAIN CONTENT ══ */}
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-6 print:p-0">
+          {user?.role === "teacher" && (
+            <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
+              🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
+            </div>
+          )}
+          {activeSection === "achievements" && (
+            <TimelineDashboard
+              child={child}
+              achievements={achievements}
+              onAddClick={() => setShowForm(true)}
+              onEditProfile={() => setShowProfile(true)}
+              onEditAchievement={(a) => setEditingAchievement(a)}
+              onDeleteAchievement={handleDeleteAchievement}
+            />
+          )}
+          {activeSection === "practice" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("practice.title") || "Бэлтгэлийн тэмдэглэл"} subtitle={child.name} />
+              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} />
+            </div>
+          )}
+          {activeSection === "reflection" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("reflection.title") || "Хүүхдийн сэтгэлзүйн тэмдэглэл"} subtitle={child.name} />
+              {user?.role === "parent" ? (
+                <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
+              ) : (
+                <div className="text-center py-12 text-stone-400 text-sm">Энэ хэсэг зөвхөн эцэг эхэд харагдана.</div>
+              )}
+            </div>
+          )}
+          {activeSection === "coach" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("invite.parent.heading") || "Багштай холбогдох"} subtitle={child.name} />
+              <div className="grid gap-4">
+                {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
+                {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
+              </div>
+            </div>
+          )}
+          {activeSection === "ai" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title="AI зөвлөгөө" subtitle={child.name} />
+              <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100 text-center">
+                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
+                  </svg>
+                </div>
+                <p className="text-[13px] font-medium text-indigo-900 mb-1">AI зөвлөгөө</p>
+                <p className="text-[12px] text-indigo-500 mb-4 leading-relaxed">Хүүхдийн амжилтуудад үндэслэн хувийн зөвлөгөө авах боломжтой.</p>
+                <button onClick={() => setActiveSection("achievements")} className="text-[12px] font-medium px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all">
+                  Амжилтын хэсэгт харах
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* BOTTOM NAV — зөвхөн мобайлд */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {!isPremium && (
           <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
             <span className="text-[10px] text-stone-400">
               {showLimitWarning
                 ? <span className="text-amber-400 font-medium">⚠️ {achCount}/{maxAch} — хязгаарт ойртлоо</span>
-                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>
-              }
+                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>}
             </span>
-            <button
-              onClick={() => setShowSubscription(true)}
-              className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0"
-            >
+            <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
               ⬆ Upgrade
             </button>
           </div>
@@ -641,52 +625,25 @@ function Dashboard() {
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = {
-              achievements: "text-amber-500",
-              practice: "text-blue-500",
-              reflection: "text-rose-500",
-              coach: "text-emerald-500",
-              ai: "text-violet-500",
-            };
-            const lineColors: Record<string, string> = {
-              achievements: "bg-amber-500",
-              practice: "bg-blue-500",
-              reflection: "bg-rose-500",
-              coach: "bg-emerald-500",
-              ai: "bg-violet-500",
-            };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", ai:"text-violet-500" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", ai:"bg-violet-500" };
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${
-                  active ? colors[item.id] : "text-stone-400 hover:text-stone-500"
-                }`}
-              >
-                <span className={`transition-transform ${active ? "scale-110" : ""}`}>
-                  {item.icon}
-                </span>
-                <span className={`text-[9px] font-medium leading-none ${active ? colors[item.id] : "text-stone-400"}`}>
-                  {item.label}
-                </span>
-                {active && (
-                  <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full ${lineColors[item.id]}`} />
-                )}
+              <button key={item.id} onClick={() => setActiveSection(item.id)}
+                className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
+                <span className={`transition-transform ${active ? "scale-110" : ""}`}>{item.icon}</span>
+                <span className={`text-[9px] font-medium leading-none ${active ? colors[item.id] : "text-stone-400"}`}>{item.label}</span>
+                {active && <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full ${lines[item.id]}`}/>}
               </button>
             );
           })}
         </div>
       </nav>
 
-      {/* FAB */}
+      {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
       {activeSection === "achievements" && (
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          aria-label={t("app.addAchievement")}
-          className="fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 active:scale-95 transition-all print:hidden flex items-center justify-center"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}
-        >
+        <button type="button" onClick={() => setShowForm(true)} aria-label={t("app.addAchievement")}
+          className="fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}>
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
