@@ -10,6 +10,7 @@
     "total": "Нийт",
     "entries": "бичлэг",
     "gold": "Алтан медаль",
+    "goldSub": "Алтан медаль",
     "topCategory": "Тэргүүн ангилал"
   },
   "categories": {
@@ -172,6 +173,15 @@
     "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
     "coverFooter": "ChampStep-ээр үүсгэсэн.",
     "pageOf": "{{current}} / {{total}}",
+    "subtitle": "Хүүхдийн амжилтын тэмдэглэл",
+    "totalEntries": "Нийт бичлэг",
+    "goldMedals": "Алтан медаль",
+    "birthDate": "Төрсөн огноо",
+    "statsTotal": "Нийт",
+    "statsGold": "Алт",
+    "statsYear": "Он",
+    "achievementsTitle": "{{name}}-ийн амжилтууд",
+    "footer": "ChampStep-ээр үүсгэсэн.",
     "meta": {
       "birthDate": "Төрсөн огноо",
       "totalEntries": "Нийт бичлэг",
@@ -204,6 +214,7 @@
     }
   },
   "practice": {
+    "title": "Бэлтгэлийн тэмдэглэл",
     "heading": "Бэлтгэлийн тэмдэглэл",
     "total": "Нийт: {{hours}} цаг {{mins}} мин · {{count}} удаа",
     "totalHours": "Нийт: {{hours}} цаг · {{count}} удаа",
@@ -229,6 +240,7 @@
     }
   },
   "reflection": {
+    "title": "Хүүхдийн сэтгэлзүйн тэмдэглэл",
     "heading": "Хүүхдийн сэтгэлзүйн тэмдэглэл",
     "private": "Нууц",
     "avgMood": "Дундаж сэтгэл: {{avg}}/5 · {{count}} тэмдэглэл",
@@ -295,6 +307,9 @@
   },
   "ai": {
     "heading": "AI зөвлөгөө",
+    "title": "AI зөвлөгөө",
+    "subtitle": "Хүүхдийн амжилтуудад үндэслэн хувийн зөвлөгөө авах боломжтой.",
+    "viewAchievements": "Амжилтын хэсэгт харах",
     "fetch": "Авах",
     "refresh": "Шинэчлэх",
     "loading": "Боловсруулж байна...",

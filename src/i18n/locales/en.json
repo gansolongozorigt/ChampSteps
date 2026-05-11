@@ -10,6 +10,7 @@
     "total": "Total",
     "entries": "entries",
     "gold": "Gold medals",
+    "goldSub": "Gold medals",
     "topCategory": "Top category"
   },
   "categories": {
@@ -172,6 +173,15 @@
     "coverTitle": "{{name}} — Achievement Journal",
     "coverFooter": "Generated with ChampStep.",
     "pageOf": "{{current}} / {{total}}",
+    "subtitle": "Achievement Portfolio",
+    "totalEntries": "Total entries",
+    "goldMedals": "Gold medals",
+    "birthDate": "Birth date",
+    "statsTotal": "Total",
+    "statsGold": "Gold",
+    "statsYear": "Year",
+    "achievementsTitle": "{{name}}'s achievements",
+    "footer": "Generated with ChampStep.",
     "meta": {
       "birthDate": "Birth date",
       "totalEntries": "Total entries",
@@ -204,6 +214,7 @@
     }
   },
   "practice": {
+    "title": "Practice log",
     "heading": "Practice log",
     "total": "Total: {{hours}}h {{mins}}m · {{count}} sessions",
     "totalHours": "Total: {{hours}}h · {{count}} sessions",
@@ -229,6 +240,7 @@
     }
   },
   "reflection": {
+    "title": "Child's journal",
     "heading": "Child's journal",
     "private": "Private",
     "avgMood": "Avg mood: {{avg}}/5 · {{count}} entries",
@@ -295,6 +307,9 @@
   },
   "ai": {
     "heading": "AI insight",
+    "title": "AI Insight",
+    "subtitle": "Get personalized advice based on your child's achievements.",
+    "viewAchievements": "View achievements",
     "fetch": "Get insight",
     "refresh": "Refresh",
     "loading": "Thinking...",
