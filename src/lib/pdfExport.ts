@@ -1,5 +1,5 @@
 // =============================================================================
-// pdfExport v3 — i18n бүрэн дэмжсэн, 3 template
+// pdfExport v4 — зурагтай, i18n бүрэн дэмжсэн, 3 template
 // =============================================================================
 
 import { jsPDF } from "jspdf";
@@ -79,6 +79,40 @@ function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
 }
 
 // -----------------------------------------------------------------------------
+// Image helper
+// -----------------------------------------------------------------------------
+
+export async function urlToDataUrl(url: string): Promise<string> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("FileReader error"));
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("canvas error")); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = url;
+    });
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Export
 // -----------------------------------------------------------------------------
 
@@ -87,17 +121,17 @@ export async function exportPortfolio(
   achievements: Achievement[],
   opts: ExportOpts = {}
 ): Promise<void> {
-  const { template = "official", t = (k: string) => k, filename } = opts;
+  const { template = "official", t = (k: string) => k, filename, includeImages = true } = opts;
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   await loadFont(doc);
 
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t);
+    await renderOfficial(doc, child, achievements, t, includeImages);
   } else if (template === "kids") {
-    await renderKids(doc, child, achievements, t);
+    await renderKids(doc, child, achievements, t, includeImages);
   } else {
-    await renderGold(doc, child, achievements, t);
+    await renderGold(doc, child, achievements, t, includeImages);
   }
 
   const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
@@ -112,7 +146,8 @@ async function renderOfficial(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  includeImages = true
 ) {
   // Header bar
   doc.setFillColor(28, 25, 23);
@@ -166,7 +201,11 @@ async function renderOfficial(
   // Achievements
   let y = 132;
   for (const a of achievements) {
-    if (y > A4.h - 30) {
+    // Зургийн өндрийг урьдчилан тооцоолох
+    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
+    const blockH = 28 + imgH;
+
+    if (y + blockH > A4.h - 20) {
       doc.addPage();
       y = M + 10;
     }
@@ -179,7 +218,10 @@ async function renderOfficial(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(120, 113, 108);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M, y + 6);
+    doc.text(
+      `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`,
+      M, y + 6
+    );
 
     if (a.description) {
       doc.setFontSize(9);
@@ -188,9 +230,21 @@ async function renderOfficial(
       doc.text(lines.slice(0, 2), M, y + 13);
     }
 
+    // Зураг нэмэх
+    if (includeImages && a.imageURLs?.length) {
+      try {
+        const dataUrl = await urlToDataUrl(a.imageURLs[0]);
+        const imgW = 55;
+        const imgH2 = 40;
+        doc.addImage(dataUrl, "JPEG", M, y + 20, imgW, imgH2);
+      } catch {
+        // Зураг татаж чадахгүй бол алгасна
+      }
+    }
+
     doc.setDrawColor(235, 230, 225);
-    doc.line(M, y + 20, A4.w - M, y + 20);
-    y += 26;
+    doc.line(M, y + blockH, A4.w - M, y + blockH);
+    y += blockH + 6;
   }
 
   // Footer
@@ -213,7 +267,8 @@ async function renderKids(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  includeImages = true
 ) {
   const colors = {
     Sports: [59, 130, 246] as [number, number, number],
@@ -243,7 +298,10 @@ async function renderKids(
 
   let y = M + 52;
   for (const a of achievements) {
-    if (y > A4.h - 50) {
+    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
+    const blockH = 42 + imgH;
+
+    if (y + blockH > A4.h - 20) {
       doc.addPage();
       doc.setFillColor(255, 247, 237);
       doc.rect(0, 0, A4.w, A4.h, "F");
@@ -271,7 +329,17 @@ async function renderKids(
       doc.text(lines[0] ?? "", M + 5, y + 28);
     }
 
-    y += 42;
+    // Зураг нэмэх
+    if (includeImages && a.imageURLs?.length) {
+      try {
+        const dataUrl = await urlToDataUrl(a.imageURLs[0]);
+        doc.addImage(dataUrl, "JPEG", M, y + 38, 55, 40);
+      } catch {
+        // алгасна
+      }
+    }
+
+    y += blockH + 6;
   }
 
   // Footer
@@ -289,7 +357,8 @@ async function renderGold(
   doc: jsPDF,
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string
+  t: (k: string, o?: Record<string, unknown>) => string,
+  includeImages = true
 ) {
   doc.setFillColor(15, 12, 10);
   doc.rect(0, 0, A4.w, A4.h, "F");
@@ -338,7 +407,10 @@ async function renderGold(
 
   let y = 136;
   for (const a of achievements) {
-    if (y > A4.h - 28) {
+    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
+    const blockH = 28 + imgH;
+
+    if (y + blockH > A4.h - 20) {
       doc.addPage();
       doc.setFillColor(15, 12, 10);
       doc.rect(0, 0, A4.w, A4.h, "F");
@@ -358,11 +430,24 @@ async function renderGold(
     setFont(doc, "normal");
     doc.setFontSize(8);
     doc.setTextColor(120, 100, 70);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 6, y + 14);
+    doc.text(
+      `${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`,
+      M + 6, y + 14
+    );
+
+    // Зураг нэмэх
+    if (includeImages && a.imageURLs?.length) {
+      try {
+        const dataUrl = await urlToDataUrl(a.imageURLs[0]);
+        doc.addImage(dataUrl, "JPEG", M + 6, y + 20, 55, 40);
+      } catch {
+        // алгасна
+      }
+    }
 
     doc.setDrawColor(40, 35, 25);
-    doc.line(M, y + 20, A4.w - M, y + 20);
-    y += 26;
+    doc.line(M, y + blockH, A4.w - M, y + blockH);
+    y += blockH + 6;
   }
 
   doc.setFillColor(180, 130, 40);
@@ -375,41 +460,5 @@ async function renderGold(
     doc.setFontSize(8);
     doc.setTextColor(120, 100, 70);
     doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Image helper
-// -----------------------------------------------------------------------------
-
-export async function urlToDataUrl(url: string): Promise<string> {
-  // fetch() арга — Firebase Storage CORS-д тохиромжтой
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-    const blob = await res.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("FileReader error"));
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    // fetch амжилтгүй бол canvas арга туршина
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { reject(new Error("canvas error")); return; }
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      };
-      img.onerror = () => reject(new Error("image load failed"));
-      img.src = url;
-    });
   }
 }
