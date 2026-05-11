@@ -299,6 +299,7 @@
     "empty": "Get AI-powered insights based on your child's achievements."
   },
   "children": {
+    "title": "Children",
     "addChild": "+ Add child",
     "switchChild": "Switch child"
   },
