@@ -316,6 +316,20 @@ function Dashboard() {
   const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
   const isPremium = subscription !== "free";
 
+  // Tier тохиргоо
+  const tierConfig: Record<string, { label: string; dotColor: string; badgeClass: string }> = {
+    free:   { label: "ҮНЭГҮЙ",  dotColor: "",        badgeClass: "bg-stone-800 text-stone-500 border-stone-700" },
+    family: { label: "ГЭР БҮЛ", dotColor: "#3b82f6", badgeClass: "bg-blue-950 text-blue-300 border-blue-700" },
+    master: { label: "МАСТЕР",  dotColor: "#7c3aed", badgeClass: "bg-violet-950 text-violet-300 border-violet-700" },
+    coach:  { label: "★ БАГШ",  dotColor: "#f59e0b", badgeClass: "bg-amber-950 text-amber-400 border-amber-700" },
+  };
+  const tier = tierConfig[subscription ?? "free"] ?? tierConfig.free;
+
+  // Хязгаарын анхааруулга
+  const maxAch = tierLimits.maxAchievements;
+  const achCount = achievements.length;
+  const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
+
   const navItems: { id: NavSection; label: string; icon: React.ReactNode }[] = [
     {
       id: "achievements",
@@ -371,19 +385,26 @@ function Dashboard() {
       <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-amber-600 rounded-md flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h4v8H3v-8zm6-6h4v14H9V7zm6-4h4v18h-4V3z" />
-              </svg>
-            </div>
-            <span className="text-[14px] font-semibold text-white tracking-tight">
-              Champ<span className="text-amber-400">Step</span>
+            {/* Gradient лого */}
+            <svg width="22" height="22" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="hg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" stopOpacity="0.25"/><stop offset="100%" stopColor="#d97706" stopOpacity="0.12"/></linearGradient>
+                <linearGradient id="hg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" stopOpacity="0.65"/><stop offset="100%" stopColor="#b45309" stopOpacity="0.5"/></linearGradient>
+                <linearGradient id="hg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbbf24"/><stop offset="100%" stopColor="#92400e"/></linearGradient>
+              </defs>
+              <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#hg1)"/>
+              <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#hg2)"/>
+              <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#hg3)"/>
+              <circle cx="35" cy="7" r="5.5" fill="white" fillOpacity="0.1"/>
+              <path d="M35 4.2L36.1 6.7H38.7L36.6 8.2L37.4 10.8L35 9.3L32.6 10.8L33.4 8.2L31.3 6.7H33.9Z" fill="#fbbf24"/>
+            </svg>
+            <span className="text-[15px] font-bold tracking-tight leading-none">
+              <span className="text-white">Champ</span>
+              <span style={{ background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Step</span>
             </span>
-            {isPremium && (
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-600/20 text-amber-400 border border-amber-600/30">
-                {subscription}
-              </span>
-            )}
+            <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${tier.badgeClass}`}>
+              {tier.label}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <LanguageChip />
@@ -429,9 +450,7 @@ function Dashboard() {
                   {/* Зураг оруулах checkbox */}
                   <div className="border-t border-stone-100 px-4 py-2.5">
                     <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setIncludeImages(!includeImages)}>
-                      <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
-                        includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"
-                      }`}>
+                      <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}>
                         {includeImages && (
                           <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
@@ -453,14 +472,19 @@ function Dashboard() {
             </button>
             <button
               onClick={() => setShowProfile(true)}
-              className="w-7 h-7 rounded-full overflow-hidden border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
+              className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
             >
-              {child.avatarUrl ? (
-                <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">
-                  {child.name.slice(0, 1).toUpperCase()}
-                </div>
+              <div className="w-full h-full rounded-full overflow-hidden">
+                {child.avatarUrl ? (
+                  <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">
+                    {child.name.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              {isPremium && tier.dotColor && (
+                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full border-2 border-stone-950" style={{ background: tier.dotColor }}/>
               )}
             </button>
           </div>
@@ -597,25 +621,56 @@ function Dashboard() {
 
       {/* BOTTOM NAV */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {/* Free tier upgrade banner */}
+        {!isPremium && (
+          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-stone-400">
+              {showLimitWarning
+                ? <span className="text-amber-400 font-medium">⚠️ {achCount}/{maxAch} — хязгаарт ойртлоо</span>
+                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>
+              }
+            </span>
+            <button
+              onClick={() => setShowSubscription(true)}
+              className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0"
+            >
+              ⬆ Upgrade
+            </button>
+          </div>
+        )}
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
+            const colors: Record<string, string> = {
+              achievements: "text-amber-500",
+              practice: "text-blue-500",
+              reflection: "text-rose-500",
+              coach: "text-emerald-500",
+              ai: "text-violet-500",
+            };
+            const lineColors: Record<string, string> = {
+              achievements: "bg-amber-500",
+              practice: "bg-blue-500",
+              reflection: "bg-rose-500",
+              coach: "bg-emerald-500",
+              ai: "bg-violet-500",
+            };
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${
-                  active ? "text-stone-950" : "text-stone-400 hover:text-stone-600"
+                  active ? colors[item.id] : "text-stone-400 hover:text-stone-500"
                 }`}
               >
                 <span className={`transition-transform ${active ? "scale-110" : ""}`}>
                   {item.icon}
                 </span>
-                <span className={`text-[9px] font-medium leading-none ${active ? "text-stone-950" : "text-stone-400"}`}>
+                <span className={`text-[9px] font-medium leading-none ${active ? colors[item.id] : "text-stone-400"}`}>
                   {item.label}
                 </span>
                 {active && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-amber-500 rounded-full" />
+                  <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full ${lineColors[item.id]}`} />
                 )}
               </button>
             );
