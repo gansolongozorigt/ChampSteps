@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://www.champstep.mn",
+      "https://champstep.mn",
+      "http://localhost:5173",
+      "http://localhost:4173"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
+    "maxAgeSeconds": 3600
+  }
+]

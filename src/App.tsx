@@ -18,6 +18,7 @@ import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
+import CoachNotes from "./components/CoachNotes";
 import { useAuth } from "./lib/auth";
 import {
   createAchievement,
@@ -580,14 +581,38 @@ function Dashboard() {
             </div>
           )}
           {activeSection === "coach" && (
-            <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("invite.parent.heading") || "Багштай холбогдох"} subtitle={child.name} />
-              <div className="grid gap-4">
-                {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
-                {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
-              </div>
-            </div>
-          )}
+  <div className="px-4 py-6 max-w-3xl mx-auto">
+    <SectionHeader title="Багшийн зөвлөгөө" subtitle={child.name} />
+    <div className="grid gap-4">
+
+      <CoachNotes
+        childId={child.childId}
+        childName={child.name}
+        teacherId={user?.uid ?? ""}
+        teacherName={user?.displayName ?? "Багш"}
+        isTeacher={user?.role === "teacher"}
+      />
+
+      <div className="border-t border-stone-100 pt-4">
+        {user?.role === "teacher" && (
+          <TeacherInvitePanel
+            teacherId={user.uid}
+            teacherName={user.displayName}
+            onCreateCode={createInviteCode}
+          />
+        )}
+        {user?.role === "parent" && child && (
+          <ParentLinkPanel
+            childId={child.childId}
+            childName={child.name}
+            onUseCode={useInviteCode}
+          />
+        )}
+      </div>
+
+    </div>
+  </div>
+)}
           {activeSection === "ai" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
               <SectionHeader title={t("ai.title")} subtitle={child.name} />

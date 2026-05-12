@@ -489,3 +489,54 @@ export async function ensureChildDoc(child: Child) {
     });
   }
 }
+// -----------------------------------------------------------------------------
+// Coach Notes — багшийн хувийн зөвлөгөө
+// -----------------------------------------------------------------------------
+
+export interface CoachNote {
+  id: string;
+  childId: string;
+  teacherId: string;
+  teacherName: string;
+  note: string;
+  createdAt: string;
+}
+
+export async function createCoachNote(
+  childId: string,
+  teacherId: string,
+  teacherName: string,
+  note: string
+) {
+  const db = requireDb();
+  const docRef = await addDoc(collection(db, "coachNotes"), {
+    childId,
+    teacherId,
+    teacherName,
+    note,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function deleteCoachNote(id: string) {
+  const db = requireDb();
+  await deleteDoc(doc(db, "coachNotes", id));
+}
+
+export function subscribeCoachNotes(
+  childId: string,
+  cb: (items: CoachNote[]) => void
+) {
+  const db = requireDb();
+  const q = query(
+    collection(db, "coachNotes"),
+    where("childId", "==", childId)
+  );
+  return onSnapshot(q, (snap) => {
+    const items = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as CoachNote))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    cb(items);
+  });
+}
