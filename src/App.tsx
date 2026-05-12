@@ -554,6 +554,23 @@ function Dashboard() {
           </div>
         </aside>
 
+{/* Багш — хүүхэд олдоогүй үед */}
+      {!loadingChildren && !child && (
+        <div className="flex flex-col items-center justify-center flex-grow gap-4 p-8 text-center">
+          <div className="text-4xl">🏫</div>
+          <p className="text-stone-600 text-sm">
+            {user?.role === "teacher"
+              ? "Одоогоор шавь байхгүй байна. Эцэг эхэд урилгын код илгээгээрэй."
+              : "Хүүхэд олдсонгүй."}
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-4 px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
+          >
+            ↪ Гарах
+          </button>
+        </div>
+      )}
         {/* ══ MAIN CONTENT ══ */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
