@@ -450,6 +450,13 @@ function Dashboard() {
                 {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
               </div>
             </button>
+            <button
+              onClick={signOut}
+              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-400 border border-stone-700 hover:bg-red-900/50 hover:text-red-400 active:scale-95 transition-all"
+              title="Гарах"
+            >
+              ↪
+            </button>
           </div>
         </div>
 
