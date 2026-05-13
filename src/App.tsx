@@ -380,21 +380,23 @@ function Dashboard() {
 // Хүүхэд байхгүй үед — энгийн хуудас
   if (!loadingChildren && !child) {
     return (
-      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <div className="w-12 h-12 bg-amber-600 rounded-xl flex items-center justify-center">
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h4v8H3v-8zm6-6h4v14H9V7zm6-4h4v18h-4V3z" />
-          </svg>
-        </div>
-        <p className="text-[20px] font-bold text-stone-900">Champ<span className="text-amber-500">Step</span></p>
-        <p className="text-stone-500 text-sm max-w-xs">
-          {user?.role === "teacher"
-            ? "Одоогоор шавь байхгүй байна. Эцэг эхэд урилгын код илгээгээрэй."
-            : "Хүүхэд олдсонгүй."}
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <p className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></p>
+        <p className="text-stone-400 text-sm mb-2">
+          {user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй."}
         </p>
+        {user?.role === "teacher" && (
+          <div className="w-full max-w-sm">
+            <TeacherInvitePanel
+              teacherId={user.uid}
+              teacherName={user.displayName}
+              onCreateCode={createInviteCode}
+            />
+          </div>
+        )}
         <button
           onClick={signOut}
-          className="mt-2 px-6 py-2.5 rounded-xl bg-stone-800 text-white text-sm hover:bg-red-900 transition"
+          className="mt-2 px-6 py-2.5 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
         >
           ↪ Гарах
         </button>
