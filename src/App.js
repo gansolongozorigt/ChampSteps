@@ -287,12 +287,11 @@ function Dashboard() {
     async function handleSignOut() {
         if (!isFirebaseConfigured)
             saveLocalAchievements([]);
-        await signOut();
     }
     if (loadingChildren)
         return _jsx(FullScreenLoader, {});
     if (!child) {
-        return (_jsx("div", { className: "flex min-h-screen items-center justify-center bg-stone-50", children: _jsx("p", { className: "text-stone-500", children: "\u0425\u04AF\u04AF\u0445\u044D\u0434 \u043E\u043B\u0434\u0441\u043E\u043D\u0433\u04AF\u0439." }) }));
+        return (_jsxs("div", { className: "min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center", children: [_jsxs("span", { className: "text-[20px] font-bold text-white", children: ["Champ", _jsx("span", { className: "text-amber-400", children: "Step" })] }), _jsx("p", { className: "text-stone-400 text-sm", children: user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй." }), _jsx("button", { onClick: signOut, className: "mt-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-sm hover:bg-amber-700 transition", children: "\u0413\u0430\u0440\u0430\u0445" })] }));
     }
     const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
     const isPremium = subscription !== "free";

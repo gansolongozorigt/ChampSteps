@@ -300,14 +300,18 @@ function Dashboard() {
 
   async function handleSignOut() {
     if (!isFirebaseConfigured) saveLocalAchievements([]);
-    await signOut();
   }
-
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-stone-500">Хүүхэд олдсонгүй.</p>
+      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <span className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></span>
+        <p className="text-stone-400 text-sm">
+          {user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй."}
+        </p>
+        <button onClick={signOut} className="mt-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-sm hover:bg-amber-700 transition">
+          Гарах
+        </button>
       </div>
     );
   }
