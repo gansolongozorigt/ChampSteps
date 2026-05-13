@@ -73,8 +73,10 @@ function Dashboard() {
     const { reflections, addLocal: addLocalReflection, removeLocal: removeLocalReflection } = useReflections(child?.childId ?? "");
     useEffect(() => {
         async function load() {
-            if (!user)
+            if (!user) {
+                setLoadingChildren(false);
                 return;
+            }
             if (!isFirebaseConfigured) {
                 const localChild = loadLocalChild(makeInitialChild(user.uid));
                 setChildren([localChild]);

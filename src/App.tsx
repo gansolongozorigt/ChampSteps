@@ -108,7 +108,10 @@ function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      if (!user) return;
+      if (!user) {
+        setLoadingChildren(false);
+      return;
+      }
       if (!isFirebaseConfigured) {
         const localChild = loadLocalChild(makeInitialChild(user.uid));
         setChildren([localChild]);
