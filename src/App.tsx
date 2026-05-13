@@ -422,13 +422,7 @@ function Dashboard() {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={signOut}
-              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-400 border border-stone-700 hover:bg-red-900/50 hover:text-red-400 active:scale-95 transition-all"
-              title="Гарах"
-            >
-              ↪
-            </button>
+
             <LanguageChip />
             <div className="relative">
               <button
@@ -482,11 +476,11 @@ function Dashboard() {
             </button>
             <button
               onClick={signOut}
-              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-400 border border-stone-700 hover:bg-red-900/50 hover:text-red-400 active:scale-95 transition-all"
-              title="Гарах"
+              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-red-900/50 hover:text-red-400 active:scale-95 transition-all"
             >
-              ↪
+              Гарах
             </button>
+            
           </div>
         </div>
 
