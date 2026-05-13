@@ -32,6 +32,7 @@ import {
   deleteAchievement,
   getChildrenForParent,
   getChildrenForTeacher,
+  subscribeChildrenForTeacher,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -107,28 +108,35 @@ function Dashboard() {
     useReflections(child?.childId ?? "");
 
   useEffect(() => {
-    async function load() {
-      if (!user) {
-        setLoadingChildren(false);
+    if (!user) {
+      setLoadingChildren(false);
       return;
-      }
-      if (!isFirebaseConfigured) {
-        const localChild = loadLocalChild(makeInitialChild(user.uid));
-        setChildren([localChild]);
+    }
+
+    if (!isFirebaseConfigured) {
+      const localChild = loadLocalChild(makeInitialChild(user.uid));
+      setChildren([localChild]);
+      setLoadingChildren(false);
+      return;
+    }
+
+    if (user.role === "teacher") {
+      setLoadingChildren(true);
+      const unsub = subscribeChildrenForTeacher(user.uid, (list) => {
+        setChildren(list);
         setLoadingChildren(false);
-        return;
-      }
+      });
+      return unsub;
+    }
+
+    async function load() {
       try {
         let list: Child[] = [];
-        if (user.role === "teacher") {
-          list = await getChildrenForTeacher(user.uid);
-        } else {
-          list = await getChildrenForParent(user.uid);
-          if (list.length === 0) {
-            const initial = makeInitialChild(user.uid);
-            await createChild({ ...initial, parentId: user.uid });
-            list = [initial];
-          }
+        list = await getChildrenForParent(user!.uid);
+        if (list.length === 0) {
+          const initial = makeInitialChild(user!.uid);
+          await createChild({ ...initial, parentId: user!.uid });
+          list = [initial];
         }
         setChildren(list);
       } catch (e) {

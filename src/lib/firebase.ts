@@ -244,7 +244,20 @@ export async function getChildrenForTeacher(teacherId: string): Promise<Child[]>
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as Child);
 }
-
+export function subscribeChildrenForTeacher(
+  teacherId: string,
+  cb: (children: Child[]) => void
+) {
+  const db = requireDb();
+  const q = query(
+    collection(db, "children"),
+    where("teacherIds", "array-contains", teacherId)
+  );
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id } as Child));
+    cb(list);
+  });
+}
 // -----------------------------------------------------------------------------
 // Invite codes — багш шавиа нэмэх
 // -----------------------------------------------------------------------------
