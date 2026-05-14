@@ -7,6 +7,7 @@
 //   /achievements/{id}          — тэмцээний бүртгэл
 //   /practiceLogs/{id}          — бэлтгэлийн тэмдэглэл
 //   /reflections/{id}           — нууц сэтгэлзүйн тэмдэглэл
+//   /coachNotes/{id}            — багшийн зөвлөгөө
 // =============================================================================
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
@@ -37,6 +38,7 @@ import {
   updateDoc,
   where,
   deleteDoc,
+  orderBy,
   type DocumentData,
   type Firestore,
   type QueryDocumentSnapshot,
@@ -244,6 +246,7 @@ export async function getChildrenForTeacher(teacherId: string): Promise<Child[]>
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data() as Child);
 }
+
 export function subscribeChildrenForTeacher(
   teacherId: string,
   cb: (children: Child[]) => void
@@ -258,6 +261,7 @@ export function subscribeChildrenForTeacher(
     cb(list);
   });
 }
+
 // -----------------------------------------------------------------------------
 // Invite codes — багш шавиа нэмэх
 // -----------------------------------------------------------------------------
@@ -266,7 +270,7 @@ export async function createInviteCode(teacherId: string, teacherName: string): 
   const db = requireDb();
   const code = generateCode();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 хоног хүчинтэй
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   await setDoc(doc(db, "inviteCodes", code), {
     code,
@@ -292,7 +296,6 @@ export async function useInviteCode(code: string, childId: string): Promise<Invi
   if (data.used) throw new Error("Энэ код аль хэдийн ашиглагдсан байна.");
   if (new Date(data.expiresAt) < new Date()) throw new Error("Кодын хугацаа дууссан байна.");
 
-  // Хүүхдийн teacherIds жагсаалтад багшийг нэм
   const childRef = doc(db, "children", childId);
   const childSnap = await getDoc(childRef);
   if (!childSnap.exists()) throw new Error("Хүүхэд олдсонгүй.");
@@ -303,7 +306,6 @@ export async function useInviteCode(code: string, childId: string): Promise<Invi
     await updateDoc(childRef, { teacherIds: [...teacherIds, data.teacherId] });
   }
 
-  // Код ашигласан гэж тэмдэглэ
   await updateDoc(ref, { used: true, childId, usedAt: new Date().toISOString() });
 
   return { ...data, childId };
@@ -462,99 +464,7 @@ export function subscribeReflections(
 }
 
 // -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-function safeName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-}
-
-function tsToIso(v: unknown): string | undefined {
-  if (v instanceof Timestamp) return v.toDate().toISOString();
-  if (typeof v === "string") return v;
-  return undefined;
-}
-
-function generateCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
-// Alias — App.tsx-тэй нийцтэй байлгах
-export async function ensureChildDoc(child: Child) {
-  const db = requireDb();
-  const ref = doc(db, "children", child.childId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      childId: child.childId,
-      parentId: child.parentId,
-      name: child.name,
-      birthDate: child.birthDate ?? "",
-      bio: child.bio ?? "",
-      avatarUrl: child.avatarUrl ?? null,
-      teacherIds: child.teacherIds ?? [],
-      createdAt: serverTimestamp(),
-    });
-  }
-}
-// -----------------------------------------------------------------------------
-// Coach Notes — багшийн хувийн зөвлөгөө
-// -----------------------------------------------------------------------------
-
-export interface CoachNote {
-  id: string;
-  childId: string;
-  teacherId: string;
-  teacherName: string;
-  note: string;
-  createdAt: string;
-}
-
-export async function createCoachNote(
-  childId: string,
-  teacherId: string,
-  teacherName: string,
-  note: string
-) {
-  const db = requireDb();
-  const docRef = await addDoc(collection(db, "coachNotes"), {
-    childId,
-    teacherId,
-    teacherName,
-    note,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
-}
-
-export async function deleteCoachNote(id: string) {
-  const db = requireDb();
-  await deleteDoc(doc(db, "coachNotes", id));
-}
-
-export function subscribeCoachNotes(
-  childId: string,
-  cb: (items: CoachNote[]) => void
-) {
-  const db = requireDb();
-  const q = query(
-    collection(db, "coachNotes"),
-    where("childId", "==", childId)
-  );
-  return onSnapshot(q, (snap) => {
-    const items = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as CoachNote))
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    cb(items);
-  });
-}
-// -----------------------------------------------------------------------------
-// Coach Notes
+// Coach Notes — багшийн зөвлөгөө
 // -----------------------------------------------------------------------------
 
 export interface CoachNote {
@@ -593,11 +503,54 @@ export function subscribeCoachNotes(
   cb: (items: CoachNote[]) => void
 ) {
   const db = requireDb();
-  const q = query(collection(db, "coachNotes"), where("childId", "==", childId));
+  const q = query(
+    collection(db, "coachNotes"),
+    where("childId", "==", childId),
+    orderBy("createdAt", "desc")
+  );
   return onSnapshot(q, (snap) => {
-    const items = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as CoachNote))
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
     cb(items);
   });
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+function safeName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+}
+
+function tsToIso(v: unknown): string | undefined {
+  if (v instanceof Timestamp) return v.toDate().toISOString();
+  if (typeof v === "string") return v;
+  return undefined;
+}
+
+function generateCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function ensureChildDoc(child: Child) {
+  const db = requireDb();
+  const ref = doc(db, "children", child.childId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      childId: child.childId,
+      parentId: child.parentId,
+      name: child.name,
+      birthDate: child.birthDate ?? "",
+      bio: child.bio ?? "",
+      avatarUrl: child.avatarUrl ?? null,
+      teacherIds: child.teacherIds ?? [],
+      createdAt: serverTimestamp(),
+    });
+  }
 }
