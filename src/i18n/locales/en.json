@@ -322,6 +322,18 @@
     "addChild": "+ Add child",
     "switchChild": "Switch child"
   },
+  "coach": {
+    "title": "Coach notes",
+    "writeNote": "Write a note for {{name}}",
+    "parentCanSee": "Parents can see this",
+    "placeholder": "Write about {{name}}'s training and progress...",
+    "addButton": "Add note",
+    "saving": "Saving...",
+    "empty": "No notes yet. Write one above!",
+    "parentEmpty": "Your coach hasn't left any notes yet.",
+    "delete": "Delete",
+    "connectedTeacher": "Connected teacher"
+  },
   "sub": {
     "title": "ChampStep Membership",
     "subtitle": "Choose the plan that suits you.",

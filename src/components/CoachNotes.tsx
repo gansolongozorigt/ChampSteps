@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   createCoachNote,
   deleteCoachNote,
   subscribeCoachNotes,
+  getUserDoc,
   type CoachNote,
 } from "../lib/firebase";
 
@@ -12,6 +14,7 @@ interface Props {
   teacherId: string;
   teacherName: string;
   isTeacher: boolean;
+  teacherIds?: string[]; // хүүхдийн холбогдсон багшийн ID-ууд
 }
 
 export default function CoachNotes({
@@ -20,16 +23,37 @@ export default function CoachNotes({
   teacherId,
   teacherName,
   isTeacher,
+  teacherIds = [],
 }: Props) {
+  const { t, i18n } = useTranslation();
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [connectedTeachers, setConnectedTeachers] = useState<{ uid: string; name: string }[]>([]);
 
   // Firestore-оос бодит цагт уншина
   useEffect(() => {
     const unsub = subscribeCoachNotes(childId, setNotes);
     return () => unsub();
   }, [childId]);
+
+  // Хүүхдэд холбогдсон багшийн нэрийг татах
+  useEffect(() => {
+    if (isTeacher || teacherIds.length === 0) return;
+    async function loadTeachers() {
+      const results: { uid: string; name: string }[] = [];
+      for (const uid of teacherIds) {
+        try {
+          const doc = await getUserDoc(uid);
+          if (doc) results.push({ uid, name: doc.displayName ?? "Багш" });
+        } catch {
+          // ignore
+        }
+      }
+      setConnectedTeachers(results);
+    }
+    loadTeachers();
+  }, [teacherIds, isTeacher]);
 
   async function handleAdd() {
     if (!text.trim()) return;
@@ -46,6 +70,19 @@ export default function CoachNotes({
     await deleteCoachNote(id);
   }
 
+  function formatDate(createdAt: string | unknown) {
+    if (!createdAt) return "";
+    const date = typeof createdAt === "string"
+      ? new Date(createdAt)
+      : (createdAt as any).toDate?.() ?? new Date();
+    const locale = i18n.language?.startsWith("en") ? "en-US" : "mn-MN";
+    return date.toLocaleDateString(locale, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
   return (
     <div className="space-y-4">
       {/* Багшийн зөвлөгөө бичих хэсэг */}
@@ -55,17 +92,17 @@ export default function CoachNotes({
             <span className="text-xl">✏️</span>
             <div>
               <h3 className="font-semibold text-stone-900 text-sm">
-                {childName}-д зөвлөгөө бичих
+                {t("coach.writeNote", { name: childName })}
               </h3>
               <p className="text-xs text-stone-500">
-                Эцэг эх харах боломжтой
+                {t("coach.parentCanSee")}
               </p>
             </div>
           </div>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`${childName}-ийн бэлтгэл, дэвшлийн талаар зөвлөгөө бичнэ үү...`}
+            placeholder={t("coach.placeholder", { name: childName })}
             rows={4}
             className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
           />
@@ -74,17 +111,34 @@ export default function CoachNotes({
             disabled={saving || !text.trim()}
             className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
           >
-            {saving ? "Хадгалж байна..." : "Зөвлөгөө нэмэх"}
+            {saving ? t("coach.saving") : t("coach.addButton")}
           </button>
+        </div>
+      )}
+
+      {/* Эцэг эхэд холбогдсон багшийн нэр харуулах */}
+      {!isTeacher && connectedTeachers.length > 0 && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+          <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-2">
+            {t("coach.connectedTeacher")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {connectedTeachers.map((tc) => (
+              <div key={tc.uid} className="flex items-center gap-2 bg-white border border-emerald-200 rounded-xl px-3 py-1.5">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+                  {tc.name.slice(0, 1).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-stone-800">{tc.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Зөвлөгөөний жагсаалт */}
       {notes.length === 0 ? (
         <div className="text-center py-10 text-stone-400 text-sm">
-          {isTeacher
-            ? "Одоогоор зөвлөгөө байхгүй байна. Дээр бичнэ үү!"
-            : "Багш таньд одоогоор зөвлөгөө өгөөгүй байна."}
+          {isTeacher ? t("coach.empty") : t("coach.parentEmpty")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -93,7 +147,6 @@ export default function CoachNotes({
               key={n.id}
               className="rounded-2xl border border-stone-100 bg-white p-5 shadow-sm"
             >
-              {/* Багшийн нэр, огноо */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
@@ -104,31 +157,19 @@ export default function CoachNotes({
                       {n.teacherName}
                     </p>
                     <p className="text-xs text-stone-400">
-                      {n.createdAt
-  ? new Date(
-      typeof n.createdAt === "string"
-        ? n.createdAt
-        : (n.createdAt as any).toDate?.() ?? n.createdAt
-    ).toLocaleDateString("mn-MN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  : ""}
+                      {formatDate(n.createdAt)}
                     </p>
                   </div>
                 </div>
-                {/* Зөвхөн тухайн багш устгах */}
                 {isTeacher && n.teacherId === teacherId && (
                   <button
                     onClick={() => handleDelete(n.id)}
                     className="text-xs text-stone-400 hover:text-red-500 transition"
                   >
-                    Устгах
+                    {t("coach.delete")}
                   </button>
                 )}
               </div>
-              {/* Зөвлөгөөний текст */}
               <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
                 {n.content}
               </p>
