@@ -105,12 +105,16 @@ export default function CoachNotes({
                     </p>
                     <p className="text-xs text-stone-400">
                       {n.createdAt
-                        ? new Date(n.createdAt).toLocaleDateString("mn-MN", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })
-                        : ""}
+  ? new Date(
+      typeof n.createdAt === "string"
+        ? n.createdAt
+        : (n.createdAt as any).toDate?.() ?? n.createdAt
+    ).toLocaleDateString("mn-MN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  : ""}
                     </p>
                   </div>
                 </div>
