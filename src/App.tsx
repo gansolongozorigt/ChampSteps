@@ -313,12 +313,24 @@ function Dashboard() {
   if (!child) {
     return (
       <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <span className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></span>
-        <p className="text-stone-400 text-sm">
+        <p className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></p>
+        <p className="text-stone-400 text-sm mb-2">
           {user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй."}
         </p>
-        <button onClick={signOut} className="mt-2 px-6 py-2.5 rounded-xl bg-amber-600 text-white text-sm hover:bg-amber-700 transition">
-          Гарах
+        {user?.role === "teacher" && (
+          <div className="w-full max-w-sm">
+            <TeacherInvitePanel
+              teacherId={user.uid}
+              teacherName={user.displayName}
+              onCreateCode={createInviteCode}
+            />
+          </div>
+        )}
+        <button
+          onClick={signOut}
+          className="mt-2 px-6 py-2.5 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
+        >
+          ↪ Гарах
         </button>
       </div>
     );
