@@ -659,7 +659,7 @@ function Dashboard() {
           )}
           {activeSection === "coach" && (
   <div className="px-4 py-6 max-w-3xl mx-auto">
-    <SectionHeader title="Багшийн зөвлөгөө" subtitle={child.name} />
+    <SectionHeader title={t("coach.title")} subtitle={child.name} />
     <div className="grid gap-4">
 
       <CoachNotes

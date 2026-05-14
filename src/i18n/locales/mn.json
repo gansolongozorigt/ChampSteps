@@ -98,13 +98,14 @@
     }
   },
   "nav": {
-    "pdfDownload": "PDF Татах",
-    "subscription": "Сарын эрх",
-    "achievements": "Амжилт",
-    "practice": "Бэлтгэл",
-    "reflection": "Сэтгэл",
-    "coach": "Багш"
-  },
+  "pdfDownload": "PDF татах",
+  "subscription": "Захиалга",
+  "achievements": "Амжилт",
+  "practice": "Бэлтгэл",
+  "reflection": "Сэтгэл",
+  "coach": "Багш",
+  "ai": "AI"
+},
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
     "signUpTitle": "Шинээр бүртгүүлэх",

@@ -98,12 +98,13 @@
     }
   },
   "nav": {
-    "pdfDownload": "Download PDF",
-    "subscription": "Subscription",
-    "achievements": "Wins",
-    "practice": "Practice",
-    "reflection": "Journal",
-    "coach": "Coach"
+  "pdfDownload": "Download PDF",
+  "subscription": "Subscription",
+  "achievements": "Wins",
+  "practice": "Practice",
+  "reflection": "Journal",
+  "coach": "Coach",
+  "ai": "AI"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
