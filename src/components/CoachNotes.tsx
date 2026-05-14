@@ -126,7 +126,7 @@ export default function CoachNotes({
               </div>
               {/* Зөвлөгөөний текст */}
               <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
-                {n.note}
+                {n.content}
               </p>
             </div>
           ))}
