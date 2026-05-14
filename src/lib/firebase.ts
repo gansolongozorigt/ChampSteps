@@ -38,7 +38,6 @@ import {
   updateDoc,
   where,
   deleteDoc,
-  orderBy,
   type DocumentData,
   type Firestore,
   type QueryDocumentSnapshot,
@@ -506,7 +505,6 @@ export function subscribeCoachNotes(
   const q = query(
     collection(db, "coachNotes"),
     where("childId", "==", childId),
-    orderBy("createdAt", "desc")
   );
   return onSnapshot(q, (snap) => {
     const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
