@@ -552,3 +552,21 @@ export async function ensureChildDoc(child: Child) {
     });
   }
 }
+
+// -----------------------------------------------------------------------------
+// Teacher — шавийг хасах (холболт тасрах)
+// -----------------------------------------------------------------------------
+
+export async function removeStudentFromTeacher(
+  childId: string,
+  teacherId: string
+) {
+  const db = requireDb();
+  const childRef = doc(db, "children", childId);
+  const childSnap = await getDoc(childRef);
+  if (!childSnap.exists()) return;
+  const teacherIds: string[] = childSnap.data().teacherIds ?? [];
+  await updateDoc(childRef, {
+    teacherIds: teacherIds.filter((id) => id !== teacherId),
+  });
+}

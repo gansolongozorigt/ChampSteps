@@ -46,7 +46,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
   free:   { maxChildren: 1,   maxAchievements: 30,  hasPdf: false, hasAI: false },
   family: { maxChildren: 3,   maxAchievements: -1,  hasPdf: true,  hasAI: false },
   master: { maxChildren: 10,  maxAchievements: -1,  hasPdf: true,  hasAI: true  },
-  coach:  { maxChildren: 100, maxAchievements: -1,  hasPdf: true,  hasAI: true  },
+  coach:  { maxChildren: 3,   maxAchievements: -1,  hasPdf: true,  hasAI: true  },
 };
 
 // -----------------------------------------------------------------------------

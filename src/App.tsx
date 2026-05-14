@@ -222,7 +222,8 @@ function Dashboard() {
 
   async function handleAddNewChild(name: string) {
     if (!user) return;
-    if (children.length >= tierLimits.maxChildren) {
+    const ownCount = children.filter(c => c.parentId === user?.uid).length;
+if (ownCount >= tierLimits.maxChildren) {
       setShowSubscription(true);
       setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
       return;
