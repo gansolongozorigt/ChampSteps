@@ -122,8 +122,17 @@ function Dashboard() {
 
     if (user.role === "teacher") {
       setLoadingChildren(true);
-      const unsub = subscribeChildrenForTeacher(user.uid, (list) => {
-        setChildren(list);
+      let ownChildren: Child[] = [];
+      getChildrenForParent(user.uid)
+        .then((own) => { ownChildren = own; })
+        .catch(() => { ownChildren = []; });
+      const unsub = subscribeChildrenForTeacher(user.uid, (studentList) => {
+        const studentIds = new Set(studentList.map((s) => s.childId));
+        const unique = [
+          ...ownChildren.filter((c) => !studentIds.has(c.childId)),
+          ...studentList,
+        ];
+        setChildren(unique);
         setLoadingChildren(false);
       });
       return unsub;
