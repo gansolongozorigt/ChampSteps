@@ -332,5 +332,5 @@ function mapAuthError(err: unknown, t: (k: string) => string): string {
   if (code.includes("weak-password")) return t("auth.errors.weakPassword");
   if (code.includes("network")) return t("auth.errors.network");
   if (code.includes("popup-closed")) return t("auth.errors.popupClosed");
-  return t("auth.errors.generic");
+  return `${t("auth.errors.generic")} [${code}]`;
 }
