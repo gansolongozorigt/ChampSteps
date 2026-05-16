@@ -104,7 +104,7 @@ export default function LoginPage() {
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
 
             {/* Role сонголт — зөвхөн signup-д */}
-            {mode === "signup" && (
+            {(
               <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
                   Та хэн бэ?
