@@ -67,6 +67,14 @@ async function loadFont(doc: jsPDF) {
   }
 }
 
+function drawImagePlaceholder(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  doc.setFillColor(238, 236, 233);
+  doc.roundedRect(x, y, w, h, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setTextColor(180, 170, 160);
+  doc.text("[ image ]", x + w / 2, y + h / 2 + 2, { align: "center" });
+}
+
 function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
   const fontList = doc.getFontList();
   doc.setFont(fontList["NotoSans"] ? "NotoSans" : "helvetica", weight);
@@ -76,29 +84,46 @@ function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
 // Image helper
 // -----------------------------------------------------------------------------
 
+const MAX_IMG_PX = 900;
+const IMG_QUALITY = 0.82;
+
+function compressImgElement(img: HTMLImageElement): string {
+  let w = img.naturalWidth;
+  let h = img.naturalHeight;
+  if (w > MAX_IMG_PX) { h = Math.round((h * MAX_IMG_PX) / w); w = MAX_IMG_PX; }
+  if (h > MAX_IMG_PX) { w = Math.round((w * MAX_IMG_PX) / h); h = MAX_IMG_PX; }
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas error");
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", IMG_QUALITY);
+}
+
 export async function urlToDataUrl(url: string): Promise<string> {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
     const blob = await res.blob();
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("FileReader error"));
-      reader.readAsDataURL(blob);
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        try { resolve(compressImgElement(img)); }
+        catch (e) { reject(e); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("image load failed")); };
+      img.src = objectUrl;
     });
   } catch {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { reject(new Error("canvas error")); return; }
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
+        try { resolve(compressImgElement(img)); }
+        catch (e) { reject(e); }
       };
       img.onerror = () => reject(new Error("image load failed"));
       img.src = url;
@@ -229,7 +254,7 @@ async function renderOfficial(
       try {
         const dataUrl = await urlToDataUrl(a.imageURLs[0]);
         doc.addImage(dataUrl, "JPEG", M, y + 20, 55, 40);
-      } catch { /* алгасна */ }
+      } catch { drawImagePlaceholder(doc, M, y + 20, 55, 40); }
     }
 
     doc.setDrawColor(235, 230, 225);
@@ -308,7 +333,7 @@ async function renderKids(
       try {
         const dataUrl = await urlToDataUrl(a.imageURLs[0]);
         doc.addImage(dataUrl, "JPEG", M, y + 38, 55, 40);
-      } catch { /* алгасна */ }
+      } catch { drawImagePlaceholder(doc, M, y + 38, 55, 40); }
     }
 
     y += blockH + 6;
@@ -409,7 +434,7 @@ async function renderGold(
       try {
         const dataUrl = await urlToDataUrl(a.imageURLs[0]);
         doc.addImage(dataUrl, "JPEG", M + 6, y + 20, 55, 40);
-      } catch { /* алгасна */ }
+      } catch { drawImagePlaceholder(doc, M + 6, y + 20, 55, 40); }
     }
 
     doc.setDrawColor(40, 35, 25);
@@ -558,8 +583,8 @@ async function renderPortfolio(
       const statRows: Array<[string, string, [number,number,number]]> = [
         [t("pdf.totalEntries"), String(achievements.length), WHITE],
         [t("pdf.goldMedals"), String(golds), [212, 175, 55]],
-        ["Silver", String(silvers), [192, 192, 200]],
-        ["Bronze", String(bronzes), [176, 141, 87]],
+        [t("awards.Silver"), String(silvers), [192, 192, 200]],
+        [t("awards.Bronze"), String(bronzes), [176, 141, 87]],
       ];
 
       for (const [label, val, color] of statRows) {
@@ -747,7 +772,10 @@ async function renderPortfolio(
         const dataUrl = await urlToDataUrl(a.imageURLs[0]);
         doc.addImage(dataUrl, "JPEG", CONTENT_X + 7, y + 1, 42, 30, undefined, "FAST");
         y += 33;
-      } catch { /* алгасна */ }
+      } catch {
+        drawImagePlaceholder(doc, CONTENT_X + 7, y + 1, 42, 30);
+        y += 33;
+      }
     }
 
     // Хуваагч

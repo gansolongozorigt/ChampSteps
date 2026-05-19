@@ -3,7 +3,7 @@
 // ⚠️  Logic/Firebase/auth бүгд хэвээр — зөвхөн UI шинэчлэгдсэн
 // =============================================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
@@ -18,7 +18,6 @@ import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
-import AIInsightCard from "./components/AIInsightCard";
 import { useAuth } from "./lib/auth";
 import {
   createAchievement,
@@ -85,6 +84,8 @@ function Dashboard() {
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [activeSection, setActiveSection] = useState<NavSection>("achievements");
 
+  const mainRef = useRef<HTMLElement>(null);
+
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
@@ -135,6 +136,10 @@ function Dashboard() {
     }
     load();
   }, [user]);
+
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [activeSection]);
 
   useEffect(() => {
     if (achError) setToast({ kind: "error", message: t("status.errorLoading") });
@@ -430,10 +435,10 @@ function Dashboard() {
       )}
 
       {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
@@ -463,6 +468,7 @@ function Dashboard() {
                 practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
+                pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -474,8 +480,8 @@ function Dashboard() {
             })}
           </nav>
 
-          {/* PDF татах — desktop sidebar */}
-          <div className="px-3 pt-3 border-t border-stone-800">
+          {/* PDF татах — desktop sidebar (PDF хуудас дээр байхгүй) */}
+          {activeSection !== "pdf" && <div className="px-3 pt-3 border-t border-stone-800">
             <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">PDF татах</p>
             <div className="space-y-1">
               {([
@@ -519,7 +525,7 @@ function Dashboard() {
                 </button>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* Sidebar доод хэсэг — subscription */}
           <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
@@ -549,7 +555,7 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
               🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
@@ -645,16 +651,6 @@ function Dashboard() {
                     </button>
                   </div>
                 )}
-              </div>
-              {/* AI section */}
-              <div className="mt-4 bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[13px] font-medium text-stone-800">🤖 AI зөвлөгөө</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Хүүхдийн амжилтад үндэслэн AI шинжилгээ</p>
-                </div>
-                <div className="px-4 py-4">
-                  <AIInsightCard child={child} achievements={achievements} />
-                </div>
               </div>
             </div>
           )}
