@@ -98,7 +98,12 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "achievements": "Achievements",
+    "practice": "Practice",
+    "reflection": "Journal",
+    "coach": "Coach",
+    "pdf": "PDF"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -231,7 +236,8 @@
     "empty": {
       "title": "No practice entries yet",
       "subtitle": "Start logging daily practice sessions"
-    }
+    },
+    "title": "Practice Log"
   },
   "reflection": {
     "heading": "Child's journal",
@@ -267,7 +273,8 @@
       "3": "Okay",
       "4": "Good",
       "5": "Great"
-    }
+    },
+    "title": "Child Journal"
   },
   "invite": {
     "teacher": {
@@ -310,5 +317,25 @@
   "children": {
     "addChild": "+ Add child",
     "switchChild": "Switch child"
+  },
+  "sub": {
+    "title": "ChampStep Plans",
+    "subtitle": "Upgrade to unlock PDF portfolios, multi-child, and AI insights.",
+    "tierNames": {
+      "free": "Free",
+      "family": "Family",
+      "master": "Master",
+      "coach": "Coach"
+    },
+    "children": "{{n}} child",
+    "entries": "{{n}} entries",
+    "unlimited": "Unlimited",
+    "popular": "Popular",
+    "current": "Current",
+    "perMonth": "/mo",
+    "currentPlan": "Current plan",
+    "continueToPay": "Continue to payment",
+    "freePlan": "Free plan selected",
+    "error": "Could not activate plan. Please try again."
   }
 }

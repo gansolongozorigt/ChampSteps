@@ -98,7 +98,12 @@
   },
   "nav": {
     "pdfDownload": "PDF Татах",
-    "subscription": "Сарын эрх"
+    "subscription": "Сарын эрх",
+    "achievements": "Амжилт",
+    "practice": "Бэлтгэл",
+    "reflection": "Сэтгэл",
+    "coach": "Багш",
+    "pdf": "PDF"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
@@ -231,7 +236,8 @@
     "empty": {
       "title": "Бэлтгэлийн тэмдэглэл байхгүй",
       "subtitle": "Өдөр бүрийн бэлтгэлийг тэмдэглэж эхэл"
-    }
+    },
+    "title": "Бэлтгэлийн тэмдэглэл"
   },
   "reflection": {
     "heading": "Хүүхдийн сэтгэлзүйн тэмдэглэл",
@@ -267,7 +273,8 @@
       "3": "Дунд",
       "4": "Сайн",
       "5": "Маш сайн"
-    }
+    },
+    "title": "Хүүхдийн сэтгэлзүйн тэмдэглэл"
   },
   "invite": {
     "teacher": {
@@ -310,5 +317,25 @@
   "children": {
     "addChild": "+ Хүүхэд нэмэх",
     "switchChild": "Хүүхэд солих"
+  },
+  "sub": {
+    "title": "ChampStep Эрх",
+    "subtitle": "Premium болсноор PDF, олон хүүхэд, AI зөвлөгөө авна.",
+    "tierNames": {
+      "free": "Үнэгүй",
+      "family": "Гэр бүл",
+      "master": "Мастер",
+      "coach": "Багш"
+    },
+    "children": "{{n}} хүүхэд",
+    "entries": "{{n}} бичлэг",
+    "unlimited": "Хязгааргүй",
+    "popular": "Алдартай",
+    "current": "Одоогийн",
+    "perMonth": "/сар",
+    "currentPlan": "Одоогийн эрх",
+    "continueToPay": "Төлбөр рүү үргэлжлүүлэх",
+    "freePlan": "Үнэгүй эрх сонгосон",
+    "error": "Эрх идэвхжүүлэхэд алдаа гарлаа."
   }
 }

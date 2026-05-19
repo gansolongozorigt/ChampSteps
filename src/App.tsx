@@ -46,7 +46,7 @@ import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "ai";
+type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf";
 
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
@@ -351,6 +351,15 @@ function Dashboard() {
         </svg>
       ),
     },
+    {
+      id: "pdf",
+      label: t("nav.pdf") || "PDF",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -390,21 +399,6 @@ function Dashboard() {
           </div>
           <div className="flex items-center gap-1.5">
             <LanguageChip />
-            {/* AI товч — top bar (мобайл+десктоп хоёуланд) */}
-            <button
-              onClick={() => setActiveSection("ai")}
-              className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md border transition-all active:scale-95 ${
-                activeSection === "ai"
-                  ? "bg-violet-700 text-white border-violet-600"
-                  : "bg-stone-800 text-violet-400 border-stone-700 hover:bg-stone-700"
-              }`}
-              title="AI зөвлөгөө"
-            >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-1.587c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-              AI
-            </button>
             <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
             <button onClick={() => setShowProfile(true)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
               <div className="w-full h-full rounded-full overflow-hidden">
@@ -436,7 +430,7 @@ function Dashboard() {
       )}
 
       {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
         <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
@@ -555,7 +549,7 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-6 print:p-0">
+        <main className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
               🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
@@ -596,10 +590,72 @@ function Dashboard() {
               </div>
             </div>
           )}
-          {activeSection === "ai" && (
-            <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("ai.title") || "AI зөвлөгөө"} subtitle={child.name} />
-              <AIInsightCard child={child} achievements={achievements} />
+          {activeSection === "pdf" && (
+            <div className="px-4 py-6 max-w-xl mx-auto">
+              <SectionHeader title="PDF" subtitle={child.name} />
+              <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-stone-100">
+                  <p className="text-[11px] text-stone-500">{child.name}-ийн PDF портфолио татах</p>
+                </div>
+                <div className="divide-y divide-stone-100">
+                  {([
+                    { id: "official" as PdfTemplate, label: "📄 Албан ёсны", desc: "Албан ёсны хэв маягт" },
+                    { id: "kids"     as PdfTemplate, label: "🎨 Хүүхэдлэг", desc: "Өнгөлөг, хөгжилтэй загвар" },
+                    { id: "gold"     as PdfTemplate, label: "✨ Алтлаг", desc: "Шагнал, алт загвар" },
+                    { id: "portfolio" as PdfTemplate, label: "👤 Портфолио", desc: "Бүрэн портфолио хэв" },
+                  ]).map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
+                      disabled={pdfBusy || !tierLimits.hasPdf}
+                      className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40"
+                    >
+                      <div>
+                        <span className="text-[13px] font-medium text-stone-800">{tmpl.label}</span>
+                        <p className="text-[11px] text-stone-400 mt-0.5">{tmpl.desc}</p>
+                      </div>
+                      {pdfTemplate === tmpl.id && pdfBusy ? (
+                        <svg className="w-4 h-4 animate-spin text-stone-400 shrink-0" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-stone-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="px-4 py-3 border-t border-stone-100">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <div
+                      onClick={() => setIncludeImages(!includeImages)}
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}
+                    >
+                      {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                    </div>
+                    <span className="text-[12px] text-stone-600">Зураг оруулах</span>
+                  </label>
+                </div>
+                {!tierLimits.hasPdf && (
+                  <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
+                    <button onClick={() => setShowSubscription(true)} className="text-[12px] text-amber-600 font-medium">
+                      🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* AI section */}
+              <div className="mt-4 bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-stone-100">
+                  <p className="text-[13px] font-medium text-stone-800">🤖 AI зөвлөгөө</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">Хүүхдийн амжилтад үндэслэн AI шинжилгээ</p>
+                </div>
+                <div className="px-4 py-4">
+                  <AIInsightCard child={child} achievements={achievements} />
+                </div>
+              </div>
             </div>
           )}
         </main>
@@ -622,8 +678,8 @@ function Dashboard() {
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500" };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500" };
             return (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
