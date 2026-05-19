@@ -18,7 +18,7 @@ import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
-import CoachNotes from "./components/CoachNotes";
+import AIInsightCard from "./components/AIInsightCard";
 import { useAuth } from "./lib/auth";
 import {
   createAchievement,
@@ -32,7 +32,6 @@ import {
   deleteAchievement,
   getChildrenForParent,
   getChildrenForTeacher,
-  subscribeChildrenForTeacher,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -90,7 +89,6 @@ function Dashboard() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
-  const [showPdfMenu, setShowPdfMenu] = useState(false);
   const [includeImages, setIncludeImages] = useState(true);
   const [toast, setToast] = useState<ToastState>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -108,44 +106,25 @@ function Dashboard() {
     useReflections(child?.childId ?? "");
 
   useEffect(() => {
-    if (!user) {
-      setLoadingChildren(false);
-      return;
-    }
-
-    if (!isFirebaseConfigured) {
-      const localChild = loadLocalChild(makeInitialChild(user.uid));
-      setChildren([localChild]);
-      setLoadingChildren(false);
-      return;
-    }
-
-    if (user.role === "teacher") {
-      setLoadingChildren(true);
-      let ownChildren: Child[] = [];
-      getChildrenForParent(user.uid)
-        .then((own) => { ownChildren = own; })
-        .catch(() => { ownChildren = []; });
-      const unsub = subscribeChildrenForTeacher(user.uid, (studentList) => {
-        const studentIds = new Set(studentList.map((s) => s.childId));
-        const unique = [
-          ...ownChildren.filter((c) => !studentIds.has(c.childId)),
-          ...studentList,
-        ];
-        setChildren(unique);
-        setLoadingChildren(false);
-      });
-      return unsub;
-    }
-
     async function load() {
+      if (!user) return;
+      if (!isFirebaseConfigured) {
+        const localChild = loadLocalChild(makeInitialChild(user.uid));
+        setChildren([localChild]);
+        setLoadingChildren(false);
+        return;
+      }
       try {
         let list: Child[] = [];
-        list = await getChildrenForParent(user!.uid);
-        if (list.length === 0) {
-          const initial = makeInitialChild(user!.uid);
-          await createChild({ ...initial, parentId: user!.uid });
-          list = [initial];
+        if (user.role === "teacher") {
+          list = await getChildrenForTeacher(user.uid);
+        } else {
+          list = await getChildrenForParent(user.uid);
+          if (list.length === 0) {
+            const initial = makeInitialChild(user.uid);
+            await createChild({ ...initial, parentId: user.uid });
+            list = [initial];
+          }
         }
         setChildren(list);
       } catch (e) {
@@ -222,8 +201,7 @@ function Dashboard() {
 
   async function handleAddNewChild(name: string) {
     if (!user) return;
-    const ownCount = children.filter(c => c.parentId === user?.uid).length;
-if (ownCount >= tierLimits.maxChildren) {
+    if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
       setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
       return;
@@ -318,30 +296,14 @@ if (ownCount >= tierLimits.maxChildren) {
 
   async function handleSignOut() {
     if (!isFirebaseConfigured) saveLocalAchievements([]);
+    await signOut();
   }
+
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
     return (
-      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></p>
-        <p className="text-stone-400 text-sm mb-2">
-          {user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй."}
-        </p>
-        {user?.role === "teacher" && (
-          <div className="w-full max-w-sm">
-            <TeacherInvitePanel
-              teacherId={user.uid}
-              teacherName={user.displayName}
-              onCreateCode={createInviteCode}
-            />
-          </div>
-        )}
-        <button
-          onClick={signOut}
-          className="mt-2 px-6 py-2.5 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
-        >
-          ↪ Гарах
-        </button>
+      <div className="flex min-h-screen items-center justify-center bg-stone-50">
+        <p className="text-stone-500">Хүүхэд олдсонгүй.</p>
       </div>
     );
   }
@@ -389,42 +351,8 @@ if (ownCount >= tierLimits.maxChildren) {
         </svg>
       ),
     },
-    {
-      id: "ai",
-      label: "AI",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-1.587c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-        </svg>
-      ),
-    },
   ];
-// Хүүхэд байхгүй үед — энгийн хуудас
-  if (!loadingChildren && !child) {
-    return (
-      <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center gap-4 p-8 text-center">
-        <p className="text-[20px] font-bold text-white">Champ<span className="text-amber-400">Step</span></p>
-        <p className="text-stone-400 text-sm mb-2">
-          {user?.role === "teacher" ? "Одоогоор шавь байхгүй байна." : "Хүүхэд олдсонгүй."}
-        </p>
-        {user?.role === "teacher" && (
-          <div className="w-full max-w-sm">
-            <TeacherInvitePanel
-              teacherId={user.uid}
-              teacherName={user.displayName}
-              onCreateCode={createInviteCode}
-            />
-          </div>
-        )}
-        <button
-          onClick={signOut}
-          className="mt-2 px-6 py-2.5 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
-        >
-          ↪ Гарах
-        </button>
-      </div>
-    );
-  }
+
   return (
     <div className="flex flex-col min-h-screen bg-stone-100 font-sans">
 
@@ -461,65 +389,28 @@ if (ownCount >= tierLimits.maxChildren) {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-
             <LanguageChip />
-            <div className="relative">
-              <button
-                onClick={() => setShowPdfMenu(!showPdfMenu)}
-                disabled={pdfBusy}
-                className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {pdfBusy ? (
-                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                )}
-                PDF
-              </button>
-              {showPdfMenu && (
-                <div className="absolute right-0 top-9 z-50 w-48 rounded-xl border border-stone-200 bg-white shadow-xl overflow-hidden">
-                  {([
-                    { id: "official", label: "📄 Албан ёсны" },
-                    { id: "kids",     label: "🎨 Хүүхэдлэг" },
-                    { id: "gold",     label: "✨ Алтлаг" },
-                  ] as { id: PdfTemplate; label: string }[]).map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      onClick={() => { setPdfTemplate(tmpl.id); setShowPdfMenu(false); handleDownloadPdf(tmpl.id); }}
-                      className={`w-full px-4 py-2.5 text-left text-[12px] transition hover:bg-stone-50 ${pdfTemplate === tmpl.id ? "font-semibold text-stone-900 bg-amber-50" : "text-stone-600"}`}
-                    >
-                      {tmpl.label}
-                    </button>
-                  ))}
-                  <div className="border-t border-stone-100 px-4 py-2.5">
-                    <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setIncludeImages(!includeImages)}>
-                      <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}>
-                        {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
-                      </div>
-                      <span className="text-[11px] text-stone-600">Зураг оруулах</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* AI товч — top bar (мобайл+десктоп хоёуланд) */}
+            <button
+              onClick={() => setActiveSection("ai")}
+              className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md border transition-all active:scale-95 ${
+                activeSection === "ai"
+                  ? "bg-violet-700 text-white border-violet-600"
+                  : "bg-stone-800 text-violet-400 border-stone-700 hover:bg-stone-700"
+              }`}
+              title="AI зөвлөгөө"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-1.587c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+              AI
+            </button>
             <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
             <button onClick={() => setShowProfile(true)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
               <div className="w-full h-full rounded-full overflow-hidden">
                 {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
               </div>
             </button>
-            <button
-              onClick={signOut}
-              className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-red-900/50 hover:text-red-400 active:scale-95 transition-all"
-            >
-              Гарах
-            </button>
-            
           </div>
         </div>
 
@@ -548,7 +439,7 @@ if (ownCount >= tierLimits.maxChildren) {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
@@ -578,7 +469,6 @@ if (ownCount >= tierLimits.maxChildren) {
                 practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
-                ai:           "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -590,8 +480,55 @@ if (ownCount >= tierLimits.maxChildren) {
             })}
           </nav>
 
+          {/* PDF татах — desktop sidebar */}
+          <div className="px-3 pt-3 border-t border-stone-800">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">PDF татах</p>
+            <div className="space-y-1">
+              {([
+                { id: "official" as PdfTemplate, label: "📄 Албан ёсны" },
+                { id: "kids"     as PdfTemplate, label: "🎨 Хүүхэдлэг" },
+                { id: "gold"     as PdfTemplate, label: "✨ Алтлаг" },
+                { id: "portfolio" as PdfTemplate, label: "👤 Портфолио" },
+              ]).map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
+                  disabled={pdfBusy || !tierLimits.hasPdf}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left text-[11px] transition-all disabled:opacity-40 ${
+                    pdfTemplate === tmpl.id && pdfBusy
+                      ? "bg-stone-700 text-stone-300"
+                      : "text-stone-400 hover:bg-stone-800 hover:text-stone-200"
+                  }`}
+                >
+                  <span>{tmpl.label}</span>
+                  {pdfTemplate === tmpl.id && pdfBusy && (
+                    <svg className="w-3 h-3 animate-spin text-stone-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+              {/* Зураг оруулах toggle */}
+              <label className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer select-none">
+                <div
+                  onClick={() => setIncludeImages(!includeImages)}
+                  className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-stone-800 border-stone-600"}`}
+                >
+                  {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                </div>
+                <span className="text-[10px] text-stone-500">Зураг оруулах</span>
+              </label>
+              {!tierLimits.hasPdf && (
+                <button onClick={() => setShowSubscription(true)} className="w-full text-[10px] text-amber-400 text-left px-2.5 py-1">
+                  🔒 Premium шаардлагатай
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Sidebar доод хэсэг — subscription */}
-          <div className="px-3 pb-4 border-t border-stone-800 pt-3">
+          <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
             {isPremium ? (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">
@@ -617,23 +554,6 @@ if (ownCount >= tierLimits.maxChildren) {
           </div>
         </aside>
 
-{/* Багш — хүүхэд олдоогүй үед */}
-      {!loadingChildren && !child && (
-        <div className="flex flex-col items-center justify-center flex-grow gap-4 p-8 text-center">
-          <div className="text-4xl">🏫</div>
-          <p className="text-stone-600 text-sm">
-            {user?.role === "teacher"
-              ? "Одоогоор шавь байхгүй байна. Эцэг эхэд урилгын код илгээгээрэй."
-              : "Хүүхэд олдсонгүй."}
-          </p>
-          <button
-            onClick={signOut}
-            className="mt-4 px-4 py-2 rounded-xl bg-stone-800 text-stone-300 text-sm hover:bg-red-900/50 hover:text-red-400 transition"
-          >
-            ↪ Гарах
-          </button>
-        </div>
-      )}
         {/* ══ MAIN CONTENT ══ */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
@@ -668,53 +588,18 @@ if (ownCount >= tierLimits.maxChildren) {
             </div>
           )}
           {activeSection === "coach" && (
-  <div className="px-4 py-6 max-w-3xl mx-auto">
-    <SectionHeader title={t("coach.title")} subtitle={child.name} />
-    <div className="grid gap-4">
-
-      <CoachNotes
-        childId={child.childId}
-        childName={child.name}
-        teacherId={user?.uid ?? ""}
-        teacherName={user?.displayName ?? "Багш"}
-        isTeacher={user?.role === "teacher"}
-      />
-
-      <div className="border-t border-stone-100 pt-4">
-        {user?.role === "teacher" && (
-          <TeacherInvitePanel
-            teacherId={user.uid}
-            teacherName={user.displayName}
-            onCreateCode={createInviteCode}
-          />
-        )}
-        {user?.role === "parent" && child && (
-          <ParentLinkPanel
-            childId={child.childId}
-            childName={child.name}
-            onUseCode={useInviteCode}
-          />
-        )}
-      </div>
-
-    </div>
-  </div>
-)}
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("invite.parent.heading") || "Багштай холбогдох"} subtitle={child.name} />
+              <div className="grid gap-4">
+                {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
+                {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
+              </div>
+            </div>
+          )}
           {activeSection === "ai" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("ai.title")} subtitle={child.name} />
-              <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100 text-center">
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
-                  </svg>
-                </div>
-                <p className="text-[13px] font-medium text-indigo-900 mb-1">{t("ai.title")}</p>
-                <p className="text-[12px] text-indigo-500 mb-4 leading-relaxed">{t("ai.subtitle")}</p>
-                <button onClick={() => setActiveSection("achievements")} className="text-[12px] font-medium px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all">
-                {t("ai.viewAchievements")}
-                </button>
-              </div>
+              <SectionHeader title={t("ai.title") || "AI зөвлөгөө"} subtitle={child.name} />
+              <AIInsightCard child={child} achievements={achievements} />
             </div>
           )}
         </main>
@@ -737,8 +622,8 @@ if (ownCount >= tierLimits.maxChildren) {
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", ai:"text-violet-500" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", ai:"bg-violet-500" };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500" };
             return (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
@@ -808,7 +693,6 @@ if (ownCount >= tierLimits.maxChildren) {
       {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} />}
       {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
-      {showPdfMenu && <div className="fixed inset-0 z-30" onClick={() => setShowPdfMenu(false)} />}
       {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );

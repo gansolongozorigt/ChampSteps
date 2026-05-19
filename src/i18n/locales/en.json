@@ -10,7 +10,6 @@
     "total": "Total",
     "entries": "entries",
     "gold": "Gold medals",
-    "goldSub": "Gold medals",
     "topCategory": "Top category"
   },
   "categories": {
@@ -98,13 +97,8 @@
     }
   },
   "nav": {
-  "pdfDownload": "Download PDF",
-  "subscription": "Subscription",
-  "achievements": "Wins",
-  "practice": "Practice",
-  "reflection": "Journal",
-  "coach": "Coach",
-  "ai": "AI"
+    "pdfDownload": "Download PDF",
+    "subscription": "Subscription"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -174,20 +168,20 @@
     "coverTitle": "{{name}} — Achievement Journal",
     "coverFooter": "Generated with ChampStep.",
     "pageOf": "{{current}} / {{total}}",
-    "subtitle": "Achievement Portfolio",
-    "totalEntries": "Total entries",
-    "goldMedals": "Gold medals",
-    "birthDate": "Birth date",
-    "statsTotal": "Total",
-    "statsGold": "Gold",
-    "statsYear": "Year",
-    "achievementsTitle": "{{name}}'s achievements",
-    "footer": "Generated with ChampStep.",
     "meta": {
       "birthDate": "Birth date",
       "totalEntries": "Total entries",
       "generated": "Generated on"
-    }
+    },
+    "subtitle": "Achievement Portfolio",
+    "totalEntries": "Total entries",
+    "goldMedals": "Gold medals",
+    "birthDate": "Birth date",
+    "achievementsTitle": "{{name}}'s achievements",
+    "footer": "ChampStep · Achievement Journal",
+    "statsTotal": "TOTAL",
+    "statsGold": "GOLD",
+    "statsYear": "YEAR"
   },
   "status": {
     "loading": "Loading…",
@@ -215,7 +209,6 @@
     }
   },
   "practice": {
-    "title": "Practice log",
     "heading": "Practice log",
     "total": "Total: {{hours}}h {{mins}}m · {{count}} sessions",
     "totalHours": "Total: {{hours}}h · {{count}} sessions",
@@ -241,7 +234,6 @@
     }
   },
   "reflection": {
-    "title": "Child's journal",
     "heading": "Child's journal",
     "private": "Private",
     "avgMood": "Avg mood: {{avg}}/5 · {{count}} entries",
@@ -308,9 +300,6 @@
   },
   "ai": {
     "heading": "AI insight",
-    "title": "AI Insight",
-    "subtitle": "Get personalized advice based on your child's achievements.",
-    "viewAchievements": "View achievements",
     "fetch": "Get insight",
     "refresh": "Refresh",
     "loading": "Thinking...",
@@ -319,50 +308,7 @@
     "empty": "Get AI-powered insights based on your child's achievements."
   },
   "children": {
-    "title": "Children",
     "addChild": "+ Add child",
     "switchChild": "Switch child"
-  },
-  "coach": {
-    "title": "Coach notes",
-    "writeNote": "Write a note for {{name}}",
-    "parentCanSee": "Parents can see this",
-    "placeholder": "Write about {{name}}'s training and progress...",
-    "addButton": "Add note",
-    "saving": "Saving...",
-    "empty": "No notes yet. Write one above!",
-    "parentEmpty": "Your coach hasn't left any notes yet.",
-    "delete": "Delete",
-    "connectedTeacher": "Connected teacher"
-  },
-  "sub": {
-    "title": "ChampStep Membership",
-    "subtitle": "Choose the plan that suits you.",
-    "current": "Current",
-    "popular": "Popular",
-    "perMonth": "/mo",
-    "free": "Free",
-    "freePlan": "Free plan selected",
-    "currentPlan": "Current plan",
-    "pay": "Continue to payment →",
-    "payWith": "Pay with QPay:",
-    "scanQr": "Scan with the QPay app",
-    "back": "Back",
-    "confirm": "Confirm payment",
-    "processing": "Processing...",
-    "demo": "Demo mode — no real payment",
-    "error": "Payment failed. Please try again.",
-    "success": "Success!",
-    "successMsg": "{{name}} plan activated. Enjoy all features!",
-    "close": "Close",
-    "unlimited": "Unlimited",
-    "tierNames": {
-      "free": "Free",
-      "family": "Family",
-      "master": "Master",
-      "coach": "Coach/Club"
-    },
-    "children": "{{n}} children",
-    "entries": "{{n}} entries"
   }
 }
