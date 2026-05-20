@@ -364,6 +364,15 @@
     "demo": "Туршилтын горим",
     "pay": "Төлөх",
     "upgrade": "⬆ Upgrade",
-    "nearLimit": "⚠️ {{count}}/{{max}} — хязгаарт ойртлоо"
+    "nearLimit": "⚠️ {{count}}/{{max}} — хязгаарт ойртлоо",
+    "success": "Амжилттай!",
+    "successMsg": "{{name}} эрх идэвхжлээ.",
+    "close": "Хаах"
+  },
+  "delete": {
+    "confirmTitle": "Амжилтыг устгах уу?",
+    "confirmSubtitle": "Энэ үйлдлийг буцаах боломжгүй.",
+    "confirm": "Устгах",
+    "cancel": "Болих"
   }
 }

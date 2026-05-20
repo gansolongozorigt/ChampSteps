@@ -75,6 +75,41 @@ function drawImagePlaceholder(doc: jsPDF, x: number, y: number, w: number, h: nu
   doc.text("[ image ]", x + w / 2, y + h / 2 + 2, { align: "center" });
 }
 
+// Draw a circular avatar: photo if available, amber initial circle otherwise.
+// cx/cy = center in mm, r = radius in mm.
+async function drawAvatar(
+  doc: jsPDF,
+  child: Child,
+  cx: number,
+  cy: number,
+  r: number,
+  opts: { bgR: number; bgG: number; bgB: number; textR: number; textG: number; textB: number } = {
+    bgR: 217, bgG: 119, bgB: 6, textR: 255, textG: 255, textB: 255,
+  }
+) {
+  const d = r * 2;
+  if (child.avatarUrl) {
+    const dataUrl = await urlToDataUrl(child.avatarUrl);
+    if (dataUrl) {
+      // Clip to circle by drawing filled circle first then image on top using clipping
+      // jsPDF doesn't have native clip path for raster images, so we draw image in bounding square
+      // and overlay a ring to mask corners — acceptable PDF approach
+      try {
+        doc.addImage(dataUrl, "JPEG", cx - r, cy - r, d, d);
+        return;
+      } catch { /* fall through to initial */ }
+    }
+  }
+  // Initial circle fallback
+  doc.setFillColor(opts.bgR, opts.bgG, opts.bgB);
+  doc.circle(cx, cy, r, "F");
+  const initial = (child.name || "?")[0].toUpperCase();
+  setFont(doc, "bold");
+  doc.setFontSize(r * 4);
+  doc.setTextColor(opts.textR, opts.textG, opts.textB);
+  doc.text(initial, cx, cy + r * 1.3, { align: "center" });
+}
+
 function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
   const fontList = doc.getFontList();
   doc.setFont(fontList["NotoSans"] ? "NotoSans" : "helvetica", weight);
@@ -102,48 +137,47 @@ function compressImgElement(img: HTMLImageElement): string {
 }
 
 export async function urlToDataUrl(url: string): Promise<string> {
-  // Data URLs are ready to use as-is
   if (url.startsWith("data:")) return url;
 
-  // Blob URLs (from URL.createObjectURL) are same-origin — load directly without crossOrigin
+  // Blob URLs are same-origin — load directly, no crossOrigin needed
   if (url.startsWith("blob:")) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         try { resolve(compressImgElement(img)); }
-        catch (e) { reject(e); }
+        catch { console.warn("[champstep] blob compress failed:", url); resolve(""); }
       };
-      img.onerror = () => reject(new Error("blob image load failed"));
+      img.onerror = () => { console.warn("[champstep] blob load failed:", url); resolve(""); };
       img.src = url;
     });
   }
 
-  // HTTP/HTTPS URLs — fetch to get a same-origin blob URL, avoiding canvas taint
+  // HTTP/HTTPS — try fetch+blob first to sidestep CORS canvas taint
   try {
     const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
     const blob = await res.blob();
     const objectUrl = URL.createObjectURL(blob);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         URL.revokeObjectURL(objectUrl);
         try { resolve(compressImgElement(img)); }
-        catch (e) { reject(e); }
+        catch { resolve(""); }
       };
-      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("image load failed")); };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(""); };
       img.src = objectUrl;
     });
   } catch {
-    // Fallback: try loading directly with crossOrigin (requires server CORS headers)
-    return new Promise((resolve, reject) => {
+    // Fallback: direct load with crossOrigin="anonymous" (works if server sends CORS headers)
+    return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         try { resolve(compressImgElement(img)); }
-        catch (e) { reject(e); }
+        catch { console.warn("[champstep] crossOrigin compress failed:", url); resolve(""); }
       };
-      img.onerror = () => reject(new Error("image load failed"));
+      img.onerror = () => { console.warn("[champstep] image load failed (CORS?):", url); resolve(""); };
       img.src = url;
     });
   }
@@ -205,16 +239,23 @@ async function renderOfficial(
   doc.setTextColor(160, 150, 140);
   doc.text(t("pdf.subtitle"), A4.w - M, 20, { align: "right" });
 
+  // Avatar circle (28mm diameter = 14mm radius), centered vertically in hero area
+  const avatarCX = M + 14;
+  const avatarCY = 56;
+  const avatarR = 14;
+  await drawAvatar(doc, child, avatarCX, avatarCY, avatarR, { bgR: 217, bgG: 119, bgB: 6, textR: 255, textG: 255, textB: 255 });
+
+  const textX = M + 14 * 2 + 5; // right of avatar
   setFont(doc, "bold");
-  doc.setFontSize(26);
+  doc.setFontSize(22);
   doc.setTextColor(28, 25, 23);
-  doc.text(child.name, M, 60);
+  doc.text(child.name, textX, 50);
 
   if (child.bio) {
     setFont(doc, "normal");
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setTextColor(100, 95, 90);
-    doc.text(child.bio, M, 72, { maxWidth: CW });
+    doc.text(child.bio, textX, 60, { maxWidth: CW - 14 * 2 - 5 });
   }
 
   const stats = [
@@ -228,17 +269,17 @@ async function renderOfficial(
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(130, 120, 110);
-    doc.text(label, x, 100);
+    doc.text(label, x, 82);
     setFont(doc, "bold");
     doc.setFontSize(16);
     doc.setTextColor(28, 25, 23);
-    doc.text(val, x, 110);
+    doc.text(val, x, 92);
   });
 
   doc.setDrawColor(220, 215, 210);
-  doc.line(M, 120, A4.w - M, 120);
+  doc.line(M, 102, A4.w - M, 102);
 
-  let y = 132;
+  let y = 114;
   for (const a of achievements) {
     const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
     const blockH = 28 + imgH;
@@ -303,19 +344,25 @@ async function renderKids(
   doc.setFillColor(255, 247, 237);
   doc.rect(0, 0, A4.w, A4.h, "F");
   doc.setFillColor(251, 191, 36);
-  doc.roundedRect(M, M, CW, 40, 5, 5, "F");
+  doc.roundedRect(M, M, CW, 44, 5, 5, "F");
+
+  // Avatar circle inside banner
+  const kAvatarR = 14;
+  const kAvatarCX = M + CW - kAvatarR - 4;
+  const kAvatarCY = M + 22;
+  await drawAvatar(doc, child, kAvatarCX, kAvatarCY, kAvatarR, { bgR: 120, bgG: 53, bgB: 15, textR: 255, textG: 247, textB: 237 });
 
   setFont(doc, "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(19);
   doc.setTextColor(120, 53, 15);
-  doc.text(t("pdf.achievementsTitle", { name: child.name }), M + 8, M + 16);
+  doc.text(t("pdf.achievementsTitle", { name: child.name }), M + 8, M + 16, { maxWidth: CW - kAvatarR * 2 - 10 });
 
   setFont(doc, "normal");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(146, 64, 14);
-  if (child.bio) doc.text(child.bio, M + 8, M + 28, { maxWidth: CW - 16 });
+  if (child.bio) doc.text(child.bio, M + 8, M + 30, { maxWidth: CW - kAvatarR * 2 - 10 });
 
-  let y = M + 52;
+  let y = M + 56;
   for (const a of achievements) {
     const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
     const blockH = 42 + imgH;
@@ -386,18 +433,24 @@ async function renderGold(
   doc.setTextColor(180, 130, 40);
   doc.text("C H A M P S T E P", M, 22);
 
+  // Avatar circle (gold template: dark background)
+  const gAvatarR = 14;
+  const gAvatarCX = A4.w - M - gAvatarR;
+  const gAvatarCY = 35;
+  await drawAvatar(doc, child, gAvatarCX, gAvatarCY, gAvatarR, { bgR: 40, bgG: 32, bgB: 15, textR: 217, textG: 179, textB: 80 });
+
   setFont(doc, "bold");
-  doc.setFontSize(32);
+  doc.setFontSize(28);
   doc.setTextColor(217, 179, 80);
-  doc.text(child.name, M, 70);
+  doc.text(child.name, M, 60);
 
   setFont(doc, "normal");
   doc.setFontSize(11);
   doc.setTextColor(140, 120, 90);
-  if (child.bio) doc.text(child.bio, M, 82, { maxWidth: CW });
+  if (child.bio) doc.text(child.bio, M, 70, { maxWidth: CW - gAvatarR * 2 - 8 });
 
   doc.setFillColor(180, 130, 40);
-  doc.rect(M, 92, 40, 0.5, "F");
+  doc.rect(M, 80, 40, 0.5, "F");
 
   const golds = achievements.filter(a => a.awardType === "Gold").length;
   const statsData = [
@@ -411,14 +464,14 @@ async function renderGold(
     setFont(doc, "normal");
     doc.setFontSize(7);
     doc.setTextColor(120, 100, 70);
-    doc.text(label, x, 106);
+    doc.text(label, x, 94);
     setFont(doc, "bold");
     doc.setFontSize(20);
     doc.setTextColor(217, 179, 80);
-    doc.text(val, x, 118);
+    doc.text(val, x, 106);
   });
 
-  let y = 136;
+  let y = 122;
   for (const a of achievements) {
     const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
     const blockH = 28 + imgH;
@@ -528,7 +581,7 @@ async function renderPortfolio(
   const maxCat = Math.max(cats.Sports, cats.Arts, cats.Academic, 1);
 
   // ---- Sidebar зурах функц ----
-  function drawSidebar(pageIdx: number) {
+  async function drawSidebar(pageIdx: number) {
     const cx = SIDEBAR_W / 2;
 
     // Background
@@ -550,19 +603,12 @@ async function renderPortfolio(
     doc.text("CHAMPSTEP", cx, 9, { align: "center" });
 
     if (pageIdx === 1) {
-      // Avatar дугуй
-      doc.setFillColor(...DARK);
-      doc.circle(cx, 38, 20, "F");
+      // Avatar circle — photo or initial
+      await drawAvatar(doc, child, cx, 38, 20, { bgR: DARK[0], bgG: DARK[1], bgB: DARK[2], textR: WHITE[0], textG: WHITE[1], textB: WHITE[2] });
+      // Gold border ring over avatar
       doc.setDrawColor(...GOLD);
       doc.setLineWidth(0.7);
       doc.circle(cx, 38, 20, "S");
-
-      // Эхний үсэг
-      const initial = (child.name || "?")[0].toUpperCase();
-      setFont(doc, "bold");
-      doc.setFontSize(20);
-      doc.setTextColor(...WHITE);
-      doc.text(initial, cx, 43, { align: "center" });
 
       let sy = 63;
 
@@ -708,7 +754,7 @@ async function renderPortfolio(
 
   // ---- Эхний хуудас ----
   let pageIdx = 1;
-  drawSidebar(pageIdx);
+  await drawSidebar(pageIdx);
 
   // Content header
   let y = 13;
@@ -736,7 +782,7 @@ async function renderPortfolio(
     if (y + blockH > A4.h - 10) {
       doc.addPage();
       pageIdx++;
-      drawSidebar(pageIdx);
+      await drawSidebar(pageIdx);
       y = 14;
     }
 

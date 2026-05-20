@@ -364,6 +364,15 @@
     "demo": "Demo mode",
     "pay": "Pay",
     "upgrade": "⬆ Upgrade",
-    "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit"
+    "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit",
+    "success": "Success!",
+    "successMsg": "{{name}} plan activated.",
+    "close": "Close"
+  },
+  "delete": {
+    "confirmTitle": "Delete achievement?",
+    "confirmSubtitle": "This cannot be undone.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
   }
 }
