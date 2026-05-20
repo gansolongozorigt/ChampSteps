@@ -3,7 +3,7 @@
 // ⚠️  Logic/Firebase/auth бүгд хэвээр — зөвхөн UI шинэчлэгдсэн
 // =============================================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
@@ -18,7 +18,6 @@ import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
-import AIInsightCard from "./components/AIInsightCard";
 import { useAuth } from "./lib/auth";
 import {
   createAchievement,
@@ -84,20 +83,15 @@ function Dashboard() {
   const [activeChildIdx, setActiveChildIdx] = useState(0);
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [activeSection, setActiveSection] = useState<NavSection>("achievements");
-  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // Outside click — user menu хаах
-  useEffect(() => {
-    if (!showUserMenu) return;
-    const handler = () => setShowUserMenu(false);
-    document.addEventListener("click", handler, { capture: true, once: true });
-    return () => document.removeEventListener("click", handler, { capture: true });
-  }, [showUserMenu]);
+  const mainRef = useRef<HTMLElement>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [includeImages, setIncludeImages] = useState(true);
   const [toast, setToast] = useState<ToastState>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -146,14 +140,29 @@ function Dashboard() {
   }, [user]);
 
   useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [activeSection]);
+
+  useEffect(() => {
     if (achError) setToast({ kind: "error", message: t("status.errorLoading") });
   }, [achError, t]);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    function handle(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showUserMenu]);
 
   async function handleAddAchievement(draft: AchievementDraft) {
     if (!child) return;
     if (tierLimits.maxAchievements !== -1 && achievements.length >= tierLimits.maxAchievements) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: `Үнэгүй эрхэд ${tierLimits.maxAchievements} бүртгэл хүртэл боломжтой.` });
+      setToast({ kind: "info", message: t("status.freeLimit", { max: tierLimits.maxAchievements }) });
       return;
     }
     if (isFirebaseConfigured) {
@@ -212,7 +221,7 @@ function Dashboard() {
     if (!user) return;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
+      setToast({ kind: "info", message: t("status.childLimit", { max: tierLimits.maxChildren }) });
       return;
     }
     const newChild: Child = {
@@ -228,14 +237,14 @@ function Dashboard() {
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
-    setToast({ kind: "success", message: `${name}-г нэмлээ.` });
+    setToast({ kind: "success", message: t("status.childAdded", { name }) });
   }
 
   async function handleDeleteAchievement(id: string) {
     if (isFirebaseConfigured) {
       try {
         await deleteAchievement(id);
-        setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
+        setToast({ kind: "success", message: t("status.deleted") });
       } catch {
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
@@ -243,7 +252,7 @@ function Dashboard() {
     }
     const updated = achievements.filter((a) => a.id !== id);
     saveLocalAchievements(updated);
-    setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
+    setToast({ kind: "success", message: t("status.deleted") });
   }
 
   async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
@@ -312,7 +321,7 @@ function Dashboard() {
   if (!child) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-stone-500">Хүүхэд олдсонгүй.</p>
+        <p className="text-stone-500">{t("status.childNotFound")}</p>
       </div>
     );
   }
@@ -403,42 +412,30 @@ function Dashboard() {
             }`}>
               {subscription === "family" ? t("sub.tierNames.family").toUpperCase() :
                subscription === "master" ? t("sub.tierNames.master").toUpperCase() :
-               subscription === "coach"  ? "★ БАГШ" : "ҮНЭГҮЙ"}
+               subscription === "coach"  ? `★ ${t("sub.tierNames.coach").toUpperCase()}` : t("sub.tierNames.free").toUpperCase()}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <LanguageChip />
-            {/* AI товч — top bar (мобайл+десктоп хоёуланд) */}
-            
             <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
-            {/* Avatar dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(v => !v)}
-                className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
-              >
+            <div ref={userMenuRef} className="relative">
+              <button onClick={() => setShowUserMenu(!showUserMenu)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
                 <div className="w-full h-full rounded-full overflow-hidden">
                   {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
                 </div>
               </button>
               {showUserMenu && (
-                <div className="absolute right-0 top-9 z-50 bg-stone-900 border border-stone-700 rounded-xl shadow-xl min-w-[160px] overflow-hidden">
-                  <div className="px-3 py-2 border-b border-stone-800">
-                    <p className="text-[11px] font-medium text-stone-300 truncate">{user?.email}</p>
-                  </div>
-                  <button
-                    onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                    {t("profile.edit") || "Профайл засах"}
+                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-stone-900 border border-stone-800 shadow-xl z-50 overflow-hidden">
+                  {user?.email && (
+                    <div className="px-3 py-2.5 border-b border-stone-800">
+                      <p className="text-[10px] text-stone-500 truncate">{user.email}</p>
+                    </div>
+                  )}
+                  <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("profile.edit")}
                   </button>
-                  <button
-                    onClick={() => { setShowUserMenu(false); handleSignOut(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-rose-400 hover:bg-stone-800 transition-colors border-t border-stone-800"
-                  >
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
-                    {t("auth.signOut") || "Гарах"}
+                  <button onClick={() => { setShowUserMenu(false); handleSignOut(); }} className="w-full text-left px-3 py-2.5 text-[12px] text-red-400 hover:bg-stone-800 transition-colors border-t border-stone-800">
+                    {t("auth.signOut")}
                   </button>
                 </div>
               )}
@@ -471,7 +468,7 @@ function Dashboard() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
@@ -501,6 +498,7 @@ function Dashboard() {
                 practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
+                pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -512,20 +510,19 @@ function Dashboard() {
             })}
           </nav>
 
-          
           {/* Sidebar доод хэсэг — subscription */}
           <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
             {isPremium ? (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">
-                  {subscription === "family" ? "★ Гэр бүл" : subscription === "master" ? "★ Мастер" : "★ Багш"}
+                  {subscription === "family" ? `★ ${t("sub.tierNames.family")}` : subscription === "master" ? `★ ${t("sub.tierNames.master")}` : `★ ${t("sub.tierNames.coach")}`}
                 </p>
                 <p className="text-[10px] text-stone-500">Хязгааргүй амжилт · PDF · AI</p>
               </div>
             ) : (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-stone-400 font-medium">ҮНЭГҮЙ · {achCount}/{maxAch}</span>
+                  <span className="text-[10px] text-stone-400 font-medium">{t("sub.tierNames.free").toUpperCase()} · {achCount}/{maxAch}</span>
                 </div>
                 <div className="h-1 bg-stone-800 rounded-full overflow-hidden mb-2">
                   <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-stone-600"}`}
@@ -541,10 +538,10 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
-              🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
+              🏫 {t("status.teacherMode")}
             </div>
           )}
           {activeSection === "achievements" && (
@@ -569,7 +566,7 @@ function Dashboard() {
               {user?.role === "parent" ? (
                 <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
               ) : (
-                <div className="text-center py-12 text-stone-400 text-sm">Энэ хэсэг зөвхөн эцэг эхэд харагдана.</div>
+                <div className="text-center py-12 text-stone-400 text-sm">{t("reflection.parentOnly")}</div>
               )}
             </div>
           )}
@@ -587,14 +584,14 @@ function Dashboard() {
               <SectionHeader title="PDF" subtitle={child.name} />
               <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
                 <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[11px] text-stone-500">{child.name}-ийн PDF портфолио татах</p>
+                  <p className="text-[11px] text-stone-500">{t("pdf.downloadSubtitle", { name: child.name })}</p>
                 </div>
                 <div className="divide-y divide-stone-100">
                   {([
-                    { id: "official" as PdfTemplate, label: "📄 " + (t("pdf.official") || "Албан ёсны"), desc: t("pdf.officialDesc") || "Албан ёсны хэв маягт" },
-                    { id: "kids"      as PdfTemplate, label: "🎨 " + (t("pdf.kids") || "Хүүхэдлэг"),    desc: t("pdf.kidsDesc") || "Өнгөлөг, хөгжилтэй загвар" },
-                    { id: "gold"      as PdfTemplate, label: "✨ " + (t("pdf.gold") || "Алтлаг"),        desc: t("pdf.goldDesc") || "Шагнал, алт загвар" },
-                    { id: "portfolio" as PdfTemplate, label: "👤 " + (t("pdf.portfolio") || "Портфолио"), desc: t("pdf.portfolioDesc") || "Бүрэн портфолио хэв" },
+                    { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
+                    { id: "kids"     as PdfTemplate, label: t("pdf.kids"),     desc: t("pdf.kidsDesc") },
+                    { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
+                    { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}
@@ -621,28 +618,22 @@ function Dashboard() {
                 </div>
                 <div className="px-4 py-3 border-t border-stone-100">
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div onClick={() => setIncludeImages(!includeImages)} className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}>
+                    <div
+                      onClick={() => setIncludeImages(!includeImages)}
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}
+                    >
                       {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                     </div>
-                    <span className="text-[12px] text-stone-600">{t("pdf.includeImages") || "Зураг оруулах"}</span>
+                    <span className="text-[12px] text-stone-600">{t("pdf.includeImages")}</span>
                   </label>
                 </div>
                 {!tierLimits.hasPdf && (
                   <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
                     <button onClick={() => setShowSubscription(true)} className="text-[12px] text-amber-600 font-medium">
-                      🔒 {t("pdf.premiumRequired") || "PDF татах — Premium эрх шаардлагатай"}. Upgrade →
+                      {t("pdf.premiumMessage")}
                     </button>
                   </div>
                 )}
-              </div>
-              <div className="mt-4 bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[13px] font-medium text-stone-800">🤖 {t("ai.heading") || "AI зөвлөгөө"}</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">{t("ai.empty") || "Хүүхдийн амжилтад үндэслэн AI шинжилгээ"}</p>
-                </div>
-                <div className="px-4 py-4">
-                  <AIInsightCard child={child} achievements={achievements} />
-                </div>
               </div>
             </div>
           )}
@@ -655,11 +646,11 @@ function Dashboard() {
           <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
             <span className="text-[10px] text-stone-400">
               {showLimitWarning
-                ? <span className="text-amber-400 font-medium">⚠️ {achCount}/{maxAch} — хязгаарт ойртлоо</span>
-                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>}
+                ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
             </span>
             <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
-              ⬆ Upgrade
+              {t("sub.upgrade")}
             </button>
           </div>
         )}
@@ -721,13 +712,13 @@ function Dashboard() {
                     const { updateAchievement } = await import("./lib/firebase");
                     await updateAchievement(editingAchievement.id, { title: draft.title, date: draft.date, location: draft.location, category: draft.category, description: draft.description, awardType: draft.awardType });
                     setEditingAchievement(null);
-                    setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
+                    setToast({ kind: "success", message: t("status.entryUpdated") });
                   } catch {
                     setToast({ kind: "error", message: t("status.errorSaving") });
                   }
                 } else {
                   setEditingAchievement(null);
-                  setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
+                  setToast({ kind: "success", message: t("status.entryUpdated") });
                 }
               }}
             />
@@ -775,7 +766,7 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim())}
-          placeholder="Хүүхдийн нэр"
+          placeholder={t("children.namePlaceholder")}
           className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
           autoFocus
         />
