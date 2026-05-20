@@ -102,13 +102,30 @@ function compressImgElement(img: HTMLImageElement): string {
 }
 
 export async function urlToDataUrl(url: string): Promise<string> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-    const blob = await res.blob();
+  // Data URLs are ready to use as-is
+  if (url.startsWith("data:")) return url;
+
+  // Blob URLs (from URL.createObjectURL) are same-origin — load directly without crossOrigin
+  if (url.startsWith("blob:")) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      const objectUrl = URL.createObjectURL(blob);
+      img.onload = () => {
+        try { resolve(compressImgElement(img)); }
+        catch (e) { reject(e); }
+      };
+      img.onerror = () => reject(new Error("blob image load failed"));
+      img.src = url;
+    });
+  }
+
+  // HTTP/HTTPS URLs — fetch to get a same-origin blob URL, avoiding canvas taint
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
       img.onload = () => {
         URL.revokeObjectURL(objectUrl);
         try { resolve(compressImgElement(img)); }
@@ -118,6 +135,7 @@ export async function urlToDataUrl(url: string): Promise<string> {
       img.src = objectUrl;
     });
   } catch {
+    // Fallback: try loading directly with crossOrigin (requires server CORS headers)
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";

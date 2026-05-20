@@ -149,7 +149,7 @@ function Dashboard() {
     if (!child) return;
     if (tierLimits.maxAchievements !== -1 && achievements.length >= tierLimits.maxAchievements) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: `Үнэгүй эрхэд ${tierLimits.maxAchievements} бүртгэл хүртэл боломжтой.` });
+      setToast({ kind: "info", message: t("status.freeLimit", { max: tierLimits.maxAchievements }) });
       return;
     }
     if (isFirebaseConfigured) {
@@ -208,7 +208,7 @@ function Dashboard() {
     if (!user) return;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
+      setToast({ kind: "info", message: t("status.childLimit", { max: tierLimits.maxChildren }) });
       return;
     }
     const newChild: Child = {
@@ -224,14 +224,14 @@ function Dashboard() {
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
-    setToast({ kind: "success", message: `${name}-г нэмлээ.` });
+    setToast({ kind: "success", message: t("status.childAdded", { name }) });
   }
 
   async function handleDeleteAchievement(id: string) {
     if (isFirebaseConfigured) {
       try {
         await deleteAchievement(id);
-        setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
+        setToast({ kind: "success", message: t("status.deleted") });
       } catch {
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
@@ -239,7 +239,7 @@ function Dashboard() {
     }
     const updated = achievements.filter((a) => a.id !== id);
     saveLocalAchievements(updated);
-    setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
+    setToast({ kind: "success", message: t("status.deleted") });
   }
 
   async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
@@ -308,7 +308,7 @@ function Dashboard() {
   if (!child) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-stone-500">Хүүхэд олдсонгүй.</p>
+        <p className="text-stone-500">{t("status.childNotFound")}</p>
       </div>
     );
   }
@@ -397,9 +397,9 @@ function Dashboard() {
               subscription === "coach"  ? "bg-amber-950 text-amber-400 border-amber-700" :
               "bg-stone-800 text-stone-500 border-stone-700"
             }`}>
-              {subscription === "family" ? "ГЭР БҮЛ" :
-               subscription === "master" ? "МАСТЕР" :
-               subscription === "coach"  ? "★ БАГШ" : "ҮНЭГҮЙ"}
+              {subscription === "family" ? t("sub.tierNames.family").toUpperCase() :
+               subscription === "master" ? t("sub.tierNames.master").toUpperCase() :
+               subscription === "coach"  ? `★ ${t("sub.tierNames.coach").toUpperCase()}` : t("sub.tierNames.free").toUpperCase()}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -480,66 +480,19 @@ function Dashboard() {
             })}
           </nav>
 
-          {/* PDF татах — desktop sidebar (PDF хуудас дээр байхгүй) */}
-          {activeSection !== "pdf" && <div className="px-3 pt-3 border-t border-stone-800">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">PDF татах</p>
-            <div className="space-y-1">
-              {([
-                { id: "official" as PdfTemplate, label: "📄 Албан ёсны" },
-                { id: "kids"     as PdfTemplate, label: "🎨 Хүүхэдлэг" },
-                { id: "gold"     as PdfTemplate, label: "✨ Алтлаг" },
-                { id: "portfolio" as PdfTemplate, label: "👤 Портфолио" },
-              ]).map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
-                  disabled={pdfBusy || !tierLimits.hasPdf}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left text-[11px] transition-all disabled:opacity-40 ${
-                    pdfTemplate === tmpl.id && pdfBusy
-                      ? "bg-stone-700 text-stone-300"
-                      : "text-stone-400 hover:bg-stone-800 hover:text-stone-200"
-                  }`}
-                >
-                  <span>{tmpl.label}</span>
-                  {pdfTemplate === tmpl.id && pdfBusy && (
-                    <svg className="w-3 h-3 animate-spin text-stone-400" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                  )}
-                </button>
-              ))}
-              {/* Зураг оруулах toggle */}
-              <label className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer select-none">
-                <div
-                  onClick={() => setIncludeImages(!includeImages)}
-                  className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-stone-800 border-stone-600"}`}
-                >
-                  {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
-                </div>
-                <span className="text-[10px] text-stone-500">Зураг оруулах</span>
-              </label>
-              {!tierLimits.hasPdf && (
-                <button onClick={() => setShowSubscription(true)} className="w-full text-[10px] text-amber-400 text-left px-2.5 py-1">
-                  🔒 Premium шаардлагатай
-                </button>
-              )}
-            </div>
-          </div>}
-
           {/* Sidebar доод хэсэг — subscription */}
           <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
             {isPremium ? (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">
-                  {subscription === "family" ? "★ Гэр бүл" : subscription === "master" ? "★ Мастер" : "★ Багш"}
+                  {subscription === "family" ? `★ ${t("sub.tierNames.family")}` : subscription === "master" ? `★ ${t("sub.tierNames.master")}` : `★ ${t("sub.tierNames.coach")}`}
                 </p>
                 <p className="text-[10px] text-stone-500">Хязгааргүй амжилт · PDF · AI</p>
               </div>
             ) : (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-stone-400 font-medium">ҮНЭГҮЙ · {achCount}/{maxAch}</span>
+                  <span className="text-[10px] text-stone-400 font-medium">{t("sub.tierNames.free").toUpperCase()} · {achCount}/{maxAch}</span>
                 </div>
                 <div className="h-1 bg-stone-800 rounded-full overflow-hidden mb-2">
                   <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-stone-600"}`}
@@ -558,7 +511,7 @@ function Dashboard() {
         <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
-              🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
+              🏫 {t("status.teacherMode")}
             </div>
           )}
           {activeSection === "achievements" && (
@@ -583,7 +536,7 @@ function Dashboard() {
               {user?.role === "parent" ? (
                 <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
               ) : (
-                <div className="text-center py-12 text-stone-400 text-sm">Энэ хэсэг зөвхөн эцэг эхэд харагдана.</div>
+                <div className="text-center py-12 text-stone-400 text-sm">{t("reflection.parentOnly")}</div>
               )}
             </div>
           )}
@@ -601,14 +554,14 @@ function Dashboard() {
               <SectionHeader title="PDF" subtitle={child.name} />
               <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
                 <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[11px] text-stone-500">{child.name}-ийн PDF портфолио татах</p>
+                  <p className="text-[11px] text-stone-500">{t("pdf.downloadSubtitle", { name: child.name })}</p>
                 </div>
                 <div className="divide-y divide-stone-100">
                   {([
-                    { id: "official" as PdfTemplate, label: "📄 Албан ёсны", desc: "Албан ёсны хэв маягт" },
-                    { id: "kids"     as PdfTemplate, label: "🎨 Хүүхэдлэг", desc: "Өнгөлөг, хөгжилтэй загвар" },
-                    { id: "gold"     as PdfTemplate, label: "✨ Алтлаг", desc: "Шагнал, алт загвар" },
-                    { id: "portfolio" as PdfTemplate, label: "👤 Портфолио", desc: "Бүрэн портфолио хэв" },
+                    { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
+                    { id: "kids"     as PdfTemplate, label: t("pdf.kids"),     desc: t("pdf.kidsDesc") },
+                    { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
+                    { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}
@@ -641,13 +594,13 @@ function Dashboard() {
                     >
                       {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
                     </div>
-                    <span className="text-[12px] text-stone-600">Зураг оруулах</span>
+                    <span className="text-[12px] text-stone-600">{t("pdf.includeImages")}</span>
                   </label>
                 </div>
                 {!tierLimits.hasPdf && (
                   <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
                     <button onClick={() => setShowSubscription(true)} className="text-[12px] text-amber-600 font-medium">
-                      🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →
+                      {t("pdf.premiumMessage")}
                     </button>
                   </div>
                 )}
@@ -663,11 +616,11 @@ function Dashboard() {
           <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
             <span className="text-[10px] text-stone-400">
               {showLimitWarning
-                ? <span className="text-amber-400 font-medium">⚠️ {achCount}/{maxAch} — хязгаарт ойртлоо</span>
-                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>}
+                ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
             </span>
             <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
-              ⬆ Upgrade
+              {t("sub.upgrade")}
             </button>
           </div>
         )}
@@ -729,13 +682,13 @@ function Dashboard() {
                     const { updateAchievement } = await import("./lib/firebase");
                     await updateAchievement(editingAchievement.id, { title: draft.title, date: draft.date, location: draft.location, category: draft.category, description: draft.description, awardType: draft.awardType });
                     setEditingAchievement(null);
-                    setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
+                    setToast({ kind: "success", message: t("status.entryUpdated") });
                   } catch {
                     setToast({ kind: "error", message: t("status.errorSaving") });
                   }
                 } else {
                   setEditingAchievement(null);
-                  setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
+                  setToast({ kind: "success", message: t("status.entryUpdated") });
                 }
               }}
             />
@@ -783,7 +736,7 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim())}
-          placeholder="Хүүхдийн нэр"
+          placeholder={t("children.namePlaceholder")}
           className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
           autoFocus
         />
