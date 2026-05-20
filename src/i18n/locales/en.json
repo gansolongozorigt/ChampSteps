@@ -10,7 +10,8 @@
     "total": "Total",
     "entries": "entries",
     "gold": "Gold medals",
-    "topCategory": "Top category"
+    "topCategory": "Top category",
+    "goldSub": "Upgrade for more"
   },
   "categories": {
     "All": "All",
@@ -98,12 +99,7 @@
   },
   "nav": {
     "pdfDownload": "Download PDF",
-    "subscription": "Subscription",
-    "achievements": "Achievements",
-    "practice": "Practice",
-    "reflection": "Journal",
-    "coach": "Coach",
-    "pdf": "PDF"
+    "subscription": "Subscription"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
@@ -186,18 +182,7 @@
     "footer": "ChampStep · Achievement Journal",
     "statsTotal": "TOTAL",
     "statsGold": "GOLD",
-    "statsYear": "YEAR",
-    "official": "📄 Official",
-    "kids": "🎨 Kids",
-    "gold": "✨ Gold",
-    "portfolio": "👤 Portfolio",
-    "officialDesc": "Official format template",
-    "kidsDesc": "Colorful, fun design",
-    "goldDesc": "Award, gold theme",
-    "portfolioDesc": "Full portfolio format",
-    "downloadSubtitle": "Download {{name}}'s PDF portfolio",
-    "includeImages": "Include images",
-    "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"
+    "statsYear": "YEAR"
   },
   "status": {
     "loading": "Loading…",
@@ -207,14 +192,7 @@
     "errorSaving": "Could not save. Check your internet connection and Firebase rules.",
     "errorLoading": "Could not load data.",
     "offlineBanner": "Firebase is not configured — data is only stored on this device.",
-    "dismiss": "Dismiss",
-    "deleted": "Entry deleted.",
-    "childNotFound": "Child not found.",
-    "teacherMode": "Teacher mode — managing students",
-    "freeLimit": "Free plan allows up to {{max}} entries.",
-    "childLimit": "Your plan allows up to {{max}} children.",
-    "childAdded": "{{name}} added.",
-    "entryUpdated": "Entry updated."
+    "dismiss": "Dismiss"
   },
   "profile": {
     "heading": "Edit profile",
@@ -229,7 +207,8 @@
       "save": "Save",
       "cancel": "Cancel",
       "removeAvatar": "Remove avatar"
-    }
+    },
+    "edit": "Edit profile"
   },
   "practice": {
     "heading": "Practice log",
@@ -254,8 +233,7 @@
     "empty": {
       "title": "No practice entries yet",
       "subtitle": "Start logging daily practice sessions"
-    },
-    "title": "Practice Log"
+    }
   },
   "reflection": {
     "heading": "Child's journal",
@@ -281,7 +259,6 @@
       "collapse": "Show less"
     },
     "parentNoteLabel": "Parent's note:",
-    "parentOnly": "This section is only visible to parents.",
     "empty": {
       "title": "No journal entries yet",
       "subtitle": "Keep a regular record of your child's feelings"
@@ -292,8 +269,7 @@
       "3": "Okay",
       "4": "Good",
       "5": "Great"
-    },
-    "title": "Child Journal"
+    }
   },
   "invite": {
     "teacher": {
@@ -335,44 +311,25 @@
   },
   "children": {
     "addChild": "+ Add child",
-    "switchChild": "Switch child",
-    "namePlaceholder": "Child's name"
-  },
-  "sub": {
-    "title": "ChampStep Plans",
-    "subtitle": "Upgrade to unlock PDF portfolios, multi-child, and AI insights.",
-    "tierNames": {
-      "free": "Free",
-      "family": "Family",
-      "master": "Master",
-      "coach": "Coach"
-    },
-    "children": "{{n}} child",
-    "entries": "{{n}} entries",
-    "unlimited": "Unlimited",
-    "popular": "Popular",
-    "current": "Current",
-    "perMonth": "/mo",
-    "currentPlan": "Current plan",
-    "continueToPay": "Continue to payment",
-    "freePlan": "Free plan selected",
-    "error": "Could not activate plan. Please try again.",
-    "payWith": "Pay with",
-    "scanQr": "Scan QR code",
-    "back": "Back",
-    "confirm": "Confirm payment",
-    "demo": "Demo mode",
-    "pay": "Pay",
-    "upgrade": "⬆ Upgrade",
-    "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit",
-    "success": "Success!",
-    "successMsg": "{{name}} plan activated.",
-    "close": "Close"
+    "switchChild": "Switch child"
   },
   "delete": {
     "confirmTitle": "Delete achievement?",
-    "confirmSubtitle": "This cannot be undone.",
+    "confirmSubtitle": "This action cannot be undone.",
     "confirm": "Delete",
     "cancel": "Cancel"
+  },
+  "sub": {
+    "success": "Success!",
+    "successMsg": "{{name}} plan activated. Enjoy all features!",
+    "close": "Close",
+    "payWith": "Pay with QPay:",
+    "scanQr": "Scan with the QPay app",
+    "back": "Back",
+    "confirm": "Confirm payment",
+    "demo": "Demo mode — no real payment",
+    "pay": "Continue to payment →",
+    "processing": "Processing...",
+    "error": "Payment failed. Please try again."
   }
 }

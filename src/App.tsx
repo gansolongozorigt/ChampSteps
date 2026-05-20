@@ -3,7 +3,7 @@
 // ⚠️  Logic/Firebase/auth бүгд хэвээр — зөвхөн UI шинэчлэгдсэн
 // =============================================================================
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
@@ -18,6 +18,7 @@ import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
+import AIInsightCard from "./components/AIInsightCard";
 import { useAuth } from "./lib/auth";
 import {
   createAchievement,
@@ -45,7 +46,7 @@ import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf";
+type NavSection = "achievements" | "practice" | "reflection" | "coach" | "ai";
 
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
@@ -83,8 +84,15 @@ function Dashboard() {
   const [activeChildIdx, setActiveChildIdx] = useState(0);
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [activeSection, setActiveSection] = useState<NavSection>("achievements");
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const mainRef = useRef<HTMLElement>(null);
+  // Outside click — user menu хаах
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handler = () => setShowUserMenu(false);
+    document.addEventListener("click", handler, { capture: true, once: true });
+    return () => document.removeEventListener("click", handler, { capture: true });
+  }, [showUserMenu]);
 
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -138,10 +146,6 @@ function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (mainRef.current) mainRef.current.scrollTop = 0;
-  }, [activeSection]);
-
-  useEffect(() => {
     if (achError) setToast({ kind: "error", message: t("status.errorLoading") });
   }, [achError, t]);
 
@@ -149,7 +153,7 @@ function Dashboard() {
     if (!child) return;
     if (tierLimits.maxAchievements !== -1 && achievements.length >= tierLimits.maxAchievements) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: t("status.freeLimit", { max: tierLimits.maxAchievements }) });
+      setToast({ kind: "info", message: `Үнэгүй эрхэд ${tierLimits.maxAchievements} бүртгэл хүртэл боломжтой.` });
       return;
     }
     if (isFirebaseConfigured) {
@@ -208,7 +212,7 @@ function Dashboard() {
     if (!user) return;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
-      setToast({ kind: "info", message: t("status.childLimit", { max: tierLimits.maxChildren }) });
+      setToast({ kind: "info", message: `Таны эрхэд ${tierLimits.maxChildren} хүүхэд хүртэл боломжтой.` });
       return;
     }
     const newChild: Child = {
@@ -224,14 +228,14 @@ function Dashboard() {
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
-    setToast({ kind: "success", message: t("status.childAdded", { name }) });
+    setToast({ kind: "success", message: `${name}-г нэмлээ.` });
   }
 
   async function handleDeleteAchievement(id: string) {
     if (isFirebaseConfigured) {
       try {
         await deleteAchievement(id);
-        setToast({ kind: "success", message: t("status.deleted") });
+        setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
       } catch {
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
@@ -239,7 +243,7 @@ function Dashboard() {
     }
     const updated = achievements.filter((a) => a.id !== id);
     saveLocalAchievements(updated);
-    setToast({ kind: "success", message: t("status.deleted") });
+    setToast({ kind: "success", message: "Бичлэг устгагдлаа." });
   }
 
   async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
@@ -308,7 +312,7 @@ function Dashboard() {
   if (!child) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-stone-500">{t("status.childNotFound")}</p>
+        <p className="text-stone-500">Хүүхэд олдсонгүй.</p>
       </div>
     );
   }
@@ -356,15 +360,6 @@ function Dashboard() {
         </svg>
       ),
     },
-    {
-      id: "pdf",
-      label: t("nav.pdf") || "PDF",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      ),
-    },
   ];
 
   return (
@@ -399,17 +394,59 @@ function Dashboard() {
             }`}>
               {subscription === "family" ? t("sub.tierNames.family").toUpperCase() :
                subscription === "master" ? t("sub.tierNames.master").toUpperCase() :
-               subscription === "coach"  ? `★ ${t("sub.tierNames.coach").toUpperCase()}` : t("sub.tierNames.free").toUpperCase()}
+               subscription === "coach"  ? "★ БАГШ" : "ҮНЭГҮЙ"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <LanguageChip />
-            <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
-            <button onClick={() => setShowProfile(true)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
-              <div className="w-full h-full rounded-full overflow-hidden">
-                {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
-              </div>
+            {/* AI товч — top bar (мобайл+десктоп хоёуланд) */}
+            <button
+              onClick={() => setActiveSection("ai")}
+              className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-md border transition-all active:scale-95 ${
+                activeSection === "ai"
+                  ? "bg-violet-700 text-white border-violet-600"
+                  : "bg-stone-800 text-violet-400 border-stone-700 hover:bg-stone-700"
+              }`}
+              title="AI зөвлөгөө"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-1.587c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+              AI
             </button>
+            <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
+            {/* Avatar dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(v => !v)}
+                className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0"
+              >
+                <div className="w-full h-full rounded-full overflow-hidden">
+                  {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
+                </div>
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 top-9 z-50 bg-stone-900 border border-stone-700 rounded-xl shadow-xl min-w-[160px] overflow-hidden">
+                  <div className="px-3 py-2 border-b border-stone-800">
+                    <p className="text-[11px] font-medium text-stone-300 truncate">{user?.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    {t("profile.edit") || "Профайл засах"}
+                  </button>
+                  <button
+                    onClick={() => { setShowUserMenu(false); handleSignOut(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-rose-400 hover:bg-stone-800 transition-colors border-t border-stone-800"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
+                    {t("auth.signOut") || "Гарах"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -438,7 +475,7 @@ function Dashboard() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 h-[calc(100vh-48px)] sticky top-12 overflow-y-auto">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
@@ -468,7 +505,6 @@ function Dashboard() {
                 practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
-                pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -480,19 +516,20 @@ function Dashboard() {
             })}
           </nav>
 
+          
           {/* Sidebar доод хэсэг — subscription */}
           <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
             {isPremium ? (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">
-                  {subscription === "family" ? `★ ${t("sub.tierNames.family")}` : subscription === "master" ? `★ ${t("sub.tierNames.master")}` : `★ ${t("sub.tierNames.coach")}`}
+                  {subscription === "family" ? "★ Гэр бүл" : subscription === "master" ? "★ Мастер" : "★ Багш"}
                 </p>
                 <p className="text-[10px] text-stone-500">Хязгааргүй амжилт · PDF · AI</p>
               </div>
             ) : (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-stone-400 font-medium">{t("sub.tierNames.free").toUpperCase()} · {achCount}/{maxAch}</span>
+                  <span className="text-[10px] text-stone-400 font-medium">ҮНЭГҮЙ · {achCount}/{maxAch}</span>
                 </div>
                 <div className="h-1 bg-stone-800 rounded-full overflow-hidden mb-2">
                   <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-stone-600"}`}
@@ -508,10 +545,10 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
-              🏫 {t("status.teacherMode")}
+              🏫 Багшийн горим — шавь нарын бүртгэлийг удирдаж байна
             </div>
           )}
           {activeSection === "achievements" && (
@@ -536,7 +573,7 @@ function Dashboard() {
               {user?.role === "parent" ? (
                 <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
               ) : (
-                <div className="text-center py-12 text-stone-400 text-sm">{t("reflection.parentOnly")}</div>
+                <div className="text-center py-12 text-stone-400 text-sm">Энэ хэсэг зөвхөн эцэг эхэд харагдана.</div>
               )}
             </div>
           )}
@@ -549,62 +586,10 @@ function Dashboard() {
               </div>
             </div>
           )}
-          {activeSection === "pdf" && (
-            <div className="px-4 py-6 max-w-xl mx-auto">
-              <SectionHeader title="PDF" subtitle={child.name} />
-              <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[11px] text-stone-500">{t("pdf.downloadSubtitle", { name: child.name })}</p>
-                </div>
-                <div className="divide-y divide-stone-100">
-                  {([
-                    { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
-                    { id: "kids"     as PdfTemplate, label: t("pdf.kids"),     desc: t("pdf.kidsDesc") },
-                    { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
-                    { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
-                  ]).map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
-                      disabled={pdfBusy || !tierLimits.hasPdf}
-                      className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40"
-                    >
-                      <div>
-                        <span className="text-[13px] font-medium text-stone-800">{tmpl.label}</span>
-                        <p className="text-[11px] text-stone-400 mt-0.5">{tmpl.desc}</p>
-                      </div>
-                      {pdfTemplate === tmpl.id && pdfBusy ? (
-                        <svg className="w-4 h-4 animate-spin text-stone-400 shrink-0" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-stone-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="px-4 py-3 border-t border-stone-100">
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div
-                      onClick={() => setIncludeImages(!includeImages)}
-                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}
-                    >
-                      {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
-                    </div>
-                    <span className="text-[12px] text-stone-600">{t("pdf.includeImages")}</span>
-                  </label>
-                </div>
-                {!tierLimits.hasPdf && (
-                  <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
-                    <button onClick={() => setShowSubscription(true)} className="text-[12px] text-amber-600 font-medium">
-                      {t("pdf.premiumMessage")}
-                    </button>
-                  </div>
-                )}
-              </div>
+          {activeSection === "ai" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("ai.title") || "AI зөвлөгөө"} subtitle={child.name} />
+              <AIInsightCard child={child} achievements={achievements} />
             </div>
           )}
         </main>
@@ -616,19 +601,19 @@ function Dashboard() {
           <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
             <span className="text-[10px] text-stone-400">
               {showLimitWarning
-                ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
-                : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
+                ? <span className="text-amber-400 font-medium">⚠️ {achCount}/{maxAch} — хязгаарт ойртлоо</span>
+                : <><span className="font-medium text-stone-300">ҮНЭГҮЙ</span> · {achCount}/{maxAch} амжилт</>}
             </span>
             <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
-              {t("sub.upgrade")}
+              ⬆ Upgrade
             </button>
           </div>
         )}
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500" };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500" };
             return (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
@@ -682,13 +667,13 @@ function Dashboard() {
                     const { updateAchievement } = await import("./lib/firebase");
                     await updateAchievement(editingAchievement.id, { title: draft.title, date: draft.date, location: draft.location, category: draft.category, description: draft.description, awardType: draft.awardType });
                     setEditingAchievement(null);
-                    setToast({ kind: "success", message: t("status.entryUpdated") });
+                    setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
                   } catch {
                     setToast({ kind: "error", message: t("status.errorSaving") });
                   }
                 } else {
                   setEditingAchievement(null);
-                  setToast({ kind: "success", message: t("status.entryUpdated") });
+                  setToast({ kind: "success", message: "Бичлэг шинэчлэгдлээ." });
                 }
               }}
             />
@@ -736,7 +721,7 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim())}
-          placeholder={t("children.namePlaceholder")}
+          placeholder="Хүүхдийн нэр"
           className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
           autoFocus
         />
