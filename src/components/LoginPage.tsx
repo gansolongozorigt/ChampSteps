@@ -107,22 +107,22 @@ export default function LoginPage() {
             {(
               <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
-                  Та хэн бэ?
+                  {t("login.whoAreYou")}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <RoleButton
                     selected={role === "parent"}
                     onClick={() => setRole("parent")}
                     icon="👨‍👩‍👧"
-                    label="Эцэг эх"
-                    desc="Хүүхдийнхээ амжилтыг хянана"
+                    label={t("login.parent")}
+                    desc={t("login.parentDesc")}
                   />
                   <RoleButton
                     selected={role === "teacher"}
                     onClick={() => setRole("teacher")}
                     icon="🏫"
-                    label="Багш / Дасгалжуулагч"
-                    desc="Шавь нараа удирдана"
+                    label={t("login.teacher")}
+                    desc={t("login.teacherDesc")}
                   />
                 </div>
               </div>

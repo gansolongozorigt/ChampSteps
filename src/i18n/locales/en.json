@@ -370,6 +370,17 @@
     "successMsg": "{{name}} plan activated.",
     "close": "Close"
   },
+  "login": {
+    "whoAreYou": "WHO ARE YOU?",
+    "parent": "Parent",
+    "parentDesc": "Track your child's achievements",
+    "teacher": "Teacher / Coach",
+    "teacherDesc": "Manage your students",
+    "createAccount": "New here? Create an account.",
+    "tryFirst": "Want to try it first?",
+    "continueWithout": "Continue without an account",
+    "or": "or"
+  },
   "delete": {
     "confirmTitle": "Delete achievement?",
     "confirmSubtitle": "This cannot be undone.",
