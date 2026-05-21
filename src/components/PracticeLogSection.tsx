@@ -82,8 +82,8 @@ export default function PracticeLogSection({
       {/* Add form */}
       {showForm && (
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col md:flex-row gap-4 mb-3">
-            <div className="flex-1">
+          <div className="flex flex-col gap-3 mb-3">
+            <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.date")}
               </label>
@@ -98,13 +98,13 @@ export default function PracticeLogSection({
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.duration")}
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {[30, 60, 90, 120].map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setDuration(m)}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                    className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
                       duration === m
                         ? "bg-stone-900 text-white"
                         : "border border-stone-200 text-stone-600 hover:bg-stone-50"

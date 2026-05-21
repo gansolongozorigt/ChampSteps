@@ -85,8 +85,8 @@ export default function ReflectionSection({
       {/* Add form */}
       {showForm && (
         <div className="mb-4 rounded-2xl border border-purple-100 bg-purple-50/50 p-4 shadow-sm">
-          <div className="flex flex-col md:flex-row gap-4 mb-3">
-            <div className="flex-1">
+          <div className="flex flex-col gap-3 mb-3">
+            <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("reflection.fields.date")}
               </label>
@@ -101,7 +101,7 @@ export default function ReflectionSection({
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("reflection.fields.mood")}
               </label>
-              <div className="flex gap-1.5">
+              <div className="flex gap-2 flex-wrap">
                 {MOOD_VALUES.map((v) => (
                   <button
                     key={v}
