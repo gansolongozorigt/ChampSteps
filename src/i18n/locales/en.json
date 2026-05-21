@@ -392,7 +392,9 @@
   "promo": {
     "label": "Promo code",
     "placeholder": "e.g. CHAMP3",
-    "apply": "Apply"
+    "apply": "Apply",
+    "success": "{{months}} months free activated!",
+    "invalid": "Invalid or expired code."
   },
   "login": {
     "whoAreYou": "WHO ARE YOU?",
