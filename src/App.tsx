@@ -436,7 +436,7 @@ function Dashboard() {
                   <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("profile.edit")}
                   </button>
-                  {user?.email === "admin@champsteps.app" && (
+                  {user?.email === "gansolongozorigt7@gmail.com" && (
                     <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
                       ⚙ Admin
                     </button>

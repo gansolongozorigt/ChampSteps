@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { createPromoCode, listPromoCodes, seedPromoCodes, } from "../lib/firebase";
-const ADMIN_EMAIL = "admin@champsteps.app";
+const ADMIN_EMAIL = "gansolongozorigt7@gmail.com";
 export default function AdminPage({ onClose }) {
     const { t } = useTranslation();
     const { user } = useAuth();
