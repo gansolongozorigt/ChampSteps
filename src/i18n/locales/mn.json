@@ -11,7 +11,7 @@
     "entries": "бичлэг",
     "gold": "Алтан медаль",
     "topCategory": "Тэргүүн ангилал",
-    "goldSub": "Медаль болон тэмдэглэл"
+    "goldSub": "Дэвшүүлэх"
   },
   "categories": {
     "All": "Бүгд",
@@ -388,6 +388,11 @@
     "success": "Амжилттай!",
     "successMsg": "{{name}} эрх идэвхжлээ.",
     "close": "Хаах"
+  },
+  "promo": {
+    "label": "Хямдралын код",
+    "placeholder": "жишээ нь CHAMP3",
+    "apply": "Хэрэглэх"
   },
   "login": {
     "whoAreYou": "ТА ХЭН БЭ?",

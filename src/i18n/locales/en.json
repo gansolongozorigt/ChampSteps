@@ -11,7 +11,7 @@
     "entries": "entries",
     "gold": "Gold medals",
     "topCategory": "Top category",
-    "goldSub": "Medals & entries"
+    "goldSub": "Upgrade for more"
   },
   "categories": {
     "All": "All",
@@ -388,6 +388,11 @@
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",
     "close": "Close"
+  },
+  "promo": {
+    "label": "Promo code",
+    "placeholder": "e.g. CHAMP3",
+    "apply": "Apply"
   },
   "login": {
     "whoAreYou": "WHO ARE YOU?",

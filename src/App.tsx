@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
+import AdminPage from "./components/AdminPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
@@ -90,6 +91,7 @@ function Dashboard() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [includeImages, setIncludeImages] = useState(true);
@@ -434,6 +436,11 @@ function Dashboard() {
                   <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("profile.edit")}
                   </button>
+                  {user?.email === "admin@champsteps.app" && (
+                    <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
+                      ⚙ Admin
+                    </button>
+                  )}
                   <button onClick={() => { setShowUserMenu(false); handleSignOut(); }} className="w-full text-left px-3 py-2.5 text-[12px] text-red-400 hover:bg-stone-800 transition-colors border-t border-stone-800">
                     {t("auth.signOut")}
                   </button>
@@ -728,6 +735,7 @@ function Dashboard() {
       {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} />}
       {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );
