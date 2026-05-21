@@ -99,7 +99,7 @@ function PromoSection() {
         code: code.trim().toUpperCase(),
         discountMonths: months,
         maxUses,
-        expiresAt: new Date(expiry).toISOString(),
+        expiresAt: new Date(expiry),
         active: true,
       });
       setCreateMsg(t("admin.created"));
