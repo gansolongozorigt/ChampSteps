@@ -7,6 +7,7 @@
 //   /achievements/{id}          — тэмцээний бүртгэл
 //   /practiceLogs/{id}          — бэлтгэлийн тэмдэглэл
 //   /reflections/{id}           — нууц сэтгэлзүйн тэмдэглэл
+//   /coachNotes/{id}            — багшийн зөвлөгөө
 // =============================================================================
 import { initializeApp } from "firebase/app";
 import { createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut as fbSignOut, updateProfile, } from "firebase/auth";
@@ -174,6 +175,14 @@ export async function getChildrenForTeacher(teacherId) {
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data());
 }
+export function subscribeChildrenForTeacher(teacherId, cb) {
+    const db = requireDb();
+    const q = query(collection(db, "children"), where("teacherIds", "array-contains", teacherId));
+    return onSnapshot(q, (snap) => {
+        const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id }));
+        cb(list);
+    });
+}
 // -----------------------------------------------------------------------------
 // Invite codes — багш шавиа нэмэх
 // -----------------------------------------------------------------------------
@@ -181,7 +190,7 @@ export async function createInviteCode(teacherId, teacherName) {
     const db = requireDb();
     const code = generateCode();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 хоног хүчинтэй
+    expiresAt.setDate(expiresAt.getDate() + 7);
     await setDoc(doc(db, "inviteCodes", code), {
         code,
         teacherId,
@@ -203,7 +212,6 @@ export async function useInviteCode(code, childId) {
         throw new Error("Энэ код аль хэдийн ашиглагдсан байна.");
     if (new Date(data.expiresAt) < new Date())
         throw new Error("Кодын хугацаа дууссан байна.");
-    // Хүүхдийн teacherIds жагсаалтад багшийг нэм
     const childRef = doc(db, "children", childId);
     const childSnap = await getDoc(childRef);
     if (!childSnap.exists())
@@ -213,7 +221,6 @@ export async function useInviteCode(code, childId) {
     if (!teacherIds.includes(data.teacherId)) {
         await updateDoc(childRef, { teacherIds: [...teacherIds, data.teacherId] });
     }
-    // Код ашигласан гэж тэмдэглэ
     await updateDoc(ref, { used: true, childId, usedAt: new Date().toISOString() });
     return { ...data, childId };
 }
@@ -333,6 +340,29 @@ export function subscribeReflections(childId, cb) {
         cb(items);
     });
 }
+export async function createCoachNote(childId, teacherId, teacherName, content) {
+    const db = requireDb();
+    const docRef = await addDoc(collection(db, "coachNotes"), {
+        childId,
+        teacherId,
+        teacherName,
+        content,
+        createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+}
+export async function deleteCoachNote(id) {
+    const db = requireDb();
+    await deleteDoc(doc(db, "coachNotes", id));
+}
+export function subscribeCoachNotes(childId, cb) {
+    const db = requireDb();
+    const q = query(collection(db, "coachNotes"), where("childId", "==", childId));
+    return onSnapshot(q, (snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        cb(items);
+    });
+}
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
@@ -354,7 +384,6 @@ function generateCode() {
     }
     return code;
 }
-// Alias — App.tsx-тэй нийцтэй байлгах
 export async function ensureChildDoc(child) {
     const db = requireDb();
     const ref = doc(db, "children", child.childId);
@@ -372,28 +401,58 @@ export async function ensureChildDoc(child) {
         });
     }
 }
-export async function createCoachNote(childId, teacherId, teacherName, note) {
+// -----------------------------------------------------------------------------
+// Teacher — шавийг хасах (холболт тасрах)
+// -----------------------------------------------------------------------------
+export async function removeStudentFromTeacher(childId, teacherId) {
     const db = requireDb();
-    const docRef = await addDoc(collection(db, "coachNotes"), {
-        childId,
-        teacherId,
-        teacherName,
-        note,
-        createdAt: serverTimestamp(),
+    const childRef = doc(db, "children", childId);
+    const childSnap = await getDoc(childRef);
+    if (!childSnap.exists())
+        return;
+    const teacherIds = childSnap.data().teacherIds ?? [];
+    await updateDoc(childRef, {
+        teacherIds: teacherIds.filter((id) => id !== teacherId),
     });
-    return docRef.id;
 }
-export async function deleteCoachNote(id) {
+export async function createPromoCode(data) {
     const db = requireDb();
-    await deleteDoc(doc(db, "coachNotes", id));
-}
-export function subscribeCoachNotes(childId, cb) {
-    const db = requireDb();
-    const q = query(collection(db, "coachNotes"), where("childId", "==", childId));
-    return onSnapshot(q, (snap) => {
-        const items = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-        cb(items);
+    await setDoc(doc(db, "promoCodes", data.code.toUpperCase()), {
+        ...data,
+        code: data.code.toUpperCase(),
+        usedBy: [],
     });
+}
+export async function listPromoCodes() {
+    const db = requireDb();
+    const snap = await getDocs(collection(db, "promoCodes"));
+    return snap.docs.map((d) => ({ ...d.data() }));
+}
+export async function seedPromoCodes() {
+    const db = requireDb();
+    const codes = [
+        { code: "CHAMP3", discountMonths: 3, maxUses: 100, active: true, expiresAt: new Date("2027-01-01") },
+        { code: "CHAMP6", discountMonths: 6, maxUses: 50, active: true, expiresAt: new Date("2027-01-01") },
+    ];
+    for (const c of codes) {
+        await setDoc(doc(db, "promoCodes", c.code), { ...c, usedBy: [] });
+    }
+}
+export async function redeemPromoCode(code, userId) {
+    const db = requireDb();
+    const ref = doc(db, "promoCodes", code.toUpperCase());
+    const snap = await getDoc(ref);
+    if (!snap.exists())
+        throw new Error("not_found");
+    const data = snap.data();
+    if (!data.active)
+        throw new Error("inactive");
+    if (data.usedBy.includes(userId))
+        throw new Error("already_used");
+    if (data.usedBy.length >= data.maxUses)
+        throw new Error("max_uses");
+    if (new Date() > new Date(data.expiresAt))
+        throw new Error("expired");
+    await updateDoc(ref, { usedBy: [...data.usedBy, userId] });
+    return { months: data.discountMonths };
 }

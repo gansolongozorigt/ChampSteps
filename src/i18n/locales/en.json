@@ -335,6 +335,7 @@
     "empty": "Get AI-powered insights based on your child's achievements."
   },
   "children": {
+    "title": "Children",
     "addChild": "+ Add child",
     "switchChild": "Switch child",
     "namePlaceholder": "Child's name"
@@ -386,5 +387,25 @@
     "confirmSubtitle": "This cannot be undone.",
     "confirm": "Delete",
     "cancel": "Cancel"
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "accessDenied": "Access denied. Admin only.",
+    "promoSection": "Promo Codes",
+    "seedButton": "Seed Demo Codes",
+    "seeding": "Seeding…",
+    "seeded": "Demo codes seeded!",
+    "codeName": "Code",
+    "months": "Months",
+    "maxUses": "Max uses",
+    "expiry": "Expiry date",
+    "createButton": "Create code",
+    "creating": "Creating…",
+    "created": "Code created!",
+    "listHeading": "Existing codes",
+    "loading": "Loading…",
+    "active": "Active",
+    "inactive": "Inactive",
+    "used": "used"
   }
 }                  

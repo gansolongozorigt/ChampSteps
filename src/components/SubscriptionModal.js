@@ -5,13 +5,40 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
+import { redeemPromoCode } from "../lib/firebase";
 export default function SubscriptionModal({ onClose }) {
     const { t } = useTranslation();
-    const { subscription, activateSubscription } = useAuth();
+    const { user, subscription, activateSubscription, refreshSubscription } = useAuth();
     const [step, setStep] = useState("compare");
     const [selectedTier, setSelectedTier] = useState("family");
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState(null);
+    const [promoCode, setPromoCode] = useState("");
+    const [promoApplying, setPromoApplying] = useState(false);
+    const [promoResult, setPromoResult] = useState(null);
+    async function handleApplyPromo() {
+        if (!promoCode.trim() || !user)
+            return;
+        setPromoApplying(true);
+        setPromoResult(null);
+        try {
+            const months = await redeemPromoCode(promoCode.trim(), user.uid);
+            await refreshSubscription();
+            setPromoResult({ success: true, message: t("promo.success", { months }) });
+        }
+        catch (err) {
+            const code = err?.message ?? "";
+            if (code === "used")
+                setPromoResult({ success: false, message: t("promo.used") });
+            else if (code === "exhausted")
+                setPromoResult({ success: false, message: t("promo.exhausted") });
+            else
+                setPromoResult({ success: false, message: t("promo.invalid") });
+        }
+        finally {
+            setPromoApplying(false);
+        }
+    }
     // Tier мэдээллийг i18n-тэй уялдуулан тодорхойлно
     const TIERS = [
         {
@@ -81,7 +108,7 @@ export default function SubscriptionModal({ onClose }) {
                                         : isCurrent
                                             ? "border-emerald-300 bg-emerald-50 cursor-default"
                                             : `${tier.color} hover:bg-stone-50`}`, children: _jsxs("div", { className: "flex items-start justify-between gap-2", children: [_jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "font-semibold text-stone-900", children: tier.name }), tier.badge && (_jsx("span", { className: "rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700", children: tier.badge })), isCurrent && (_jsx("span", { className: "rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700", children: t("sub.current") }))] }), _jsxs("div", { className: "mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-stone-500", children: [_jsxs("span", { children: ["\uD83D\uDC64 ", tier.children] }), _jsxs("span", { children: ["\uD83C\uDFC6 ", tier.achievements] }), tier.pdf && _jsx("span", { children: "\uD83D\uDCC4 PDF" }), tier.ai && _jsx("span", { children: "\uD83E\uDD16 AI" })] })] }), _jsxs("div", { className: "shrink-0 text-right", children: [_jsx("span", { className: "font-bold text-stone-900", children: tier.price }), tier.id !== "free" && (_jsx("span", { className: "block text-[10px] text-stone-400", children: t("sub.perMonth") }))] })] }) }, tier.id));
-                            }) }), _jsx("button", { type: "button", onClick: () => setStep("pay"), disabled: selectedTier === subscription || selectedTier === "free", className: "mt-5 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400", children: selectedTier === subscription
+                            }) }), _jsxs("div", { className: "mt-5 rounded-xl border border-dashed border-stone-300 p-3", children: [_jsx("p", { className: "mb-2 text-xs font-medium text-stone-500", children: t("promo.label") }), _jsxs("div", { className: "flex gap-2", children: [_jsx("input", { type: "text", value: promoCode, onChange: (e) => setPromoCode(e.target.value.toUpperCase()), placeholder: t("promo.placeholder"), className: "flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none" }), _jsx("button", { type: "button", onClick: handleApplyPromo, disabled: promoApplying || !promoCode.trim(), className: "rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400", children: promoApplying ? "..." : t("promo.apply") })] }), promoResult && (_jsx("p", { className: `mt-2 text-xs ${promoResult.success ? "text-emerald-600" : "text-red-600"}`, children: promoResult.message }))] }), _jsx("button", { type: "button", onClick: () => setStep("pay"), disabled: selectedTier === subscription || selectedTier === "free", className: "mt-3 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400", children: selectedTier === subscription
                                 ? t("sub.currentPlan")
                                 : selectedTier === "free"
                                     ? t("sub.freePlan")

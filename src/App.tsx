@@ -381,7 +381,7 @@ function Dashboard() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-stone-100 font-sans">
+    <div className="flex flex-col h-screen bg-stone-100 font-sans">
 
       {/* TOP BAR — мобайл + desktop header */}
       <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
