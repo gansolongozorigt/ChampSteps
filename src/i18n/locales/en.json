@@ -391,7 +391,7 @@
   },
   "promo": {
     "label": "Promo code",
-    "placeholder": "e.g. CHAMP3",
+    "placeholder": "Enter promo code",
     "apply": "Apply",
     "success": "{{months}} months free activated!",
     "invalid": "Invalid or expired code."
