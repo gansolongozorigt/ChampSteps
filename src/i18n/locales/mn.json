@@ -10,7 +10,8 @@
     "total": "Нийт",
     "entries": "бичлэг",
     "gold": "Алтан медаль",
-    "topCategory": "Тэргүүн ангилал"
+    "topCategory": "Тэргүүн ангилал",
+    "goldSub": "Медаль болон тэмдэглэл"
   },
   "categories": {
     "All": "Бүгд",
@@ -86,6 +87,7 @@
       },
       "photosAttached": "{{count}} хавсаргасан"
     },
+    "editHeading": "Бичлэг засах",
     "actions": {
       "cancel": "Цуцлах",
       "back": "Буцах",
@@ -93,7 +95,8 @@
       "remove": "Устгах",
       "save": "Тэмдэглэлийг хадгалах",
       "saveForChild": "{{name}}-д хадгалах",
-      "saving": "Хадгалж байна…"
+      "saving": "Хадгалж байна…",
+      "saveChanges": "Өөрчлөлт хадгалах"
     }
   },
   "nav": {
@@ -111,6 +114,8 @@
     "subtitle": "Хүүхдийнхээ амжилтуудыг цуглуулж, PDF портфолио үүсгэцгээе.",
     "name": "Таны нэр",
     "namePlaceholder": "Эцэг эхийн нэр",
+    "teacherNamePlaceholder": "Багшийн нэр",
+    "defaultName": "Хэрэглэгч",
     "email": "Имэйл",
     "password": "Нууц үг",
     "signIn": "Нэвтрэх",
@@ -340,6 +345,18 @@
     "switchChild": "Хүүхэд солих",
     "namePlaceholder": "Хүүхдийн нэр"
   },
+  "coach": {
+    "writeNote": "{{name}}-д зөвлөгөө бичих",
+    "parentCanSee": "Эцэг эх харж болно",
+    "placeholder": "{{name}}-д зөвлөгөө бичэх...",
+    "saving": "Хадгалж байна...",
+    "addButton": "Зөвлөгөө нэмэх",
+    "connectedTeacher": "Холбосон багш",
+    "empty": "Зөвлөгөө байхгүй",
+    "parentEmpty": "Багшийн зөвлөгөө байхгүй",
+    "delete": "Устгах",
+    "defaultName": "Багш"
+  },
   "sub": {
     "title": "ChampStep Эрх",
     "subtitle": "Premium болсноор PDF, олон хүүхэд, AI зөвлөгөө авна.",
@@ -365,6 +382,7 @@
     "confirm": "Төлбөрийг баталгаажуулах",
     "demo": "Туршилтын горим",
     "pay": "Төлөх",
+    "premiumFeatures": "Хязгааргүй амжилт · PDF · AI",
     "upgrade": "⬆ Upgrade",
     "nearLimit": "⚠️ {{count}}/{{max}} — хязгаарт ойртлоо",
     "success": "Амжилттай!",

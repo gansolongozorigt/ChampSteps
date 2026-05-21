@@ -129,10 +129,10 @@ export default function TimelineDashboard({
               {stats.total}
             </span>
             <span className="text-[11px] text-amber-500 mt-2 font-medium">
-              {t("summary.total") || "Нийт амжилт"}
+              {t("summary.total")}
             </span>
             <span className="text-[10px] text-stone-600 mt-0.5">
-              {t("summary.entries") || "Бүх ангилалаар"}
+              {t("summary.entries")}
             </span>
           </div>
 
@@ -142,10 +142,10 @@ export default function TimelineDashboard({
               {stats.awards}
             </span>
             <p className="text-[10px] text-amber-700 mt-1.5 font-medium">
-              {t("summary.gold") || "Нийт шагнал"}
+              {t("summary.gold")}
             </p>
             <p className="text-[9px] text-amber-500 mt-0.5">
-              {t("summary.goldSub") || "Медаль болон тэмдэглэл"}
+              {t("summary.goldSub")}
             </p>
           </div>
 
@@ -155,7 +155,7 @@ export default function TimelineDashboard({
               {stats.topCategory?.[1] ?? 0}
             </span>
             <p className="text-[10px] text-stone-500 mt-1.5 font-medium">
-              {t("summary.topCategory") || "Тэргүүн ангилал"}
+              {t("summary.topCategory")}
             </p>
             <p className="text-[9px] text-stone-400 mt-0.5">
               {stats.topCategory && stats.topCategory[1] > 0
