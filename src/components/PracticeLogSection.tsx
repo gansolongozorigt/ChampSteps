@@ -91,7 +91,7 @@ export default function PracticeLogSection({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
+                className="w-full rounded-lg border border-stone-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200"
               />
             </div>
             <div>
