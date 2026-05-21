@@ -5,17 +5,39 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
+import { redeemPromoCode } from "../lib/firebase";
 import type { SubscriptionTier } from "../types";
 
 type Step = "compare" | "pay" | "success";
 
 export default function SubscriptionModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  const { subscription, activateSubscription } = useAuth();
+  const { user, subscription, activateSubscription, refreshSubscription } = useAuth();
   const [step, setStep] = useState<Step>("compare");
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("family");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplying, setPromoApplying] = useState(false);
+  const [promoResult, setPromoResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  async function handleApplyPromo() {
+    if (!promoCode.trim() || !user) return;
+    setPromoApplying(true);
+    setPromoResult(null);
+    try {
+      const months = await redeemPromoCode(promoCode.trim(), user.uid);
+      await refreshSubscription();
+      setPromoResult({ success: true, message: t("promo.success", { months }) });
+    } catch (err) {
+      const code = (err as { message?: string })?.message ?? "";
+      if (code === "used") setPromoResult({ success: false, message: t("promo.used") });
+      else if (code === "exhausted") setPromoResult({ success: false, message: t("promo.exhausted") });
+      else setPromoResult({ success: false, message: t("promo.invalid") });
+    } finally {
+      setPromoApplying(false);
+    }
+  }
 
   // Tier мэдээллийг i18n-тэй уялдуулан тодорхойлно
   const TIERS: {
@@ -157,11 +179,38 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
                 );
               })}
             </div>
+            {/* Promo code */}
+            <div className="mt-5 rounded-xl border border-dashed border-stone-300 p-3">
+              <p className="mb-2 text-xs font-medium text-stone-500">{t("promo.label")}</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder={t("promo.placeholder")}
+                  className="flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={promoApplying || !promoCode.trim()}
+                  className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+                >
+                  {promoApplying ? "..." : t("promo.apply")}
+                </button>
+              </div>
+              {promoResult && (
+                <p className={`mt-2 text-xs ${promoResult.success ? "text-emerald-600" : "text-red-600"}`}>
+                  {promoResult.message}
+                </p>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={() => setStep("pay")}
               disabled={selectedTier === subscription || selectedTier === "free"}
-              className="mt-5 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+              className="mt-3 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
             >
               {selectedTier === subscription
                 ? t("sub.currentPlan")
