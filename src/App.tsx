@@ -451,17 +451,17 @@ function Dashboard() {
         </div>
 
         {/* Child tabs — мобайлд харагдана, desktop-д sidebar-д байна */}
-        <div className="md:hidden bg-stone-900 px-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide border-b border-stone-800">
+        <div className="md:hidden bg-stone-900 px-2 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-b border-stone-800">
           {children.map((c, i) => (
             <button key={c.childId} onClick={() => setActiveChildIdx(i)}
-              className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
-              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center">{c.name.slice(0,1).toUpperCase()}</span>}
-              {c.name}
+              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
+              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover shrink-0"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center shrink-0">{c.name.slice(0,1).toUpperCase()}</span>}
+              <span className="max-w-[48px] truncate">{c.name.length > 6 ? c.name.slice(0, 6) + "…" : c.name}</span>
             </button>
           ))}
           {canAddChild && (
-            <button onClick={() => setShowAddChild(true)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors">
-              + {t("children.addChild")}
+            <button onClick={() => setShowAddChild(true)} className="flex items-center justify-center text-[13px] w-7 h-7 rounded-md shrink-0 text-stone-400 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors" title={t("children.addChild")}>
+              +
             </button>
           )}
         </div>

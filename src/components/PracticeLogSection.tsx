@@ -82,8 +82,8 @@ export default function PracticeLogSection({
       {/* Add form */}
       {showForm && (
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
+          <div className="flex flex-col md:flex-row gap-4 mb-3">
+            <div className="flex-1">
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.date")}
               </label>
@@ -91,7 +91,7 @@ export default function PracticeLogSection({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200"
+                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
               />
             </div>
             <div>
