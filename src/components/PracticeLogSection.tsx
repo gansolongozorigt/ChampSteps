@@ -87,12 +87,17 @@ export default function PracticeLogSection({
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.date")}
               </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+                <div className="w-full rounded-lg bg-stone-100 px-3 py-1 text-sm text-center text-stone-600 pointer-events-none">
+                  {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
