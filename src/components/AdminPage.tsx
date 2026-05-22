@@ -12,7 +12,7 @@ import {
   type PromoCode,
 } from "../lib/firebase";
 
-const ADMIN_EMAIL = "admin@champsteps.app";
+const ADMIN_EMAIL = "gansolongozorigt7@gmail.com";
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();

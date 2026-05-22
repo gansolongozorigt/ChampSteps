@@ -10,7 +10,8 @@
     "total": "Total",
     "entries": "entries",
     "gold": "Gold medals",
-    "topCategory": "Top category"
+    "topCategory": "Top category",
+    "goldSub": "Upgrade for more"
   },
   "categories": {
     "All": "All",
@@ -86,6 +87,7 @@
       },
       "photosAttached": "{{count}} attached"
     },
+    "editHeading": "Edit entry",
     "actions": {
       "cancel": "Cancel",
       "back": "Back",
@@ -93,7 +95,8 @@
       "remove": "Remove",
       "save": "Save achievement",
       "saveForChild": "Save for {{name}}",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "saveChanges": "Save changes"
     }
   },
   "nav": {
@@ -111,6 +114,8 @@
     "subtitle": "Collect your child's wins and build a beautiful portfolio.",
     "name": "Your name",
     "namePlaceholder": "Parent name",
+    "teacherNamePlaceholder": "Teacher's name",
+    "defaultName": "User",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
@@ -340,6 +345,18 @@
     "switchChild": "Switch child",
     "namePlaceholder": "Child's name"
   },
+  "coach": {
+    "writeNote": "Write a note for {{name}}",
+    "parentCanSee": "Parent can see this",
+    "placeholder": "Add a note for {{name}}...",
+    "saving": "Saving...",
+    "addButton": "Add note",
+    "connectedTeacher": "Connected teacher",
+    "empty": "No notes yet",
+    "parentEmpty": "No notes from teacher yet",
+    "delete": "Delete",
+    "defaultName": "Teacher"
+  },
   "sub": {
     "title": "ChampStep Plans",
     "subtitle": "Upgrade to unlock PDF portfolios, multi-child, and AI insights.",
@@ -365,11 +382,19 @@
     "confirm": "Confirm payment",
     "demo": "Demo mode",
     "pay": "Pay",
+    "premiumFeatures": "Unlimited · PDF · AI",
     "upgrade": "⬆ Upgrade",
     "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit",
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",
     "close": "Close"
+  },
+  "promo": {
+    "label": "Promo code",
+    "placeholder": "Enter promo code",
+    "apply": "Apply",
+    "success": "{{months}} months free activated!",
+    "invalid": "Invalid or expired code."
   },
   "login": {
     "whoAreYou": "WHO ARE YOU?",
