@@ -591,6 +591,11 @@ export async function createPromoCode(data: Omit<PromoCode, "usedBy">) {
   });
 }
 
+export async function togglePromoCode(code: string, active: boolean): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "promoCodes", code.toUpperCase()), { active });
+}
+
 export async function listPromoCodes(): Promise<PromoCode[]> {
   const db = requireDb();
   const snap = await getDocs(collection(db, "promoCodes"));
@@ -614,7 +619,7 @@ export async function redeemPromoCode(code: string, userId: string): Promise<{ m
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error("not_found");
   const data = snap.data() as PromoCode;
-  if (!data.active) throw new Error("inactive");
+  if (!data.active) throw new Error("Код хүчингүй болсон байна");
   if (data.usedBy.includes(userId)) throw new Error("already_used");
   if (data.usedBy.length >= data.maxUses) throw new Error("max_uses");
   if (new Date() > new Date(data.expiresAt)) throw new Error("expired");

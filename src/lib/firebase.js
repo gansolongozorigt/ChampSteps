@@ -423,6 +423,10 @@ export async function createPromoCode(data) {
         usedBy: [],
     });
 }
+export async function togglePromoCode(code, active) {
+    const db = requireDb();
+    await updateDoc(doc(db, "promoCodes", code.toUpperCase()), { active });
+}
 export async function listPromoCodes() {
     const db = requireDb();
     const snap = await getDocs(collection(db, "promoCodes"));
@@ -446,7 +450,7 @@ export async function redeemPromoCode(code, userId) {
         throw new Error("not_found");
     const data = snap.data();
     if (!data.active)
-        throw new Error("inactive");
+        throw new Error("Код хүчингүй болсон байна");
     if (data.usedBy.includes(userId))
         throw new Error("already_used");
     if (data.usedBy.length >= data.maxUses)
