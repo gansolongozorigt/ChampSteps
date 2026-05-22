@@ -6,6 +6,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddAchievementForm from "./components/AddAchievementForm";
+import ChampMascot from "./components/ChampMascot";
 import AdminPage from "./components/AdminPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
@@ -69,6 +70,7 @@ function Dashboard() {
     const [pdfBusy, setPdfBusy] = useState(false);
     const [pdfTemplate, setPdfTemplate] = useState("official");
     const [editingAchievement, setEditingAchievement] = useState(null);
+    const [champMood, setChampMood] = useState("idle");
     const child = children[activeChildIdx];
     const tierLimits = TIER_LIMITS[subscription] ?? TIER_LIMITS.free;
     const { achievements, loading: loadingAch, error: achError, addLocal } = useAchievements(child?.childId ?? "", seedAchievements);
@@ -140,6 +142,8 @@ function Dashboard() {
                 await createAchievement(child.childId, draft);
                 setShowForm(false);
                 setToast({ kind: "success", message: t("status.saved") });
+                setChampMood("excited");
+                setTimeout(() => setChampMood("idle"), 3000);
             }
             catch {
                 setToast({ kind: "error", message: t("status.errorSaving") });
@@ -161,6 +165,8 @@ function Dashboard() {
         addLocal(newItem);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        setChampMood("excited");
+        setTimeout(() => setChampMood("idle"), 3000);
     }
     async function handleUpdateChild(next, avatarFile) {
         if (isFirebaseConfigured) {
@@ -342,7 +348,7 @@ function Dashboard() {
             icon: (_jsx("svg", { className: "w-5 h-5", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.8, children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" }) })),
         },
     ];
-    return (_jsxs("div", { className: "flex flex-col h-screen bg-stone-100 font-sans", children: [_jsxs("header", { className: "sticky top-0 z-40 bg-stone-950 print:hidden", children: [_jsxs("div", { className: "px-4 py-2.5 flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsxs("svg", { width: "22", height: "22", viewBox: "0 0 48 48", fill: "none", "aria-hidden": "true", children: [_jsxs("defs", { children: [_jsxs("linearGradient", { id: "hg1", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#d97706", stopOpacity: "0.25" }), _jsx("stop", { offset: "100%", stopColor: "#d97706", stopOpacity: "0.12" })] }), _jsxs("linearGradient", { id: "hg2", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#d97706", stopOpacity: "0.65" }), _jsx("stop", { offset: "100%", stopColor: "#b45309", stopOpacity: "0.5" })] }), _jsxs("linearGradient", { id: "hg3", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#fbbf24" }), _jsx("stop", { offset: "100%", stopColor: "#92400e" })] })] }), _jsx("rect", { x: "4", y: "32", width: "10", height: "12", rx: "2.5", fill: "url(#hg1)" }), _jsx("rect", { x: "17", y: "22", width: "10", height: "22", rx: "2.5", fill: "url(#hg2)" }), _jsx("rect", { x: "30", y: "10", width: "10", height: "34", rx: "2.5", fill: "url(#hg3)" }), _jsx("circle", { cx: "35", cy: "7", r: "5.5", fill: "white", fillOpacity: "0.1" }), _jsx("path", { d: "M35 4.2L36.1 6.7H38.7L36.6 8.2L37.4 10.8L35 9.3L32.6 10.8L33.4 8.2L31.3 6.7H33.9Z", fill: "#fbbf24" })] }), _jsxs("span", { className: "text-[15px] font-bold tracking-tight leading-none", children: [_jsx("span", { className: "text-white", children: "Champ" }), _jsx("span", { style: { background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }, children: "Step" })] }), _jsx("span", { className: `text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
+    return (_jsxs("div", { className: "flex flex-col h-screen bg-stone-100 font-sans", children: [_jsxs("header", { className: "sticky top-0 z-40 bg-stone-950 print:hidden", children: [_jsxs("div", { className: "px-4 py-2.5 flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsxs("svg", { width: "22", height: "22", viewBox: "0 0 48 48", fill: "none", "aria-hidden": "true", children: [_jsxs("defs", { children: [_jsxs("linearGradient", { id: "hg1", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#d97706", stopOpacity: "0.25" }), _jsx("stop", { offset: "100%", stopColor: "#d97706", stopOpacity: "0.12" })] }), _jsxs("linearGradient", { id: "hg2", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#d97706", stopOpacity: "0.65" }), _jsx("stop", { offset: "100%", stopColor: "#b45309", stopOpacity: "0.5" })] }), _jsxs("linearGradient", { id: "hg3", x1: "0", y1: "0", x2: "0", y2: "1", children: [_jsx("stop", { offset: "0%", stopColor: "#fbbf24" }), _jsx("stop", { offset: "100%", stopColor: "#92400e" })] })] }), _jsx("rect", { x: "4", y: "32", width: "10", height: "12", rx: "2.5", fill: "url(#hg1)" }), _jsx("rect", { x: "17", y: "22", width: "10", height: "22", rx: "2.5", fill: "url(#hg2)" }), _jsx("rect", { x: "30", y: "10", width: "10", height: "34", rx: "2.5", fill: "url(#hg3)" }), _jsx("circle", { cx: "35", cy: "7", r: "5.5", fill: "white", fillOpacity: "0.1" }), _jsx("path", { d: "M35 4.2L36.1 6.7H38.7L36.6 8.2L37.4 10.8L35 9.3L32.6 10.8L33.4 8.2L31.3 6.7H33.9Z", fill: "#fbbf24" })] }), _jsxs("span", { className: "text-[15px] font-bold tracking-tight leading-none", children: [_jsx("span", { className: "text-white", children: "Champ" }), _jsx("span", { style: { background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }, children: "Step" })] }), _jsx(ChampMascot, { size: 32, mood: champMood, animate: true }), _jsx("span", { className: `text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
                                             subscription === "master" ? "bg-violet-950 text-violet-300 border-violet-700" :
                                                 subscription === "coach" ? "bg-amber-950 text-amber-400 border-amber-700" :
                                                     "bg-stone-800 text-stone-500 border-stone-700"}`, children: subscription === "family" ? t("sub.tierNames.family").toUpperCase() :

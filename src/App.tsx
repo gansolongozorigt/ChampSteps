@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
+import ChampMascot from "./components/ChampMascot";
 import AdminPage from "./components/AdminPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
@@ -99,6 +100,7 @@ function Dashboard() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
+  const [champMood, setChampMood] = useState<"idle" | "happy" | "excited">("idle");
 
   const child = children[activeChildIdx];
   const tierLimits = TIER_LIMITS[subscription as SubscriptionTier] ?? TIER_LIMITS.free;
@@ -172,6 +174,8 @@ function Dashboard() {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        setChampMood("excited");
+        setTimeout(() => setChampMood("idle"), 3000);
       } catch {
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
@@ -192,6 +196,8 @@ function Dashboard() {
     addLocal(newItem);
     setShowForm(false);
     setToast({ kind: "success", message: t("status.saved") });
+    setChampMood("excited");
+    setTimeout(() => setChampMood("idle"), 3000);
   }
 
   async function handleUpdateChild(next: Child, avatarFile?: File) {
@@ -406,6 +412,7 @@ function Dashboard() {
               <span className="text-white">Champ</span>
               <span style={{ background:"linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>Step</span>
             </span>
+            <ChampMascot size={32} mood={champMood} animate={true} />
             <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${
               subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
               subscription === "master" ? "bg-violet-950 text-violet-300 border-violet-700" :
