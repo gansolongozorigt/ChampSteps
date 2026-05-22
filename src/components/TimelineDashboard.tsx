@@ -15,6 +15,7 @@ import {
 } from "../utils/format";
 import EmptyState from "./EmptyState";
 import AIInsightCard from "./AIInsightCard";
+import ChampMascot from "./ChampMascot";
 
 type CategoryFilter = AchievementCategory | "All";
 type SortOrder = "newest" | "oldest";
@@ -26,6 +27,7 @@ export interface TimelineDashboardProps {
   onEditProfile?: () => void;
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
+  champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
 }
 
 export default function TimelineDashboard({
@@ -35,6 +37,7 @@ export default function TimelineDashboard({
   onEditProfile,
   onEditAchievement,
   onDeleteAchievement,
+  champMood = "idle",
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -124,16 +127,21 @@ export default function TimelineDashboard({
         {/* ── Stat cards — В хувилбар ────────────────────────────────── */}
         <section className="grid grid-cols-2 gap-2.5 mb-5">
           {/* Main: Нийт амжилт */}
-          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-end min-h-[100px]">
-            <span className="text-[34px] font-semibold text-white leading-none">
-              {stats.total}
-            </span>
-            <span className="text-[11px] text-amber-500 mt-2 font-medium">
-              {t("summary.total")}
-            </span>
-            <span className="text-[10px] text-stone-600 mt-0.5">
-              {t("summary.entries")}
-            </span>
+          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-between min-h-[140px]">
+            <div className="flex justify-center">
+              <ChampMascot size={80} mood={champMood} animate={true} />
+            </div>
+            <div>
+              <span className="text-[34px] font-semibold text-white leading-none">
+                {stats.total}
+              </span>
+              <span className="text-[11px] text-amber-500 mt-2 font-medium block">
+                {t("summary.total")}
+              </span>
+              <span className="text-[10px] text-stone-600 mt-0.5 block">
+                {t("summary.entries")}
+              </span>
+            </div>
           </div>
 
           {/* Нийт шагнал */}

@@ -100,7 +100,7 @@ function Dashboard() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
-  const [champMood, setChampMood] = useState<"idle" | "happy" | "excited">("idle");
+  const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
   const child = children[activeChildIdx];
   const tierLimits = TIER_LIMITS[subscription as SubscriptionTier] ?? TIER_LIMITS.free;
@@ -566,6 +566,7 @@ function Dashboard() {
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
+              champMood={champMood}
             />
           )}
           {activeSection === "practice" && (
