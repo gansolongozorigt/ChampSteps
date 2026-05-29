@@ -8,7 +8,9 @@ import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
 // import ChampMascot from "./components/ChampMascot";
+import AboutPage from "./components/AboutPage";
 import AdminPage from "./components/AdminPage";
+import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
@@ -47,7 +49,7 @@ import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf";
+type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms";
 
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
@@ -386,6 +388,28 @@ function Dashboard() {
         </svg>
       ),
     },
+    {
+      id: "about" as NavSection,
+      label: t("nav.about"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+      ),
+    },
+    {
+      id: "terms" as NavSection,
+      label: t("nav.terms"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25h.75" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -513,6 +537,8 @@ function Dashboard() {
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
                 pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
+                about:        "bg-teal-600/15 text-teal-400 border-l-2 border-teal-500",
+                terms:        "bg-slate-600/15 text-slate-400 border-l-2 border-slate-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -593,6 +619,16 @@ function Dashboard() {
               </div>
             </div>
           )}
+          {activeSection === "about" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <AboutPage />
+            </div>
+          )}
+          {activeSection === "terms" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <TermsPage />
+            </div>
+          )}
           {activeSection === "pdf" && (
             <div className="px-4 py-6 max-w-xl mx-auto">
               <SectionHeader title="PDF" subtitle={child.name} />
@@ -671,8 +707,8 @@ function Dashboard() {
         <div className="flex items-stretch">
           {navItems.map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500" };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500", about:"text-teal-500", terms:"text-slate-400" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500", about:"bg-teal-500", terms:"bg-slate-400" };
             return (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>

@@ -106,7 +106,9 @@
     "practice": "Бэлтгэл",
     "reflection": "Сэтгэл",
     "coach": "Багш",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "about": "Бидний тухай",
+    "terms": "Нөхцөл"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
