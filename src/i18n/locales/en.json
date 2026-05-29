@@ -106,7 +106,9 @@
     "practice": "Practice",
     "reflection": "Journal",
     "coach": "Coach",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "about": "About",
+    "terms": "Terms"
   },
   "auth": {
     "signInTitle": "Sign in to ChampStep",
