@@ -131,22 +131,22 @@ export default function AboutPage() {
             {
               name: isMn ? "Үнэгүй" : "Free",
               price: "₮0",
-              desc: isMn ? "5 амжилт хүртэл" : "Up to 5 achievements",
+              desc: isMn ? "1 хүүхэд · 30 бичлэг хүртэл" : "1 child · Up to 30 entries",
             },
             {
               name: isMn ? "Гэр бүл" : "Family",
               price: "₮9,900",
-              desc: isMn ? "3 хүүхэд · 30 амжилт · PDF" : "3 children · 30 achievements · PDF",
+              desc: isMn ? "3 хүүхэд · Хязгааргүй бичлэг · PDF" : "3 children · Unlimited entries · PDF",
             },
             {
               name: isMn ? "Мастер" : "Master",
               price: "₮24,900",
-              desc: isMn ? "5 хүүхэд · Хязгааргүй · PDF · AI" : "5 children · Unlimited · PDF · AI",
+              desc: isMn ? "10 хүүхэд · Хязгааргүй бичлэг · PDF · AI" : "10 children · Unlimited entries · PDF · AI",
             },
             {
               name: isMn ? "Багш" : "Coach",
               price: "₮49,900",
-              desc: isMn ? "Хязгааргүй шавь · Бүх боломж" : "Unlimited students · All features",
+              desc: isMn ? "30 хүүхэд · Хязгааргүй бичлэг · PDF · AI" : "30 children · Unlimited entries · PDF · AI",
             },
           ].map((tier) => (
             <div key={tier.name} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
