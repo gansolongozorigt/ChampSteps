@@ -467,6 +467,12 @@ function Dashboard() {
                   <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("profile.edit")}
                   </button>
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.about")}
+                  </button>
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.terms")}
+                  </button>
                   {user?.email === "gansolongozorigt7@gmail.com" && (
                     <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
                       ⚙ Admin
@@ -705,7 +711,7 @@ function Dashboard() {
           </div>
         )}
         <div className="flex items-stretch">
-          {navItems.map((item) => {
+          {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map((item) => {
             const active = activeSection === item.id;
             const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500", about:"text-teal-500", terms:"text-slate-400" };
             const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500", about:"bg-teal-500", terms:"bg-slate-400" };
