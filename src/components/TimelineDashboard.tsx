@@ -30,6 +30,9 @@ export interface TimelineDashboardProps {
   champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
 }
 
+// Шонхор mascot-ийг түр нуусан. Animated дүр болгож буцааж оруулах үед true болгоно.
+const SHOW_MASCOT = false;
+
 export default function TimelineDashboard({
   child,
   achievements,
@@ -127,10 +130,12 @@ export default function TimelineDashboard({
         {/* ── Stat cards — В хувилбар ────────────────────────────────── */}
         <section className="grid grid-cols-2 gap-2.5 mb-5">
           {/* Main: Нийт амжилт */}
-          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-between min-h-[140px]">
-            <div className="flex justify-center">
-              <ChampMascot size={80} mood={champMood} animate={true} />
-            </div>
+          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-end min-h-[140px]">
+            {SHOW_MASCOT && (
+              <div className="flex justify-center mb-2">
+                <ChampMascot size={80} mood={champMood} animate={true} />
+              </div>
+            )}
             <div>
               <span className="text-[34px] font-semibold text-white leading-none">
                 {stats.total}
