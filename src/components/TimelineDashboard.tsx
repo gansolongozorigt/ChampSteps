@@ -250,9 +250,10 @@ export default function TimelineDashboard({
                     {formatMonthHeading(month, locale)}
                   </h2>
                   <ul className="space-y-3">
-                    {items.map((a) => (
+                    {items.map((a, idx) => (
                       <TimelineCard
                         key={a.id}
+                        index={idx}
                         achievement={a}
                         locale={locale}
                         deleteConfirm={deleteConfirmId === a.id}
@@ -281,6 +282,7 @@ export default function TimelineDashboard({
 
 function TimelineCard({
   achievement,
+  index,
   locale,
   deleteConfirm,
   onEdit,
@@ -289,6 +291,7 @@ function TimelineCard({
   onDeleteCancel,
 }: {
   achievement: Achievement;
+  index: number;
   locale: string;
   deleteConfirm: boolean;
   onEdit: () => void;
@@ -302,7 +305,7 @@ function TimelineCard({
   const photoCount = achievement.imageURLs.length;
 
   return (
-    <li className="relative">
+    <li className="relative animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 0.06}s` }}>
       {/* Timeline dot */}
       <span
         aria-hidden
