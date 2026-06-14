@@ -25,6 +25,7 @@ import { useAuth } from "./lib/auth";
 import { createAchievement, createChild, createPracticeLog, createReflection, deletePracticeLog, deleteReflection, createInviteCode, useInviteCode, deleteAchievement, getChildrenForParent, getChildrenForTeacher, isFirebaseConfigured, updateChild as fbUpdateChild, } from "./lib/firebase";
 import { loadLocalChild, saveLocalAchievements, saveLocalChild, } from "./lib/localStore";
 import { exportPortfolio } from "./lib/pdfExport";
+import { celebrate } from "./lib/celebrate";
 import { TIER_LIMITS } from "./types";
 const makeInitialChild = (parentId) => ({
     childId: `child_${parentId.slice(0, 8)}_001`,
@@ -144,6 +145,7 @@ function Dashboard() {
                 await createAchievement(child.childId, draft);
                 setShowForm(false);
                 setToast({ kind: "success", message: t("status.saved") });
+                celebrate();
                 // setChampMood("excited");
                 // setTimeout(() => setChampMood("idle"), 3000);
             }
@@ -167,6 +169,7 @@ function Dashboard() {
         addLocal(newItem);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        celebrate();
         // setChampMood("excited");
         // setTimeout(() => setChampMood("idle"), 3000);
     }

@@ -44,6 +44,7 @@ import {
   saveLocalChild,
 } from "./lib/localStore";
 import { exportPortfolio } from "./lib/pdfExport";
+import { celebrate } from "./lib/celebrate";
 import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
 import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
@@ -176,6 +177,7 @@ function Dashboard() {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        celebrate();
         // setChampMood("excited");
         // setTimeout(() => setChampMood("idle"), 3000);
       } catch {
@@ -198,6 +200,7 @@ function Dashboard() {
     addLocal(newItem);
     setShowForm(false);
     setToast({ kind: "success", message: t("status.saved") });
+    celebrate();
     // setChampMood("excited");
     // setTimeout(() => setChampMood("idle"), 3000);
   }
