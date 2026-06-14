@@ -28,6 +28,7 @@ export interface TimelineDashboardProps {
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
   champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
+  loading?: boolean;
 }
 
 // Тоог 0-оос зорилтот утга хүртэл гулсуулж тоолох жижиг компонент
@@ -67,6 +68,7 @@ export default function TimelineDashboard({
   onEditAchievement,
   onDeleteAchievement,
   champMood = "idle",
+  loading = false,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -253,7 +255,13 @@ export default function TimelineDashboard({
 
         {/* ── Timeline ───────────────────────────────────────────────── */}
         <section className="relative mt-6">
-          {achievements.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="cs-skeleton rounded-2xl h-28" />
+              ))}
+            </div>
+          ) : achievements.length === 0 ? (
             <EmptyState variant="journal" onPrimary={onAddClick} />
           ) : grouped.length === 0 ? (
             <EmptyState variant="filtered" onPrimary={resetFilters} />

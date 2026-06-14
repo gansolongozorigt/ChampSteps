@@ -597,6 +597,7 @@ function Dashboard() {
             <TimelineDashboard
               child={child}
               achievements={achievements}
+              loading={loadingAch && isFirebaseConfigured}
               onAddClick={() => setShowForm(true)}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
@@ -741,13 +742,6 @@ function Dashboard() {
         </button>
       )}
 
-      {loadingAch && isFirebaseConfigured && (
-        <div className="fixed top-28 inset-x-0 z-30 flex justify-center print:hidden">
-          <div className="rounded-full bg-white px-4 py-1.5 text-[11px] text-stone-600 shadow border border-stone-100">
-            {t("status.loading")}
-          </div>
-        </div>
-      )}
 
       {/* MODALS */}
       {showForm && (
