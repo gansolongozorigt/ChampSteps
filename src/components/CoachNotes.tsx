@@ -45,7 +45,7 @@ export default function CoachNotes({
       for (const uid of teacherIds) {
         try {
           const doc = await getUserDoc(uid);
-          if (doc) results.push({ uid, name: doc.displayName ?? "Багш" });
+          if (doc) results.push({ uid, name: doc.displayName ?? t("coach.defaultName") });
         } catch {
           // ignore
         }
@@ -150,7 +150,7 @@ export default function CoachNotes({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                    {n.teacherName?.slice(0, 1).toUpperCase() ?? "Б"}
+                    {n.teacherName?.slice(0, 1).toUpperCase() ?? t("coach.defaultName").slice(0, 1).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-stone-800">

@@ -3,7 +3,7 @@
 // ⚠️  Logic хэвээр — зөвхөн Tailwind class-ууд шинэчлэгдсэн
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../utils/format";
 import EmptyState from "./EmptyState";
 import AIInsightCard from "./AIInsightCard";
+import ChampMascot from "./ChampMascot";
 
 type CategoryFilter = AchievementCategory | "All";
 type SortOrder = "newest" | "oldest";
@@ -26,7 +27,38 @@ export interface TimelineDashboardProps {
   onEditProfile?: () => void;
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
+  champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
+  loading?: boolean;
 }
+
+// Тоог 0-оос зорилтот утга хүртэл гулсуулж тоолох жижиг компонент
+function CountUp({ value, className }: { value: number; className?: string }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || value === 0) {
+      setDisplay(value);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const duration = 650;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setDisplay(Math.round(value * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={className}>{display}</span>;
+}
+
+// Шонхор mascot-ийг түр нуусан. Animated дүр болгож буцааж оруулах үед true болгоно.
+const SHOW_MASCOT = false;
 
 export default function TimelineDashboard({
   child,
@@ -35,6 +67,8 @@ export default function TimelineDashboard({
   onEditProfile,
   onEditAchievement,
   onDeleteAchievement,
+  champMood = "idle",
+  loading = false,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -124,38 +158,39 @@ export default function TimelineDashboard({
         {/* ── Stat cards — В хувилбар ────────────────────────────────── */}
         <section className="grid grid-cols-2 gap-2.5 mb-5">
           {/* Main: Нийт амжилт */}
-          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-end min-h-[100px]">
-            <span className="text-[34px] font-semibold text-white leading-none">
-              {stats.total}
-            </span>
-            <span className="text-[11px] text-amber-500 mt-2 font-medium">
-              {t("summary.total") || "Нийт амжилт"}
-            </span>
-            <span className="text-[10px] text-stone-600 mt-0.5">
-              {t("summary.entries") || "Бүх ангилалаар"}
-            </span>
+          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-end min-h-[140px]">
+            {SHOW_MASCOT && (
+              <div className="flex justify-center mb-2">
+                <ChampMascot size={80} mood={champMood} animate={true} />
+              </div>
+            )}
+            <div>
+              <CountUp value={stats.total} className="text-[34px] font-semibold text-white leading-none" />
+              <span className="text-[11px] text-amber-500 mt-2 font-medium block">
+                {t("summary.total")}
+              </span>
+              <span className="text-[10px] text-stone-600 mt-0.5 block">
+                {t("summary.entries")}
+              </span>
+            </div>
           </div>
 
           {/* Нийт шагнал */}
           <div className="bg-amber-50 rounded-2xl p-3.5 border border-amber-100">
-            <span className="text-[24px] font-semibold text-amber-900 leading-none">
-              {stats.awards}
-            </span>
+            <CountUp value={stats.awards} className="text-[24px] font-semibold text-amber-900 leading-none" />
             <p className="text-[10px] text-amber-700 mt-1.5 font-medium">
-              {t("summary.gold") || "Нийт шагнал"}
+              {t("summary.gold")}
             </p>
             <p className="text-[9px] text-amber-500 mt-0.5">
-              {t("summary.goldSub") || "Медаль болон тэмдэглэл"}
+              {t("summary.goldSub")}
             </p>
           </div>
 
           {/* Тэргүүн ангилал */}
           <div className="bg-white rounded-2xl p-3.5 border border-stone-200">
-            <span className="text-[24px] font-semibold text-stone-900 leading-none">
-              {stats.topCategory?.[1] ?? 0}
-            </span>
+            <CountUp value={stats.topCategory?.[1] ?? 0} className="text-[24px] font-semibold text-stone-900 leading-none" />
             <p className="text-[10px] text-stone-500 mt-1.5 font-medium">
-              {t("summary.topCategory") || "Тэргүүн ангилал"}
+              {t("summary.topCategory")}
             </p>
             <p className="text-[9px] text-stone-400 mt-0.5">
               {stats.topCategory && stats.topCategory[1] > 0
@@ -190,12 +225,12 @@ export default function TimelineDashboard({
             </div>
             <div className="flex items-center justify-between gap-2">
               {/* Category chips */}
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1">
+              <div className="flex gap-1 flex-wrap flex-1">
                 {(["All", "Sports", "Arts", "Academic"] as CategoryFilter[]).map((c) => (
                   <button
                     key={c}
                     onClick={() => setFilter(c)}
-                    className={`text-[11px] font-medium px-3 py-1.5 rounded-full whitespace-nowrap border transition-all shrink-0 ${
+                    className={`text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                       filter === c
                         ? "bg-stone-950 text-white border-stone-950"
                         : "bg-white text-stone-500 border-stone-200 hover:border-stone-400"
@@ -220,7 +255,13 @@ export default function TimelineDashboard({
 
         {/* ── Timeline ───────────────────────────────────────────────── */}
         <section className="relative mt-6">
-          {achievements.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="cs-skeleton rounded-2xl h-28" />
+              ))}
+            </div>
+          ) : achievements.length === 0 ? (
             <EmptyState variant="journal" onPrimary={onAddClick} />
           ) : grouped.length === 0 ? (
             <EmptyState variant="filtered" onPrimary={resetFilters} />
@@ -237,9 +278,10 @@ export default function TimelineDashboard({
                     {formatMonthHeading(month, locale)}
                   </h2>
                   <ul className="space-y-3">
-                    {items.map((a) => (
+                    {items.map((a, idx) => (
                       <TimelineCard
                         key={a.id}
+                        index={idx}
                         achievement={a}
                         locale={locale}
                         deleteConfirm={deleteConfirmId === a.id}
@@ -268,6 +310,7 @@ export default function TimelineDashboard({
 
 function TimelineCard({
   achievement,
+  index,
   locale,
   deleteConfirm,
   onEdit,
@@ -276,6 +319,7 @@ function TimelineCard({
   onDeleteCancel,
 }: {
   achievement: Achievement;
+  index: number;
   locale: string;
   deleteConfirm: boolean;
   onEdit: () => void;
@@ -286,10 +330,14 @@ function TimelineCard({
   const { t } = useTranslation();
   const cat = categoryStyles[achievement.category];
   const award = awardStyles[achievement.awardType];
+  const isMedal =
+    achievement.awardType === "Gold" ||
+    achievement.awardType === "Silver" ||
+    achievement.awardType === "Bronze";
   const photoCount = achievement.imageURLs.length;
 
   return (
-    <li className="relative">
+    <li className="relative animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 0.06}s` }}>
       {/* Timeline dot */}
       <span
         aria-hidden
@@ -310,7 +358,7 @@ function TimelineCard({
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {/* Award badge */}
-              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${award.bg} ${award.text} ${award.ring}`}>
+              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${award.bg} ${award.text} ${award.ring} ${isMedal ? "cs-glint" : ""}`}>
                 {award.emoji} {t(`awards.${achievement.awardType}`)}
               </span>
               {/* Edit/Delete — hover-д гарна */}

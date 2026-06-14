@@ -10,7 +10,8 @@
     "total": "Нийт",
     "entries": "бичлэг",
     "gold": "Алтан медаль",
-    "topCategory": "Тэргүүн ангилал"
+    "topCategory": "Тэргүүн ангилал",
+    "goldSub": "Дэвшүүлэх"
   },
   "categories": {
     "All": "Бүгд",
@@ -86,6 +87,7 @@
       },
       "photosAttached": "{{count}} хавсаргасан"
     },
+    "editHeading": "Бичлэг засах",
     "actions": {
       "cancel": "Цуцлах",
       "back": "Буцах",
@@ -93,7 +95,8 @@
       "remove": "Устгах",
       "save": "Тэмдэглэлийг хадгалах",
       "saveForChild": "{{name}}-д хадгалах",
-      "saving": "Хадгалж байна…"
+      "saving": "Хадгалж байна…",
+      "saveChanges": "Өөрчлөлт хадгалах"
     }
   },
   "nav": {
@@ -103,7 +106,9 @@
     "practice": "Бэлтгэл",
     "reflection": "Сэтгэл",
     "coach": "Багш",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "about": "Бидний тухай",
+    "terms": "Нөхцөл"
   },
   "auth": {
     "signInTitle": "ChampStep-д нэвтрэх",
@@ -111,6 +116,8 @@
     "subtitle": "Хүүхдийнхээ амжилтуудыг цуглуулж, PDF портфолио үүсгэцгээе.",
     "name": "Таны нэр",
     "namePlaceholder": "Эцэг эхийн нэр",
+    "teacherNamePlaceholder": "Багшийн нэр",
+    "defaultName": "Хэрэглэгч",
     "email": "Имэйл",
     "password": "Нууц үг",
     "signIn": "Нэвтрэх",
@@ -340,6 +347,18 @@
     "switchChild": "Хүүхэд солих",
     "namePlaceholder": "Хүүхдийн нэр"
   },
+  "coach": {
+    "writeNote": "{{name}}-д зөвлөгөө бичих",
+    "parentCanSee": "Эцэг эх харж болно",
+    "placeholder": "{{name}}-д зөвлөгөө бичэх...",
+    "saving": "Хадгалж байна...",
+    "addButton": "Зөвлөгөө нэмэх",
+    "connectedTeacher": "Холбосон багш",
+    "empty": "Зөвлөгөө байхгүй",
+    "parentEmpty": "Багшийн зөвлөгөө байхгүй",
+    "delete": "Устгах",
+    "defaultName": "Багш"
+  },
   "sub": {
     "title": "ChampStep Эрх",
     "subtitle": "Premium болсноор PDF, олон хүүхэд, AI зөвлөгөө авна.",
@@ -365,11 +384,19 @@
     "confirm": "Төлбөрийг баталгаажуулах",
     "demo": "Туршилтын горим",
     "pay": "Төлөх",
-    "upgrade": "⬆ Upgrade",
+    "premiumFeatures": "Хязгааргүй амжилт · PDF · AI",
+    "upgrade": "⬆ Багцаа ахиулах",
     "nearLimit": "⚠️ {{count}}/{{max}} — хязгаарт ойртлоо",
     "success": "Амжилттай!",
     "successMsg": "{{name}} эрх идэвхжлээ.",
     "close": "Хаах"
+  },
+  "promo": {
+    "label": "Хямдралын код",
+    "placeholder": "Хямдралын кодоо оруулна уу",
+    "apply": "Хэрэглэх",
+    "success": "{{months}} сар үнэгүй эрх нэмэгдлээ!",
+    "invalid": "Код буруу эсвэл хугацаа дууссан байна."
   },
   "login": {
     "whoAreYou": "ТА ХЭН БЭ?",
