@@ -3,7 +3,7 @@
 // ⚠️  Logic хэвээр — зөвхөн Tailwind class-ууд шинэчлэгдсэн
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
@@ -28,6 +28,32 @@ export interface TimelineDashboardProps {
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
   champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
+}
+
+// Тоог 0-оос зорилтот утга хүртэл гулсуулж тоолох жижиг компонент
+function CountUp({ value, className }: { value: number; className?: string }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || value === 0) {
+      setDisplay(value);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const duration = 650;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setDisplay(Math.round(value * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={className}>{display}</span>;
 }
 
 // Шонхор mascot-ийг түр нуусан. Animated дүр болгож буцааж оруулах үед true болгоно.
@@ -137,9 +163,7 @@ export default function TimelineDashboard({
               </div>
             )}
             <div>
-              <span className="text-[34px] font-semibold text-white leading-none">
-                {stats.total}
-              </span>
+              <CountUp value={stats.total} className="text-[34px] font-semibold text-white leading-none" />
               <span className="text-[11px] text-amber-500 mt-2 font-medium block">
                 {t("summary.total")}
               </span>
@@ -151,9 +175,7 @@ export default function TimelineDashboard({
 
           {/* Нийт шагнал */}
           <div className="bg-amber-50 rounded-2xl p-3.5 border border-amber-100">
-            <span className="text-[24px] font-semibold text-amber-900 leading-none">
-              {stats.awards}
-            </span>
+            <CountUp value={stats.awards} className="text-[24px] font-semibold text-amber-900 leading-none" />
             <p className="text-[10px] text-amber-700 mt-1.5 font-medium">
               {t("summary.gold")}
             </p>
@@ -164,9 +186,7 @@ export default function TimelineDashboard({
 
           {/* Тэргүүн ангилал */}
           <div className="bg-white rounded-2xl p-3.5 border border-stone-200">
-            <span className="text-[24px] font-semibold text-stone-900 leading-none">
-              {stats.topCategory?.[1] ?? 0}
-            </span>
+            <CountUp value={stats.topCategory?.[1] ?? 0} className="text-[24px] font-semibold text-stone-900 leading-none" />
             <p className="text-[10px] text-stone-500 mt-1.5 font-medium">
               {t("summary.topCategory")}
             </p>
