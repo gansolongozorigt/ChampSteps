@@ -71,6 +71,24 @@
   100% { transform: translateX(100%); }
 }
 
+/* Нэг удаагийн гялбаа — медаль (олон медальтай үед уйтгартай давталтаас сэргийлнэ) */
+.cs-glint {
+  position: relative;
+  overflow: hidden;
+}
+.cs-glint::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 55%;
+  height: 100%;
+  transform: translateX(-150%) skewX(-20deg);
+  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: cs-sweep 1.1s ease-out 0.35s 1 both;
+  pointer-events: none;
+}
+
 /* Хөдөлгөөнд мэдрэг хэрэглэгчдийг хамгаална */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

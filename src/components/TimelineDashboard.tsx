@@ -322,6 +322,10 @@ function TimelineCard({
   const { t } = useTranslation();
   const cat = categoryStyles[achievement.category];
   const award = awardStyles[achievement.awardType];
+  const isMedal =
+    achievement.awardType === "Gold" ||
+    achievement.awardType === "Silver" ||
+    achievement.awardType === "Bronze";
   const photoCount = achievement.imageURLs.length;
 
   return (
@@ -346,7 +350,7 @@ function TimelineCard({
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {/* Award badge */}
-              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${award.bg} ${award.text} ${award.ring}`}>
+              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${award.bg} ${award.text} ${award.ring} ${isMedal ? "cs-glint" : ""}`}>
                 {award.emoji} {t(`awards.${achievement.awardType}`)}
               </span>
               {/* Edit/Delete — hover-д гарна */}
