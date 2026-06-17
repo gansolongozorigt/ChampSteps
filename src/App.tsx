@@ -649,7 +649,6 @@ function Dashboard() {
                 <div className="divide-y divide-stone-100">
                   {([
                     { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
-                    { id: "kids"     as PdfTemplate, label: t("pdf.kids"),     desc: t("pdf.kidsDesc") },
                     { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
                     { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
                   ]).map((tmpl) => (

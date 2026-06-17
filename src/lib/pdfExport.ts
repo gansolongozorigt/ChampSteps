@@ -6,7 +6,7 @@
 import { jsPDF } from "jspdf";
 import type { Achievement, Child } from "../types";
 
-export type PdfTemplate = "official" | "kids" | "gold" | "portfolio";
+export type PdfTemplate = "official" | "gold" | "portfolio";
 
 interface ExportOpts {
   template?: PdfTemplate;
@@ -204,8 +204,6 @@ export async function exportPortfolio(
 
   if (template === "official") {
     await renderOfficial(doc, child, achievements, t, includeImages);
-  } else if (template === "kids") {
-    await renderKids(doc, child, achievements, t, includeImages);
   } else if (template === "gold") {
     await renderGold(doc, child, achievements, t, includeImages);
   } else {

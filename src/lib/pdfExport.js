@@ -188,9 +188,6 @@ export async function exportPortfolio(child, achievements, opts = {}) {
     if (template === "official") {
         await renderOfficial(doc, child, achievements, t, includeImages);
     }
-    else if (template === "kids") {
-        await renderKids(doc, child, achievements, t, includeImages);
-    }
     else if (template === "gold") {
         await renderGold(doc, child, achievements, t, includeImages);
     }
