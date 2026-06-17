@@ -11,7 +11,8 @@
     "entries": "entries",
     "gold": "Gold medals",
     "topCategory": "Top category",
-    "goldSub": "Upgrade for more"
+    "goldSub": "Upgrade for more",
+    "totalAchievements": "{{n}} total achievements"
   },
   "categories": {
     "All": "All",

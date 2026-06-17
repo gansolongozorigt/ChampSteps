@@ -11,7 +11,8 @@
     "entries": "бичлэг",
     "gold": "Алтан медаль",
     "topCategory": "Тэргүүн ангилал",
-    "goldSub": "Дэвшүүлэх"
+    "goldSub": "Дэвшүүлэх",
+    "totalAchievements": "Нийт {{n}} амжилт"
   },
   "categories": {
     "All": "Бүгд",

@@ -15,6 +15,7 @@ import {
 } from "../utils/format";
 import EmptyState from "./EmptyState";
 import AIInsightCard from "./AIInsightCard";
+import AchievementSummary from "./AchievementSummary";
 import ChampMascot from "./ChampMascot";
 
 type CategoryFilter = AchievementCategory | "All";
@@ -155,50 +156,8 @@ export default function TimelineDashboard({
           </button>
         </header>
 
-        {/* ── Stat cards — В хувилбар ────────────────────────────────── */}
-        <section className="grid grid-cols-2 gap-2.5 mb-5">
-          {/* Main: Нийт амжилт */}
-          <div className="bg-stone-950 rounded-2xl p-4 row-span-2 flex flex-col justify-end min-h-[140px]">
-            {SHOW_MASCOT && (
-              <div className="flex justify-center mb-2">
-                <ChampMascot size={80} mood={champMood} animate={true} />
-              </div>
-            )}
-            <div>
-              <CountUp value={stats.total} className="text-[34px] font-semibold text-white leading-none" />
-              <span className="text-[11px] text-amber-500 mt-2 font-medium block">
-                {t("summary.total")}
-              </span>
-              <span className="text-[10px] text-stone-600 mt-0.5 block">
-                {t("summary.entries")}
-              </span>
-            </div>
-          </div>
-
-          {/* Нийт шагнал */}
-          <div className="bg-amber-50 rounded-2xl p-3.5 border border-amber-100">
-            <CountUp value={stats.awards} className="text-[24px] font-semibold text-amber-900 leading-none" />
-            <p className="text-[10px] text-amber-700 mt-1.5 font-medium">
-              {t("summary.gold")}
-            </p>
-            <p className="text-[9px] text-amber-500 mt-0.5">
-              {t("summary.goldSub")}
-            </p>
-          </div>
-
-          {/* Тэргүүн ангилал */}
-          <div className="bg-white rounded-2xl p-3.5 border border-stone-200">
-            <CountUp value={stats.topCategory?.[1] ?? 0} className="text-[24px] font-semibold text-stone-900 leading-none" />
-            <p className="text-[10px] text-stone-500 mt-1.5 font-medium">
-              {t("summary.topCategory")}
-            </p>
-            <p className="text-[9px] text-stone-400 mt-0.5">
-              {stats.topCategory && stats.topCategory[1] > 0
-                ? t(`categories.${stats.topCategory[0]}`)
-                : "—"}
-            </p>
-          </div>
-        </section>
+        {/* ── Achievement summary (medals) ── */}
+        <AchievementSummary achievements={achievements} />
 
         {/* ── AI Insight ─────────────────────────────────────────────── */}
         {achievements.length > 0 && (
