@@ -818,13 +818,16 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 
 function LanguageChip() {
   const { i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage ?? i18n.language;
+  const order = ["mn", "en", "ru"];
+  const current = (i18n.resolvedLanguage ?? i18n.language ?? "mn").slice(0, 2);
+  const idx = order.indexOf(current);
+  const next = order[(idx + 1) % order.length] ?? "mn";
   return (
     <button
-      onClick={() => i18n.changeLanguage(lang === "mn" ? "en" : "mn")}
+      onClick={() => i18n.changeLanguage(next)}
       className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
     >
-      {lang === "mn" ? "MN" : "EN"}
+      {(idx >= 0 ? current : "mn").toUpperCase()}
     </button>
   );
 }

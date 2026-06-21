@@ -8,7 +8,8 @@ import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import mn from "./locales/mn.json";
 import en from "./locales/en.json";
-export const SUPPORTED_LANGS = ["mn", "en"];
+import ru from "./locales/ru.json";
+export const SUPPORTED_LANGS = ["mn", "en", "ru"];
 i18n
     .use(LanguageDetector)
     .use(initReactI18next)
@@ -16,6 +17,7 @@ i18n
     resources: {
         mn: { translation: mn },
         en: { translation: en },
+        ru: { translation: ru },
     },
     fallbackLng: "mn",
     supportedLngs: SUPPORTED_LANGS,

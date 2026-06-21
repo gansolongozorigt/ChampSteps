@@ -8,6 +8,7 @@ import { SUPPORTED_LANGS } from "../i18n";
 const LABELS = {
     mn: "MN",
     en: "EN",
+    ru: "RU",
 };
 export default function LanguageToggle() {
     const { i18n, t } = useTranslation();

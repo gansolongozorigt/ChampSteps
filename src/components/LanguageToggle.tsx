@@ -9,6 +9,7 @@ import { SUPPORTED_LANGS, type AppLang } from "../i18n";
 const LABELS: Record<AppLang, string> = {
   mn: "MN",
   en: "EN",
+  ru: "RU",
 };
 
 export default function LanguageToggle() {
