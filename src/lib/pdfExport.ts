@@ -6,7 +6,7 @@
 import { jsPDF } from "jspdf";
 import type { Achievement, Child } from "../types";
 
-export type PdfTemplate = "official" | "gold" | "portfolio";
+export type PdfTemplate = "official" | "gold" | "portfolio" | "framed";
 
 interface ExportOpts {
   template?: PdfTemplate;
@@ -239,6 +239,8 @@ export async function exportPortfolio(
     await renderOfficial(doc, child, achievements, t, includeImages);
   } else if (template === "gold") {
     await renderGold(doc, child, achievements, t, includeImages);
+  } else if (template === "framed") {
+    await renderFramed(doc, child, achievements, t, includeImages);
   } else {
     await renderPortfolio(doc, child, achievements, t, includeImages);
   }
@@ -889,6 +891,140 @@ async function renderPortfolio(
 // Бүх хуудасны footer + page number
 // -----------------------------------------------------------------------------
 
+// =============================================================================
+// Template: Framed — decorative frame + auto category atmosphere (seal + accent)
+// =============================================================================
+
+type FrameRGB = [number, number, number];
+const FRAME_THEMES: Record<string, { accent: FrameRGB; kind: "arts" | "sports" | "academic" }> = {
+  Arts:     { accent: [186, 117, 23], kind: "arts" },
+  Sports:   { accent: [24, 95, 165],  kind: "sports" },
+  Academic: { accent: [59, 109, 17],  kind: "academic" },
+};
+
+function dominantCategory(achievements: Achievement[]): "Arts" | "Sports" | "Academic" {
+  const counts: Record<string, number> = { Arts: 0, Sports: 0, Academic: 0 };
+  achievements.forEach((a) => { if (counts[a.category] !== undefined) counts[a.category]++; });
+  let best: "Arts" | "Sports" | "Academic" = "Arts";
+  let max = -1;
+  (["Arts", "Sports", "Academic"] as const).forEach((c) => { if (counts[c] > max) { max = counts[c]; best = c; } });
+  return best;
+}
+
+function drawFrameBorder(doc: jsPDF, a: FrameRGB) {
+  doc.setDrawColor(a[0], a[1], a[2]);
+  doc.setLineWidth(0.5); doc.rect(8, 8, A4.w - 16, A4.h - 16);
+  doc.setLineWidth(0.2); doc.rect(10, 10, A4.w - 20, A4.h - 20);
+  const L = 6, m = 12;
+  doc.setLineWidth(0.5);
+  const corners: [number, number, number, number][] = [
+    [m, m, 1, 1], [A4.w - m, m, -1, 1], [m, A4.h - m, 1, -1], [A4.w - m, A4.h - m, -1, -1],
+  ];
+  for (const [cx, cy, dx, dy] of corners) { doc.line(cx, cy, cx + dx * L, cy); doc.line(cx, cy, cx, cy + dy * L); }
+  doc.setFillColor(a[0], a[1], a[2]);
+  const dots: [number, number][] = [[m, m], [A4.w - m, m], [m, A4.h - m], [A4.w - m, A4.h - m]];
+  for (const [cx, cy] of dots) doc.circle(cx, cy, 0.8, "F");
+}
+
+function drawSeal(doc: jsPDF, cx: number, cy: number, a: FrameRGB, kind: "arts" | "sports" | "academic") {
+  doc.setDrawColor(a[0], a[1], a[2]);
+  doc.setLineWidth(0.4); doc.circle(cx, cy, 5.6, "S");
+  doc.setLineWidth(0.22); doc.circle(cx, cy, 6.6, "S");
+  if (kind === "arts") {
+    doc.setFillColor(a[0], a[1], a[2]); doc.ellipse(cx - 1.1, cy + 1.5, 1.3, 0.9, "F");
+    doc.setLineWidth(0.5);
+    doc.line(cx + 0.15, cy + 1.5, cx + 0.15, cy - 2.6);
+    doc.line(cx + 0.15, cy - 2.6, cx + 1.8, cy - 1.5);
+  } else if (kind === "sports") {
+    const ro = 3, ri = 1.25;
+    const pts: [number, number][] = [];
+    for (let i = 0; i < 10; i++) {
+      const ang = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 === 0 ? ro : ri;
+      pts.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+    }
+    const dl: [number, number][] = [];
+    for (let i = 1; i < pts.length; i++) dl.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
+    doc.setFillColor(a[0], a[1], a[2]);
+    doc.lines(dl, pts[0][0], pts[0][1], [1, 1], "F", true);
+  } else {
+    doc.setLineWidth(0.45);
+    doc.line(cx, cy - 2.6, cx, cy + 2.4);
+    doc.lines([[-4, 1], [0, 3.6], [4, -1.4]], cx, cy - 2.2, [1, 1], "S", false);
+    doc.lines([[4, 1], [0, 3.6], [-4, -1.4]], cx, cy - 2.2, [1, 1], "S", false);
+  }
+}
+
+async function renderFramed(
+  doc: jsPDF,
+  child: Child,
+  achievements: Achievement[],
+  t: (k: string, o?: Record<string, unknown>) => string,
+  includeImages = true
+) {
+  const cat = dominantCategory(achievements);
+  const { accent, kind } = FRAME_THEMES[cat];
+  const FM = 20;
+
+  drawFrameBorder(doc, accent);
+
+  drawSeal(doc, A4.w / 2, 24, accent, kind);
+  setFont(doc, "bold"); doc.setFontSize(11); doc.setTextColor(44, 44, 42);
+  doc.text("C H A M P S T E P", A4.w / 2, 36, { align: "center" });
+  setFont(doc, "bold"); doc.setFontSize(8); doc.setTextColor(accent[0], accent[1], accent[2]);
+  doc.text(t(`categories.${cat}`).toUpperCase(), A4.w / 2, 41, { align: "center" });
+  doc.setDrawColor(accent[0], accent[1], accent[2]); doc.setLineWidth(0.5);
+  doc.line(A4.w / 2 - 9, 44, A4.w / 2 + 9, 44);
+
+  setFont(doc, "bold"); doc.setFontSize(22); doc.setTextColor(44, 44, 42);
+  doc.text(child.name, FM, 60);
+  await drawAvatar(doc, child, A4.w - FM - 8, 56, 8, { bgR: accent[0], bgG: accent[1], bgB: accent[2], textR: 255, textG: 255, textB: 255 });
+  doc.setDrawColor(accent[0], accent[1], accent[2]); doc.setLineWidth(0.5); doc.circle(A4.w - FM - 8, 56, 8, "S");
+  if (child.bio) {
+    setFont(doc, "normal"); doc.setFontSize(10); doc.setTextColor(138, 138, 133);
+    doc.text(child.bio, FM, 67, { maxWidth: A4.w - 2 * FM - 22 });
+  }
+  doc.setDrawColor(231, 229, 223); doc.setLineWidth(0.3); doc.line(FM, 74, A4.w - FM, 74);
+
+  let y = 86;
+  for (const a of achievements) {
+    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
+    const blockH = 26 + imgH;
+    if (y + blockH > A4.h - 20) {
+      doc.addPage();
+      drawFrameBorder(doc, accent);
+      y = 26;
+    }
+    doc.setFillColor(accent[0], accent[1], accent[2]); doc.rect(FM, y - 3.5, 0.9, 5, "F");
+    setFont(doc, "bold"); doc.setFontSize(12); doc.setTextColor(44, 44, 42);
+    doc.text(a.title, FM + 4, y, { maxWidth: A4.w - 2 * FM - 8 });
+    setFont(doc, "normal"); doc.setFontSize(9); doc.setTextColor(138, 138, 133);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, FM + 4, y + 5.5);
+    if (a.description) {
+      doc.setFontSize(9.5); doc.setTextColor(85, 85, 79);
+      const lines = doc.splitTextToSize(a.description, A4.w - 2 * FM - 8);
+      doc.text(lines.slice(0, 2), FM + 4, y + 11);
+    }
+    if (includeImages && a.imageURLs?.length) {
+      try {
+        const dataUrl = await urlToDataUrl(a.imageURLs[0]);
+        doc.addImage(dataUrl, "JPEG", FM + 4, y + 16, 55, 40);
+      } catch { drawImagePlaceholder(doc, FM + 4, y + 16, 55, 40); }
+    }
+    doc.setDrawColor(231, 229, 223); doc.setLineWidth(0.3); doc.line(FM, y + blockH, A4.w - FM, y + blockH);
+    y += blockH + 6;
+  }
+
+  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    setFont(doc, "normal"); doc.setFontSize(8); doc.setTextColor(170, 165, 158);
+    doc.text(t("pdf.footer"), A4.w / 2, A4.h - 14, { align: "center" });
+    doc.text(`${i} / ${total}`, A4.w - FM, A4.h - 14, { align: "right" });
+  }
+}
+
+// -----------------------------------------------------------------------------
 function addFooters(doc: jsPDF, footerText: string) {
   const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
   for (let i = 1; i <= total; i++) {
