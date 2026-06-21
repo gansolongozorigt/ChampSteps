@@ -96,6 +96,13 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Section солих шилжилт */
+.cs-section-in { animation: cs-section 0.28s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+@keyframes cs-section {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Хөдөлгөөнд мэдрэг хэрэглэгчдийг хамгаална */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

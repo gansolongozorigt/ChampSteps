@@ -606,6 +606,7 @@ function Dashboard() {
               🏫 {t("status.teacherMode")}
             </div>
           )}
+          <div key={activeSection} className="cs-section-in">
           {activeSection === "achievements" && (
             <TimelineDashboard
               child={child}
@@ -710,6 +711,7 @@ function Dashboard() {
               </div>
             </div>
           )}
+          </div>
         </main>
       </div>
 
