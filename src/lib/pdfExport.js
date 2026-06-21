@@ -60,6 +60,39 @@ function drawImagePlaceholder(doc, x, y, w, h) {
     doc.setTextColor(180, 170, 160);
     doc.text("[ image ]", x + w / 2, y + h / 2 + 2, { align: "center" });
 }
+// Crop an image dataURL into a circle (transparent corners) via offscreen canvas.
+// Cover-fits + centers the source so non-square photos aren't distorted. Returns PNG.
+async function circleCropDataUrl(dataUrl, sizePx = 320) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = sizePx;
+                canvas.height = sizePx;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    resolve(dataUrl);
+                    return;
+                }
+                ctx.beginPath();
+                ctx.arc(sizePx / 2, sizePx / 2, sizePx / 2, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                const scale = Math.max(sizePx / img.width, sizePx / img.height);
+                const dw = img.width * scale;
+                const dh = img.height * scale;
+                ctx.drawImage(img, (sizePx - dw) / 2, (sizePx - dh) / 2, dw, dh);
+                resolve(canvas.toDataURL("image/png"));
+            }
+            catch {
+                resolve(dataUrl);
+            }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
 // Draw a circular avatar: photo if available, amber initial circle otherwise.
 // cx/cy = center in mm, r = radius in mm.
 async function drawAvatar(doc, child, cx, cy, r, opts = {
@@ -69,11 +102,11 @@ async function drawAvatar(doc, child, cx, cy, r, opts = {
     if (child.avatarUrl) {
         const dataUrl = await urlToDataUrl(child.avatarUrl);
         if (dataUrl) {
-            // Clip to circle by drawing filled circle first then image on top using clipping
-            // jsPDF doesn't have native clip path for raster images, so we draw image in bounding square
-            // and overlay a ring to mask corners — acceptable PDF approach
+            // Pre-crop the photo into a circle on an offscreen canvas (cover-fit, centered),
+            // then place it — gives a true circular avatar with no square corners.
             try {
-                doc.addImage(dataUrl, "JPEG", cx - r, cy - r, d, d);
+                const circular = await circleCropDataUrl(dataUrl, 320);
+                doc.addImage(circular, "PNG", cx - r, cy - r, d, d);
                 return;
             }
             catch { /* fall through to initial */ }
