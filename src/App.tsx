@@ -664,6 +664,7 @@ function Dashboard() {
                     { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
                     { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
                     { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
+                    { id: "framed" as PdfTemplate, label: t("pdf.framed"), desc: t("pdf.framedDesc") },
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}

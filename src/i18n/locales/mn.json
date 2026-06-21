@@ -203,6 +203,8 @@
     "kidsDesc": "Өнгөлөг, хөгжилтэй загвар",
     "goldDesc": "Шагнал, алт загвар",
     "portfolioDesc": "Бүрэн портфолио хэв",
+    "framed": "🖼 Хүрээт",
+    "framedDesc": "Чимэглэлт хүрээ, ангиллын өнгө",
     "downloadSubtitle": "{{name}}-ийн PDF портфолио татах",
     "includeImages": "Зураг оруулах",
     "premiumMessage": "🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →"

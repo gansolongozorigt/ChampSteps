@@ -203,6 +203,8 @@
     "kidsDesc": "Colorful, fun design",
     "goldDesc": "Award, gold theme",
     "portfolioDesc": "Full portfolio format",
+    "framed": "🖼 Framed",
+    "framedDesc": "Decorative frame, category theme",
     "downloadSubtitle": "Download {{name}}'s PDF portfolio",
     "includeImages": "Include images",
     "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"
