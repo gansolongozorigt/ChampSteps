@@ -13,6 +13,7 @@ import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
+import PdfPreviewModal from "./components/PdfPreviewModal";
 import TimelineDashboard from "./components/TimelineDashboard";
 import Toast from "./components/Toast";
 import { useAchievements } from "./hooks/useAchievements";
@@ -72,6 +73,7 @@ function Dashboard() {
     const [toast, setToast] = useState(null);
     const [pdfBusy, setPdfBusy] = useState(false);
     const [pdfTemplate, setPdfTemplate] = useState("official");
+    const [previewOpen, setPreviewOpen] = useState(false);
     const [editingAchievement, setEditingAchievement] = useState(null);
     // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
     const child = children[activeChildIdx];
@@ -311,6 +313,17 @@ function Dashboard() {
             setPdfBusy(false);
         }
     }
+    function openPdfPreview(template) {
+        if (!child)
+            return;
+        if (!tierLimits.hasPdf) {
+            setShowSubscription(true);
+            setToast({ kind: "info", message: t("pdf.premiumRequired") });
+            return;
+        }
+        setPdfTemplate(template);
+        setPreviewOpen(true);
+    }
     async function handleSignOut() {
         if (!isFirebaseConfigured)
             saveLocalAchievements([]);
@@ -384,7 +397,7 @@ function Dashboard() {
                                                     { id: "official", label: t("pdf.official"), desc: t("pdf.officialDesc") },
                                                     { id: "gold", label: t("pdf.gold"), desc: t("pdf.goldDesc") },
                                                     { id: "portfolio", label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
-                                                ]).map((tmpl) => (_jsxs("button", { onClick: () => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }, disabled: pdfBusy || !tierLimits.hasPdf, className: "w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40", children: [_jsxs("div", { children: [_jsx("span", { className: "text-[13px] font-medium text-stone-800", children: tmpl.label }), _jsx("p", { className: "text-[11px] text-stone-400 mt-0.5", children: tmpl.desc })] }), pdfTemplate === tmpl.id && pdfBusy ? (_jsxs("svg", { className: "w-4 h-4 animate-spin text-stone-400 shrink-0", fill: "none", viewBox: "0 0 24 24", children: [_jsx("circle", { className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4" }), _jsx("path", { className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" })] })) : (_jsx("svg", { className: "w-4 h-4 text-stone-300 shrink-0", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" }) }))] }, tmpl.id))) }), _jsx("div", { className: "px-4 py-3 border-t border-stone-100", children: _jsxs("label", { className: "flex items-center gap-2.5 cursor-pointer select-none", children: [_jsx("div", { onClick: () => setIncludeImages(!includeImages), className: `w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`, children: includeImages && _jsx("svg", { className: "w-2.5 h-2.5 text-white", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 3, children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M5 13l4 4L19 7" }) }) }), _jsx("span", { className: "text-[12px] text-stone-600", children: t("pdf.includeImages") })] }) }), !tierLimits.hasPdf && (_jsx("div", { className: "px-4 py-3 bg-amber-50 border-t border-amber-100", children: _jsx("button", { onClick: () => setShowSubscription(true), className: "text-[12px] text-amber-600 font-medium", children: t("pdf.premiumMessage") }) }))] })] }))] })] }), _jsxs("nav", { className: "md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden", style: { paddingBottom: "env(safe-area-inset-bottom)" }, children: [!isPremium && (_jsxs("div", { className: "bg-stone-950 px-3 py-2 flex items-center justify-between gap-2", children: [_jsx("span", { className: "text-[10px] text-stone-400", children: showLimitWarning
+                                                ]).map((tmpl) => (_jsxs("button", { onClick: () => openPdfPreview(tmpl.id), disabled: pdfBusy || !tierLimits.hasPdf, className: "w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40", children: [_jsxs("div", { children: [_jsx("span", { className: "text-[13px] font-medium text-stone-800", children: tmpl.label }), _jsx("p", { className: "text-[11px] text-stone-400 mt-0.5", children: tmpl.desc })] }), pdfTemplate === tmpl.id && pdfBusy ? (_jsxs("svg", { className: "w-4 h-4 animate-spin text-stone-400 shrink-0", fill: "none", viewBox: "0 0 24 24", children: [_jsx("circle", { className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4" }), _jsx("path", { className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" })] })) : (_jsx("svg", { className: "w-4 h-4 text-stone-300 shrink-0", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2, children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" }) }))] }, tmpl.id))) }), _jsx("div", { className: "px-4 py-3 border-t border-stone-100", children: _jsxs("label", { className: "flex items-center gap-2.5 cursor-pointer select-none", children: [_jsx("div", { onClick: () => setIncludeImages(!includeImages), className: `w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`, children: includeImages && _jsx("svg", { className: "w-2.5 h-2.5 text-white", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 3, children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", d: "M5 13l4 4L19 7" }) }) }), _jsx("span", { className: "text-[12px] text-stone-600", children: t("pdf.includeImages") })] }) }), !tierLimits.hasPdf && (_jsx("div", { className: "px-4 py-3 bg-amber-50 border-t border-amber-100", children: _jsx("button", { onClick: () => setShowSubscription(true), className: "text-[12px] text-amber-600 font-medium", children: t("pdf.premiumMessage") }) }))] })] }))] })] }), _jsxs("nav", { className: "md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden", style: { paddingBottom: "env(safe-area-inset-bottom)" }, children: [!isPremium && (_jsxs("div", { className: "bg-stone-950 px-3 py-2 flex items-center justify-between gap-2", children: [_jsx("span", { className: "text-[10px] text-stone-400", children: showLimitWarning
                                     ? _jsx("span", { className: "text-amber-400 font-medium", children: t("sub.nearLimit", { count: achCount, max: maxAch }) })
                                     : _jsxs(_Fragment, { children: [_jsx("span", { className: "font-medium text-stone-300", children: t("sub.tierNames.free").toUpperCase() }), " \u00B7 ", achCount, "/", maxAch, " ", t("summary.entries")] }) }), _jsx("button", { onClick: () => setShowSubscription(true), className: "text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0", children: t("sub.upgrade") })] })), _jsx("div", { className: "flex items-stretch", children: navItems.filter((item) => item.id !== "about" && item.id !== "terms").map((item) => {
                             const active = activeSection === item.id;
@@ -407,7 +420,7 @@ function Dashboard() {
                                 setEditingAchievement(null);
                                 setToast({ kind: "success", message: t("status.entryUpdated") });
                             }
-                        } }) }) })), showProfile && _jsx(ChildProfileEditor, { child: child, onClose: () => setShowProfile(false), onSave: handleUpdateChild }), showSubscription && _jsx(SubscriptionModal, { onClose: () => setShowSubscription(false) }), showAddChild && _jsx(AddChildModal, { onClose: () => setShowAddChild(false), onAdd: handleAddNewChild }), showAdmin && _jsx(AdminPage, { onClose: () => setShowAdmin(false) }), toast && _jsx(Toast, { kind: toast.kind, message: toast.message, onClose: () => setToast(null) })] }));
+                        } }) }) })), showProfile && _jsx(ChildProfileEditor, { child: child, onClose: () => setShowProfile(false), onSave: handleUpdateChild }), showSubscription && _jsx(SubscriptionModal, { onClose: () => setShowSubscription(false) }), _jsx(PdfPreviewModal, { open: previewOpen, onClose: () => setPreviewOpen(false), child: child, achievements: achievements, template: pdfTemplate, includeImages: includeImages }), showAddChild && _jsx(AddChildModal, { onClose: () => setShowAddChild(false), onAdd: handleAddNewChild }), showAdmin && _jsx(AdminPage, { onClose: () => setShowAdmin(false) }), toast && _jsx(Toast, { kind: toast.kind, message: toast.message, onClose: () => setToast(null) })] }));
 }
 function SectionHeader({ title, subtitle }) {
     return (_jsxs("div", { className: "mb-5", children: [subtitle && _jsx("p", { className: "text-[10px] font-medium uppercase tracking-widest text-stone-400 mb-1", children: subtitle }), _jsx("h2", { className: "text-xl font-semibold text-stone-900", children: title })] }));

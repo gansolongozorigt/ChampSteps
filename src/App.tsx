@@ -14,6 +14,7 @@ import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
+import PdfPreviewModal from "./components/PdfPreviewModal";
 import TimelineDashboard from "./components/TimelineDashboard";
 import Toast, { type ToastKind } from "./components/Toast";
 import { useAchievements } from "./hooks/useAchievements";
@@ -102,6 +103,7 @@ function Dashboard() {
   const [toast, setToast] = useState<ToastState>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
   // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
@@ -323,6 +325,17 @@ function Dashboard() {
     } finally {
       setPdfBusy(false);
     }
+  }
+
+  function openPdfPreview(template: PdfTemplate) {
+    if (!child) return;
+    if (!tierLimits.hasPdf) {
+      setShowSubscription(true);
+      setToast({ kind: "info", message: t("pdf.premiumRequired") });
+      return;
+    }
+    setPdfTemplate(template);
+    setPreviewOpen(true);
   }
 
   async function handleSignOut() {
@@ -654,7 +667,7 @@ function Dashboard() {
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}
-                      onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
+                      onClick={() => openPdfPreview(tmpl.id)}
                       disabled={pdfBusy || !tierLimits.hasPdf}
                       className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40"
                     >
@@ -779,6 +792,14 @@ function Dashboard() {
       )}
       {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} />}
       {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
+      <PdfPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        child={child}
+        achievements={achievements}
+        template={pdfTemplate}
+        includeImages={includeImages}
+      />
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
