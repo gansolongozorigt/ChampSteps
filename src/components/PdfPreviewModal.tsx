@@ -214,8 +214,8 @@ export default function PdfPreviewModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4 print:hidden" onClick={onClose}>
-      <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4 print:hidden cs-backdrop-in" onClick={onClose}>
+      <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden flex flex-col cs-panel-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-stone-100">
           <div className="min-w-0">
             <p className="text-base font-medium text-stone-900">{t("pdfPreview.title")}</p>

@@ -113,12 +113,12 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4 print:hidden"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4 print:hidden cs-backdrop-in"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl cs-panel-in"
       >
         <header className="flex items-center justify-between border-b border-stone-100 px-5 py-3">
           <h2 className="font-serif text-lg font-bold text-stone-900">{t("sub.title")}</h2>

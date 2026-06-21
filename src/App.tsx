@@ -760,15 +760,15 @@ function Dashboard() {
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden" onClick={() => setShowForm(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl cs-panel-in">
             <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} />
           </div>
         </div>
       )}
       {editingAchievement && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden" onClick={() => setEditingAchievement(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl cs-panel-in">
             <AddAchievementForm
               childId={child.childId}
               childName={child.name}
@@ -928,8 +928,8 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
   const { t } = useTranslation();
   const [name, setName] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 cs-backdrop-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl cs-panel-in">
         <h2 className="text-lg font-semibold text-stone-900 mb-4">{t("children.addChild")}</h2>
         <input
           value={name}
