@@ -817,19 +817,108 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
+function FlagMN() {
+  return (
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#fff" />
+      <rect width="10" height="20" fill="#C4272E" />
+      <rect x="10" width="10" height="20" fill="#015197" />
+      <rect x="20" width="10" height="20" fill="#C4272E" />
+      <g fill="#F9CF02">
+        <circle cx="5" cy="4.2" r="1.05" />
+        <rect x="4.3" y="6" width="1.4" height="9.5" rx="0.35" />
+        <path d="M3.5 5.4 L5 8 L6.5 5.4 Z" />
+      </g>
+    </svg>
+  );
+}
+
+function FlagEN() {
+  return (
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#012169" />
+      <path d="M0,0 L30,20 M30,0 L0,20" stroke="#fff" strokeWidth="4" />
+      <path d="M0,0 L30,20 M30,0 L0,20" stroke="#C8102E" strokeWidth="2" />
+      <path d="M15,0 V20 M0,10 H30" stroke="#fff" strokeWidth="6" />
+      <path d="M15,0 V20 M0,10 H30" stroke="#C8102E" strokeWidth="3.5" />
+    </svg>
+  );
+}
+
+function FlagRU() {
+  return (
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#fff" />
+      <rect y="6.67" width="30" height="6.67" fill="#0039A6" />
+      <rect y="13.33" width="30" height="6.66" fill="#D52B1E" />
+    </svg>
+  );
+}
+
+const LANGS = [
+  { code: "mn", name: "Монгол", Flag: FlagMN },
+  { code: "en", name: "English", Flag: FlagEN },
+  { code: "ru", name: "Русский", Flag: FlagRU },
+];
+
 function LanguageChip() {
   const { i18n } = useTranslation();
-  const order = ["mn", "en", "ru"];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const current = (i18n.resolvedLanguage ?? i18n.language ?? "mn").slice(0, 2);
-  const idx = order.indexOf(current);
-  const next = order[(idx + 1) % order.length] ?? "mn";
+  const cur = LANGS.find((l) => l.code === current) ?? LANGS[0];
+  const CurFlag = cur.Flag;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
   return (
-    <button
-      onClick={() => i18n.changeLanguage(next)}
-      className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
-    >
-      {(idx >= 0 ? current : "mn").toUpperCase()}
-    </button>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-[11px] font-medium pl-1.5 pr-2 py-1 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
+        aria-label="Language"
+      >
+        <span className="w-[18px] h-[12px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
+          <CurFlag />
+        </span>
+        <span>{cur.code.toUpperCase()}</span>
+        <svg className={`w-3 h-3 text-stone-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1.5 w-36 rounded-lg bg-stone-800 border border-stone-700 shadow-xl shadow-black/30 overflow-hidden cs-menu-in origin-top-right z-50">
+          {LANGS.map((l) => {
+            const active = l.code === current;
+            const Flag = l.Flag;
+            return (
+              <button
+                key={l.code}
+                onClick={() => { i18n.changeLanguage(l.code); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-left transition-colors ${active ? "bg-amber-600/20 text-amber-300" : "text-stone-300 hover:bg-stone-700"}`}
+              >
+                <span className="w-[21px] h-[14px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
+                  <Flag />
+                </span>
+                <span className="flex-1">{l.name}</span>
+                {active && (
+                  <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -89,6 +89,13 @@
   pointer-events: none;
 }
 
+/* Хэл сонгох цэс гарч ирэх */
+.cs-menu-in { animation: cs-menu 0.16s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+@keyframes cs-menu {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 /* Хөдөлгөөнд мэдрэг хэрэглэгчдийг хамгаална */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
