@@ -112,6 +112,18 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Хоосон төлөв амьд байдал */
+.cs-float { animation: cs-float 3s ease-in-out infinite; }
+@keyframes cs-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.cs-twinkle { animation: cs-twinkle 2.4s ease-in-out infinite; }
+@keyframes cs-twinkle {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
 /* Хөдөлгөөнд мэдрэг хэрэглэгчдийг хамгаална */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
