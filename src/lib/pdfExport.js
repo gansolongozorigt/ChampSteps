@@ -215,7 +215,7 @@ export async function urlToDataUrl(url) {
 // Үндсэн export функц
 // -----------------------------------------------------------------------------
 export async function exportPortfolio(child, achievements, opts = {}) {
-    const { template = "official", t = (k) => k, filename, includeImages = true, } = opts;
+    const { template = "official", t = (k) => k, filename, includeImages = true, output = "save", } = opts;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     await loadFont(doc);
     if (template === "official") {
@@ -228,6 +228,10 @@ export async function exportPortfolio(child, achievements, opts = {}) {
         await renderPortfolio(doc, child, achievements, t, includeImages);
     }
     const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
+    if (output === "bloburl") {
+        // Preview-д зориулсан object URL. Дуудсан тал URL.revokeObjectURL()-ээр цэвэрлэнэ.
+        return URL.createObjectURL(doc.output("blob"));
+    }
     doc.save(`${safeName}_${template}.pdf`);
 }
 // =============================================================================

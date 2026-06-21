@@ -14,6 +14,8 @@ interface ExportOpts {
   language?: "mn" | "en";
   includeImages?: boolean;
   t?: (key: string, opts?: Record<string, unknown>) => string;
+  // "save" (default) → файл татна; "bloburl" → preview-д зориулж object URL буцаана.
+  output?: "save" | "bloburl";
 }
 
 const A4 = { w: 210, h: 297 };
@@ -221,12 +223,13 @@ export async function exportPortfolio(
   child: Child,
   achievements: Achievement[],
   opts: ExportOpts = {}
-): Promise<void> {
+): Promise<string | void> {
   const {
     template = "official",
     t = (k: string) => k,
     filename,
     includeImages = true,
+    output = "save",
   } = opts;
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -241,6 +244,10 @@ export async function exportPortfolio(
   }
 
   const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
+  if (output === "bloburl") {
+    // Preview-д зориулсан object URL. Дуудсан тал URL.revokeObjectURL()-ээр цэвэрлэнэ.
+    return URL.createObjectURL(doc.output("blob"));
+  }
   doc.save(`${safeName}_${template}.pdf`);
 }
 
