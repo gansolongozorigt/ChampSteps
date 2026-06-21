@@ -191,8 +191,8 @@ export default function TimelineDashboard({
                     onClick={() => setFilter(c)}
                     className={`text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                       filter === c
-                        ? "bg-stone-950 text-white border-stone-950"
-                        : "bg-white text-stone-500 border-stone-200 hover:border-stone-400"
+                        ? "bg-stone-950 text-white border-stone-950 scale-105"
+                        : "bg-white text-stone-500 border-stone-200 hover:border-stone-400 hover:-translate-y-0.5"
                     }`}
                   >
                     {t(`categories.${c}`)}

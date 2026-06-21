@@ -551,7 +551,7 @@ function Dashboard() {
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300"}`}>
+                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300 hover:translate-x-1"}`}>
                   <span className="w-5 h-5 flex items-center justify-center shrink-0">{item.icon}</span>
                   <span className="text-[12px] font-medium">{item.label}</span>
                 </button>
@@ -733,9 +733,9 @@ function Dashboard() {
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
       {activeSection === "achievements" && (
         <button type="button" onClick={() => setShowForm(true)} aria-label={t("app.addAchievement")}
-          className="fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
+          className="group fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 hover:scale-105 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
           style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}>
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-6 h-6 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         </button>
