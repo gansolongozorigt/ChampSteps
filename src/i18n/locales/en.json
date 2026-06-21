@@ -207,6 +207,23 @@
     "includeImages": "Include images",
     "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"
   },
+  "pdfPreview": {
+    "title": "PDF Preview",
+    "preview": "Preview",
+    "entries": "Achievements",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selected": "{{n}} of {{total}} selected",
+    "noneSelected": "Select at least one achievement to preview.",
+    "generating": "Generating preview…",
+    "openNewTab": "Open in new tab",
+    "stepSelect": "Select",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "downloadN": "Download ({{n}})"
+  },
   "status": {
     "loading": "Loading…",
     "saved": "Saved successfully",

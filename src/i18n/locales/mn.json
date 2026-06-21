@@ -207,6 +207,23 @@
     "includeImages": "Зураг оруулах",
     "premiumMessage": "🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →"
   },
+  "pdfPreview": {
+    "title": "PDF урьдчилж харах",
+    "preview": "Харах",
+    "entries": "Амжилтууд",
+    "selectAll": "Бүгдийг сонгох",
+    "deselectAll": "Бүгдийг болиулах",
+    "selected": "{{total}}-с {{n}} сонгогдсон",
+    "noneSelected": "Урьдчилж харахын тулд дор хаяж нэг амжилт сонгоно уу.",
+    "generating": "PDF бэлтгэж байна…",
+    "openNewTab": "Шинэ таб дээр нээх",
+    "stepSelect": "Сонгох",
+    "continue": "Үргэлжлүүлэх",
+    "back": "Буцах",
+    "cancel": "Болих",
+    "close": "Хаах",
+    "downloadN": "Татах ({{n}})"
+  },
   "status": {
     "loading": "Ачааллаж байна…",
     "saved": "Амжилттай хадгалагдлаа",
