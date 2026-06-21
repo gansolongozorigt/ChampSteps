@@ -179,7 +179,7 @@ function Dashboard() {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
-        celebrate();
+        celebrate({ mega: draft.awardType === "Gold" });
         // setChampMood("excited");
         // setTimeout(() => setChampMood("idle"), 3000);
       } catch {
@@ -202,7 +202,7 @@ function Dashboard() {
     addLocal(newItem);
     setShowForm(false);
     setToast({ kind: "success", message: t("status.saved") });
-    celebrate();
+    celebrate({ mega: draft.awardType === "Gold" });
     // setChampMood("excited");
     // setTimeout(() => setChampMood("idle"), 3000);
   }
