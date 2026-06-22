@@ -303,7 +303,7 @@ function TimelineCard({
         className={`absolute -left-[18px] top-4 w-2.5 h-2.5 rounded-full ring-[3px] ring-stone-100 ${cat.dot}`}
       />
 
-      <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-stone-300 transition-colors group">
+      <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-stone-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 group">
         <div className="p-4">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-3">
