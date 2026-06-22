@@ -240,6 +240,26 @@ export async function exportPortfolio(child, achievements, opts = {}) {
 // =============================================================================
 // Template 1: Official
 // =============================================================================
+// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна
+async function drawImageRow(doc, urls, x, y) {
+    const imgs = urls.slice(0, 3);
+    const n = imgs.length;
+    if (n === 0)
+        return;
+    const dims = n === 1 ? { w: 55, h: 40, gap: 0 } :
+        n === 2 ? { w: 50, h: 37, gap: 5 } :
+            { w: 40, h: 30, gap: 4 };
+    for (let i = 0; i < n; i++) {
+        const ix = x + i * (dims.w + dims.gap);
+        try {
+            const dataUrl = await urlToDataUrl(imgs[i]);
+            doc.addImage(dataUrl, "JPEG", ix, y, dims.w, dims.h);
+        }
+        catch {
+            drawImagePlaceholder(doc, ix, y, dims.w, dims.h);
+        }
+    }
+}
 async function renderOfficial(doc, child, achievements, t, includeImages = true) {
     doc.setFillColor(28, 25, 23);
     doc.rect(0, 0, A4.w, 32, "F");
@@ -307,13 +327,7 @@ async function renderOfficial(doc, child, achievements, t, includeImages = true)
             doc.text(lines.slice(0, 2), M, y + 13);
         }
         if (includeImages && a.imageURLs?.length) {
-            try {
-                const dataUrl = await urlToDataUrl(a.imageURLs[0]);
-                doc.addImage(dataUrl, "JPEG", M, y + 20, 55, 40);
-            }
-            catch {
-                drawImagePlaceholder(doc, M, y + 20, 55, 40);
-            }
+            await drawImageRow(doc, a.imageURLs, M, y + 20);
         }
         doc.setDrawColor(235, 230, 225);
         doc.line(M, y + blockH, A4.w - M, y + blockH);
@@ -375,13 +389,7 @@ async function renderKids(doc, child, achievements, t, includeImages = true) {
             doc.text(lines[0] ?? "", M + 5, y + 28);
         }
         if (includeImages && a.imageURLs?.length) {
-            try {
-                const dataUrl = await urlToDataUrl(a.imageURLs[0]);
-                doc.addImage(dataUrl, "JPEG", M, y + 38, 55, 40);
-            }
-            catch {
-                drawImagePlaceholder(doc, M, y + 38, 55, 40);
-            }
+            await drawImageRow(doc, a.imageURLs, M, y + 38);
         }
         y += blockH + 6;
     }
@@ -460,13 +468,7 @@ async function renderGold(doc, child, achievements, t, includeImages = true) {
         doc.setTextColor(120, 100, 70);
         doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 6, y + 14);
         if (includeImages && a.imageURLs?.length) {
-            try {
-                const dataUrl = await urlToDataUrl(a.imageURLs[0]);
-                doc.addImage(dataUrl, "JPEG", M + 6, y + 20, 55, 40);
-            }
-            catch {
-                drawImagePlaceholder(doc, M + 6, y + 20, 55, 40);
-            }
+            await drawImageRow(doc, a.imageURLs, M + 6, y + 20);
         }
         doc.setDrawColor(40, 35, 25);
         doc.line(M, y + blockH, A4.w - M, y + blockH);
@@ -885,13 +887,7 @@ async function renderFramed(doc, child, achievements, t, includeImages = true) {
             doc.text(lines.slice(0, 2), FM + 4, y + 11);
         }
         if (includeImages && a.imageURLs?.length) {
-            try {
-                const dataUrl = await urlToDataUrl(a.imageURLs[0]);
-                doc.addImage(dataUrl, "JPEG", FM + 4, y + 16, 55, 40);
-            }
-            catch {
-                drawImagePlaceholder(doc, FM + 4, y + 16, 55, 40);
-            }
+            await drawImageRow(doc, a.imageURLs, FM + 4, y + 16);
         }
         doc.setDrawColor(231, 229, 223);
         doc.setLineWidth(0.3);
