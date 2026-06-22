@@ -210,6 +210,8 @@
     "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"
   },
   "pdfPreview": {
+    "frame": "Frame",
+    "frameStyle": { "classic": "Classic", "corner": "Corner", "minimal": "Minimal" },
     "title": "PDF Preview",
     "preview": "Preview",
     "entries": "Achievements",

@@ -210,6 +210,8 @@
     "premiumMessage": "🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →"
   },
   "pdfPreview": {
+    "frame": "Хүрээ",
+    "frameStyle": { "classic": "Сонгодог", "corner": "Булан", "minimal": "Энгийн" },
     "title": "PDF урьдчилж харах",
     "preview": "Харах",
     "entries": "Амжилтууд",

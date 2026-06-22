@@ -848,7 +848,7 @@ function dominantCategory(achievements: Achievement[]): "Arts" | "Sports" | "Aca
   return best;
 }
 
-type FrameStyle = "classic" | "corner" | "minimal";
+export type FrameStyle = "classic" | "corner" | "minimal";
 
 function drawFrameBorder(doc: jsPDF, a: FrameRGB, style: FrameStyle = "classic") {
   doc.setDrawColor(a[0], a[1], a[2]);

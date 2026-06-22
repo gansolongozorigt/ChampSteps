@@ -180,6 +180,8 @@
     "premiumMessage": "🔒 Скачивание PDF — нужен Премиум. Улучшить →"
   },
   "pdfPreview": {
+    "frame": "Рамка",
+    "frameStyle": { "classic": "Классика", "corner": "Углы", "minimal": "Минимал" },
     "title": "Предпросмотр PDF",
     "preview": "Предпросмотр",
     "entries": "Достижения",

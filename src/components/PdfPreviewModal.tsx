@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { exportPortfolio, type PdfTemplate } from "../lib/pdfExport";
+import { exportPortfolio, type PdfTemplate, type FrameStyle } from "../lib/pdfExport";
+
+const FRAME_STYLES: FrameStyle[] = ["classic", "corner", "minimal"];
 import type { Achievement, Child } from "../types";
 
 interface PdfPreviewModalProps {
@@ -23,6 +25,7 @@ export default function PdfPreviewModal({
   const { t, i18n } = useTranslation();
   const language: "mn" | "en" = i18n.language?.startsWith("en") ? "en" : "mn";
 
+  const [frameStyle, setFrameStyle] = useState<FrameStyle>("classic");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -73,7 +76,7 @@ export default function PdfPreviewModal({
     const handle = window.setTimeout(async () => {
       try {
         const url = await exportPortfolio(child, selectedList, {
-          t, template, language, includeImages, output: "bloburl",
+          t, template, language, includeImages, frameStyle, output: "bloburl",
         });
         if (!cancelled && typeof url === "string") replaceUrl(url);
       } catch (err) {
@@ -85,7 +88,7 @@ export default function PdfPreviewModal({
 
     return () => { cancelled = true; window.clearTimeout(handle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isMobile, step, selectedList, template, includeImages, language]);
+  }, [open, isMobile, step, selectedList, template, includeImages, language, frameStyle]);
 
   useEffect(() => {
     if (!open) replaceUrl(null);
@@ -111,7 +114,7 @@ export default function PdfPreviewModal({
     try {
       setGenerating(true);
       await exportPortfolio(child, selectedList, {
-        t, template, language, includeImages, output: "save",
+        t, template, language, includeImages, frameStyle, output: "save",
       });
       onClose();
     } catch (err) {
@@ -227,6 +230,26 @@ export default function PdfPreviewModal({
             </svg>
           </button>
         </div>
+
+        {template === "framed" && (
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-stone-100 bg-stone-50/60">
+            <span className="text-xs text-stone-500 shrink-0">{t("pdfPreview.frame")}:</span>
+            {FRAME_STYLES.map((fs) => (
+              <button
+                key={fs}
+                type="button"
+                onClick={() => setFrameStyle(fs)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                  frameStyle === fs
+                    ? "bg-stone-900 text-white border-stone-900"
+                    : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
+                }`}
+              >
+                {t(`pdfPreview.frameStyle.${fs}`)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex-1 min-h-0">
           {!isMobile ? (
