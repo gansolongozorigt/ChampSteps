@@ -880,14 +880,20 @@ async function renderPortfolio(
 
     // Зураг
     if (includeImages && a.imageURLs?.length) {
-      try {
-        const dataUrl = await urlToDataUrl(a.imageURLs[0]);
-        doc.addImage(dataUrl, "JPEG", CONTENT_X + 7, y + 1, 42, 30, undefined, "FAST");
-        y += 33;
-      } catch {
-        drawImagePlaceholder(doc, CONTENT_X + 7, y + 1, 42, 30);
-        y += 33;
+      const imgs = a.imageURLs.slice(0, 3);
+      const n = imgs.length;
+      const iw = n === 1 ? 42 : n === 2 ? 40 : 38;
+      const gap = 4;
+      for (let i = 0; i < n; i++) {
+        const ix = CONTENT_X + 7 + i * (iw + gap);
+        try {
+          const dataUrl = await urlToDataUrl(imgs[i]);
+          doc.addImage(dataUrl, "JPEG", ix, y + 1, iw, 30, undefined, "FAST");
+        } catch {
+          drawImagePlaceholder(doc, ix, y + 1, iw, 30);
+        }
       }
+      y += 33;
     }
 
     // Хуваагч
