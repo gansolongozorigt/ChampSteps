@@ -432,7 +432,7 @@ function Dashboard() {
     <div className="flex flex-col h-screen bg-stone-100 font-sans">
 
       {/* TOP BAR — мобайл + desktop header */}
-      <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
+      <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {/* Gradient лого */}
@@ -528,7 +528,7 @@ function Dashboard() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto cs-app-sidebar">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
