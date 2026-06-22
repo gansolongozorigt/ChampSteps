@@ -16,6 +16,8 @@ interface ExportOpts {
   t?: (key: string, opts?: Record<string, unknown>) => string;
   // "save" (default) → файл татна; "bloburl" → preview-д зориулж object URL буцаана.
   output?: "save" | "bloburl";
+  // Зөвхөн "framed" загварт: хүрээний хэв маяг
+  frameStyle?: FrameStyle;
 }
 
 const A4 = { w: 210, h: 297 };
@@ -230,6 +232,7 @@ export async function exportPortfolio(
     filename,
     includeImages = true,
     output = "save",
+    frameStyle = "classic",
   } = opts;
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -240,7 +243,7 @@ export async function exportPortfolio(
   } else if (template === "gold") {
     await renderGold(doc, child, achievements, t, includeImages);
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages);
+    await renderFramed(doc, child, achievements, t, includeImages, frameStyle);
   } else {
     await renderPortfolio(doc, child, achievements, t, includeImages);
   }
@@ -845,18 +848,36 @@ function dominantCategory(achievements: Achievement[]): "Arts" | "Sports" | "Aca
   return best;
 }
 
-function drawFrameBorder(doc: jsPDF, a: FrameRGB) {
+type FrameStyle = "classic" | "corner" | "minimal";
+
+function drawFrameBorder(doc: jsPDF, a: FrameRGB, style: FrameStyle = "classic") {
   doc.setDrawColor(a[0], a[1], a[2]);
+  const corners: [number, number, number, number][] = [
+    [12, 12, 1, 1], [A4.w - 12, 12, -1, 1], [12, A4.h - 12, 1, -1], [A4.w - 12, A4.h - 12, -1, -1],
+  ];
+  const dots: [number, number][] = [[12, 12], [A4.w - 12, 12], [12, A4.h - 12], [A4.w - 12, A4.h - 12]];
+
+  if (style === "minimal") {
+    doc.setLineWidth(0.3); doc.rect(10, 10, A4.w - 20, A4.h - 20);
+    return;
+  }
+
+  if (style === "corner") {
+    const L = 16;
+    doc.setLineWidth(0.7);
+    for (const [cx, cy, dx, dy] of corners) { doc.line(cx, cy, cx + dx * L, cy); doc.line(cx, cy, cx, cy + dy * L); }
+    doc.setFillColor(a[0], a[1], a[2]);
+    for (const [cx, cy] of dots) doc.circle(cx, cy, 1.1, "F");
+    return;
+  }
+
+  // classic
   doc.setLineWidth(0.5); doc.rect(8, 8, A4.w - 16, A4.h - 16);
   doc.setLineWidth(0.2); doc.rect(10, 10, A4.w - 20, A4.h - 20);
-  const L = 6, m = 12;
+  const L = 6;
   doc.setLineWidth(0.5);
-  const corners: [number, number, number, number][] = [
-    [m, m, 1, 1], [A4.w - m, m, -1, 1], [m, A4.h - m, 1, -1], [A4.w - m, A4.h - m, -1, -1],
-  ];
   for (const [cx, cy, dx, dy] of corners) { doc.line(cx, cy, cx + dx * L, cy); doc.line(cx, cy, cx, cy + dy * L); }
   doc.setFillColor(a[0], a[1], a[2]);
-  const dots: [number, number][] = [[m, m], [A4.w - m, m], [m, A4.h - m], [A4.w - m, A4.h - m]];
   for (const [cx, cy] of dots) doc.circle(cx, cy, 0.8, "F");
 }
 
@@ -894,13 +915,14 @@ async function renderFramed(
   child: Child,
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true
+  includeImages = true,
+  frameStyle: FrameStyle = "classic"
 ) {
   const cat = dominantCategory(achievements);
   const { accent, kind } = FRAME_THEMES[cat];
   const FM = 20;
 
-  drawFrameBorder(doc, accent);
+  drawFrameBorder(doc, accent, frameStyle);
 
   drawSeal(doc, A4.w / 2, 24, accent, kind);
   setFont(doc, "bold"); doc.setFontSize(11); doc.setTextColor(44, 44, 42);
@@ -926,7 +948,7 @@ async function renderFramed(
     const blockH = 26 + imgH;
     if (y + blockH > A4.h - 20) {
       doc.addPage();
-      drawFrameBorder(doc, accent);
+      drawFrameBorder(doc, accent, frameStyle);
       y = 26;
     }
     doc.setFillColor(accent[0], accent[1], accent[2]); doc.rect(FM, y - 3.5, 0.9, 5, "F");
