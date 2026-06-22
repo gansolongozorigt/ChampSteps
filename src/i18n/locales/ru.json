@@ -223,9 +223,9 @@
   },
   "practice": {
     "heading": "Журнал тренировок",
-    "total": "Всего: {{hours}} ч {{mins}} мин · {{count}} занятий",
-    "totalHours": "Всего: {{hours}} ч · {{count}} занятий",
-    "totalMins": "Всего: {{mins}} мин · {{count}} занятий",
+    "total": "Всего: {{hours}} ч {{mins}} мин · занятий: {{count}}",
+    "totalHours": "Всего: {{hours}} ч · занятий: {{count}}",
+    "totalMins": "Всего: {{mins}} мин · занятий: {{count}}",
     "addButton": "+ Добавить запись",
     "fields": { "date": "Дата", "duration": "Длительность (минуты)", "notes": "Заметки", "notesPlaceholder": "Над чем вы работали сегодня? Что получилось, что было трудно?" },
     "actions": { "cancel": "Отмена", "save": "Сохранить", "saving": "Сохранение...", "delete": "Удалить", "confirmDelete": "Удалить", "cancelDelete": "Отмена" },
@@ -235,7 +235,7 @@
   "reflection": {
     "heading": "Журнал ребёнка",
     "private": "Личное",
-    "avgMood": "Среднее настроение: {{avg}}/5 · {{count}} записей",
+    "avgMood": "Среднее настроение: {{avg}}/5 · записей: {{count}}",
     "addButton": "+ Добавить запись",
     "fields": {
       "date": "Дата",
