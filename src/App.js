@@ -25,7 +25,6 @@ import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
 import { useAuth } from "./lib/auth";
 import { createAchievement, createChild, createPracticeLog, createReflection, deletePracticeLog, deleteReflection, createInviteCode, useInviteCode, deleteAchievement, getChildrenForParent, getChildrenForTeacher, isFirebaseConfigured, updateChild as fbUpdateChild, } from "./lib/firebase";
 import { loadLocalChild, saveLocalAchievements, saveLocalChild, } from "./lib/localStore";
-import { exportPortfolio } from "./lib/pdfExport";
 import { celebrate } from "./lib/celebrate";
 import { TIER_LIMITS } from "./types";
 const makeInitialChild = (parentId) => ({
@@ -291,27 +290,6 @@ function Dashboard() {
             return;
         }
         removeLocalLog(id);
-    }
-    async function handleDownloadPdf(template) {
-        if (!child)
-            return;
-        if (!tierLimits.hasPdf) {
-            setShowSubscription(true);
-            setToast({ kind: "info", message: t("pdf.premiumRequired") });
-            return;
-        }
-        setPdfBusy(true);
-        try {
-            const lang = i18n.language?.startsWith("en") ? "en" : "mn";
-            await exportPortfolio(child, achievements, { t, template: template ?? pdfTemplate, language: lang, includeImages });
-            setToast({ kind: "success", message: t("pdf.success") });
-        }
-        catch {
-            setToast({ kind: "error", message: t("pdf.error") });
-        }
-        finally {
-            setPdfBusy(false);
-        }
     }
     function openPdfPreview(template) {
         if (!child)

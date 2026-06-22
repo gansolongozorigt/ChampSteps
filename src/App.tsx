@@ -308,25 +308,6 @@ function Dashboard() {
     removeLocalLog(id);
   }
 
-  async function handleDownloadPdf(template?: PdfTemplate) {
-    if (!child) return;
-    if (!tierLimits.hasPdf) {
-      setShowSubscription(true);
-      setToast({ kind: "info", message: t("pdf.premiumRequired") });
-      return;
-    }
-    setPdfBusy(true);
-    try {
-      const lang = i18n.language?.startsWith("en") ? "en" : "mn";
-      await exportPortfolio(child, achievements, { t, template: template ?? pdfTemplate, language: lang, includeImages });
-      setToast({ kind: "success", message: t("pdf.success") });
-    } catch {
-      setToast({ kind: "error", message: t("pdf.error") });
-    } finally {
-      setPdfBusy(false);
-    }
-  }
-
   function openPdfPreview(template: PdfTemplate) {
     if (!child) return;
     if (!tierLimits.hasPdf) {

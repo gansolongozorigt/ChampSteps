@@ -336,69 +336,6 @@ async function renderOfficial(doc, child, achievements, t, includeImages = true)
     addFooters(doc, t("pdf.coverFooter"));
 }
 // =============================================================================
-// Template 2: Kids
-// =============================================================================
-async function renderKids(doc, child, achievements, t, includeImages = true) {
-    const colors = {
-        Sports: [59, 130, 246],
-        Arts: [168, 85, 247],
-        Academic: [16, 185, 129],
-    };
-    doc.setFillColor(255, 247, 237);
-    doc.rect(0, 0, A4.w, A4.h, "F");
-    doc.setFillColor(251, 191, 36);
-    doc.roundedRect(M, M, CW, 44, 5, 5, "F");
-    // Avatar circle inside banner
-    const kAvatarR = 14;
-    const kAvatarCX = M + CW - kAvatarR - 4;
-    const kAvatarCY = M + 22;
-    await drawAvatar(doc, child, kAvatarCX, kAvatarCY, kAvatarR, { bgR: 120, bgG: 53, bgB: 15, textR: 255, textG: 247, textB: 237 });
-    setFont(doc, "bold");
-    doc.setFontSize(19);
-    doc.setTextColor(120, 53, 15);
-    doc.text(t("pdf.achievementsTitle", { name: child.name }), M + 8, M + 16, { maxWidth: CW - kAvatarR * 2 - 10 });
-    setFont(doc, "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(146, 64, 14);
-    if (child.bio)
-        doc.text(child.bio, M + 8, M + 30, { maxWidth: CW - kAvatarR * 2 - 10 });
-    let y = M + 56;
-    for (const a of achievements) {
-        const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
-        const blockH = 42 + imgH;
-        if (y + blockH > A4.h - 20) {
-            doc.addPage();
-            doc.setFillColor(255, 247, 237);
-            doc.rect(0, 0, A4.w, A4.h, "F");
-            y = M;
-        }
-        const catColor = colors[a.category] ?? [100, 100, 100];
-        doc.setFillColor(...catColor);
-        doc.roundedRect(M, y, CW, 36, 4, 4, "F");
-        setFont(doc, "bold");
-        doc.setFontSize(13);
-        doc.setTextColor(255, 255, 255);
-        doc.text(a.title, M + 5, y + 11);
-        setFont(doc, "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(220, 220, 220);
-        doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, M + 5, y + 20);
-        if (a.description) {
-            doc.setTextColor(240, 240, 240);
-            const lines = doc.splitTextToSize(a.description, CW - 10);
-            doc.text(lines[0] ?? "", M + 5, y + 28);
-        }
-        if (includeImages && a.imageURLs?.length) {
-            await drawImageRow(doc, a.imageURLs, M, y + 38);
-        }
-        y += blockH + 6;
-    }
-    setFont(doc, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(200, 180, 150);
-    doc.text(t("pdf.footer"), M, A4.h - 8);
-}
-// =============================================================================
 // Template 3: Gold
 // =============================================================================
 async function renderGold(doc, child, achievements, t, includeImages = true) {
