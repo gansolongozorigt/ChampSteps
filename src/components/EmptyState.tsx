@@ -20,7 +20,7 @@ export default function EmptyState({ variant = "journal", onPrimary }: EmptyStat
 
   if (variant === "filtered") {
     return (
-      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
+      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center animate-fade-up">
         <div className="mx-auto h-12 w-12 text-stone-400">
           <SearchIllustration />
         </div>
@@ -40,8 +40,8 @@ export default function EmptyState({ variant = "journal", onPrimary }: EmptyStat
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-b from-amber-50 via-stone-50 to-white p-10 text-center shadow-sm">
-      <div className="mx-auto h-36 w-36">
+    <div className="overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-b from-amber-50 via-stone-50 to-white p-10 text-center shadow-sm animate-fade-up">
+      <div className="mx-auto h-36 w-36 cs-float">
         <TrophyIllustration />
       </div>
       <h3 className="mt-4 font-serif text-2xl text-stone-900">{t("empty.title")}</h3>
@@ -69,7 +69,7 @@ function TrophyIllustration() {
   return (
     <svg viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg" aria-hidden>
       {/* Confetti */}
-      <g opacity="0.7">
+      <g className="cs-twinkle">
         <circle cx="24" cy="28" r="3" fill="#f59e0b" />
         <circle cx="120" cy="34" r="2.5" fill="#ef4444" />
         <circle cx="18" cy="62" r="2" fill="#6366f1" />
