@@ -57,7 +57,7 @@ export default function AchievementSummary({
       <p className="text-center text-[13px] text-stone-500 mb-4">
         {t("summary.totalAchievements", { n: total })}
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
         {MEDALS.map((m, i) => (
           <MedalItem
             key={m.key}
@@ -85,15 +85,15 @@ function MedalItem({
 }) {
   const n = useCountUp(value);
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl py-2.5">
+    <div className="flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl py-2 sm:py-2.5">
       <span
-        className="text-[38px] leading-none animate-pop"
+        className="text-[26px] sm:text-[38px] leading-none animate-pop"
         style={{ animationDelay: `${index * 0.09}s` }}
       >
         {emoji}
       </span>
-      <span className="text-[20px] font-bold text-stone-900 leading-tight">{n}</span>
-      <span className="text-[12px] font-medium text-stone-500">{label}</span>
+      <span className="text-[16px] sm:text-[20px] font-bold text-stone-900 leading-tight">{n}</span>
+      <span className="text-[10px] sm:text-[12px] font-medium text-stone-500 text-center leading-tight">{label}</span>
     </div>
   );
 }
