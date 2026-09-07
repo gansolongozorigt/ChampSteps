@@ -175,6 +175,9 @@
     "portfolioDesc": "Полный формат портфолио",
     "framed": "🖼 С рамкой",
     "framedDesc": "Декоративная рамка по категории",
+    "appendixTitle": "Приложение",
+    "backLink": "← Назад",
+    "tapToEnlarge": "Нажмите для увеличения",
     "downloadSubtitle": "Скачать PDF-портфолио {{name}}",
     "includeImages": "Включить изображения",
     "premiumMessage": "🔒 Скачивание PDF — нужен Премиум. Улучшить →"

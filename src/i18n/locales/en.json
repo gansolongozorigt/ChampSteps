@@ -205,6 +205,9 @@
     "portfolioDesc": "Full portfolio format",
     "framed": "🖼 Framed",
     "framedDesc": "Decorative frame, category theme",
+    "appendixTitle": "Appendix",
+    "backLink": "← Back",
+    "tapToEnlarge": "Tap to enlarge",
     "downloadSubtitle": "Download {{name}}'s PDF portfolio",
     "includeImages": "Include images",
     "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"

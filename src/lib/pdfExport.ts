@@ -1,6 +1,7 @@
 // =============================================================================
-// pdfExport v6 — 4 template: official, kids, gold, portfolio (resume-style)
+// pdfExport v7 — 4 template: official, kids, gold, portfolio (resume-style)
 // Монгол+Англи хэл, NotoSans фонт, зурагтай
+// v7: appendix pages with full-size images + tap-to-enlarge internal links
 // =============================================================================
 
 import { jsPDF } from "jspdf";
@@ -23,6 +24,21 @@ interface ExportOpts {
 const A4 = { w: 210, h: 297 };
 const M = 18;
 const CW = A4.w - M * 2;
+
+// -----------------------------------------------------------------------------
+// ImgRef — thumbnail бүрийн байрлал + хавсралт холбоос
+// -----------------------------------------------------------------------------
+
+interface ImgRef {
+  dataUrl: string;
+  naturalW: number;
+  naturalH: number;
+  achievementTitle: string;
+  achievementDate: string;
+  page: number;
+  x: number; y: number; w: number; h: number;
+  appendixPage?: number;
+}
 
 // -----------------------------------------------------------------------------
 // Font cache
@@ -125,8 +141,6 @@ async function drawAvatar(
   if (child.avatarUrl) {
     const dataUrl = await urlToDataUrl(child.avatarUrl);
     if (dataUrl) {
-      // Pre-crop the photo into a circle on an offscreen canvas (cover-fit, centered),
-      // then place it — gives a true circular avatar with no square corners.
       try {
         const circular = await circleCropDataUrl(dataUrl, 320);
         doc.addImage(circular, "PNG", cx - r, cy - r, d, d);
@@ -150,11 +164,11 @@ function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
 }
 
 // -----------------------------------------------------------------------------
-// Image helper
+// Image helpers
 // -----------------------------------------------------------------------------
 
-const MAX_IMG_PX = 900;
-const IMG_QUALITY = 0.82;
+const MAX_IMG_PX = 1600;
+const IMG_QUALITY = 0.85;
 
 function compressImgElement(img: HTMLImageElement): string {
   let w = img.naturalWidth;
@@ -168,6 +182,27 @@ function compressImgElement(img: HTMLImageElement): string {
   if (!ctx) throw new Error("canvas error");
   ctx.drawImage(img, 0, 0, w, h);
   return canvas.toDataURL("image/jpeg", IMG_QUALITY);
+}
+
+// dataUrl-с байгалийн хэмжээг (пиксель) авна — thumbnail + appendix хоёуланд хэрэгтэй
+function imgNaturalDims(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    if (!dataUrl) { resolve({ w: 0, h: 0 }); return; }
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 0, h: 0 });
+    img.src = dataUrl;
+  });
+}
+
+// jsPDF-ийн одоогийн хуудасны дугаарыг авна (1-indexed)
+function currentPageNum(doc: jsPDF): number {
+  try {
+    return (doc as unknown as { internal: { getCurrentPageInfo(): { pageNumber: number } } })
+      .internal.getCurrentPageInfo().pageNumber;
+  } catch {
+    return (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  }
 }
 
 export async function urlToDataUrl(url: string): Promise<string> {
@@ -203,7 +238,7 @@ export async function urlToDataUrl(url: string): Promise<string> {
       img.src = objectUrl;
     });
   } catch {
-    // Fallback: direct load with crossOrigin="anonymous" (works if server sends CORS headers)
+    // Fallback: direct load with crossOrigin="anonymous"
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -238,19 +273,21 @@ export async function exportPortfolio(
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   await loadFont(doc);
 
+  // Хавсралт бичлэгийн массив — export бүрт шинэ
+  const imgRefs: ImgRef[] = [];
+
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t, includeImages);
+    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs);
   } else if (template === "gold") {
-    await renderGold(doc, child, achievements, t, includeImages);
+    await renderGold(doc, child, achievements, t, includeImages, imgRefs);
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, frameStyle);
+    await renderFramed(doc, child, achievements, t, includeImages, frameStyle, imgRefs);
   } else {
-    await renderPortfolio(doc, child, achievements, t, includeImages);
+    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs);
   }
 
   const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
   if (output === "bloburl") {
-    // Preview-д зориулсан object URL. Дуудсан тал URL.revokeObjectURL()-ээр цэвэрлэнэ.
     return URL.createObjectURL(doc.output("blob"));
   }
   doc.save(`${safeName}_${template}.pdf`);
@@ -260,8 +297,15 @@ export async function exportPortfolio(
 // Template 1: Official
 // =============================================================================
 
-// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна
-async function drawImageRow(doc: jsPDF, urls: string[], x: number, y: number) {
+// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна.
+// refCtx өгвөл thumbnail бүрийг imgRefs-д бүртгэнэ.
+async function drawImageRow(
+  doc: jsPDF,
+  urls: string[],
+  x: number,
+  y: number,
+  refCtx?: { list: ImgRef[]; title: string; date: string }
+) {
   const imgs = urls.slice(0, 3);
   const n = imgs.length;
   if (n === 0) return;
@@ -273,7 +317,18 @@ async function drawImageRow(doc: jsPDF, urls: string[], x: number, y: number) {
     const ix = x + i * (dims.w + dims.gap);
     try {
       const dataUrl = await urlToDataUrl(imgs[i]);
+      if (!dataUrl) { drawImagePlaceholder(doc, ix, y, dims.w, dims.h); continue; }
       doc.addImage(dataUrl, "JPEG", ix, y, dims.w, dims.h);
+      if (refCtx) {
+        const { w: naturalW, h: naturalH } = await imgNaturalDims(dataUrl);
+        refCtx.list.push({
+          dataUrl, naturalW, naturalH,
+          achievementTitle: refCtx.title,
+          achievementDate: refCtx.date,
+          page: currentPageNum(doc),
+          x: ix, y, w: dims.w, h: dims.h,
+        });
+      }
     } catch {
       drawImagePlaceholder(doc, ix, y, dims.w, dims.h);
     }
@@ -285,7 +340,8 @@ async function renderOfficial(
   child: Child,
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true
+  includeImages = true,
+  imgRefs: ImgRef[]
 ) {
   doc.setFillColor(28, 25, 23);
   doc.rect(0, 0, A4.w, 32, "F");
@@ -299,13 +355,12 @@ async function renderOfficial(
   doc.setTextColor(160, 150, 140);
   doc.text(t("pdf.subtitle"), A4.w - M, 20, { align: "right" });
 
-  // Avatar circle (28mm diameter = 14mm radius), centered vertically in hero area
   const avatarCX = M + 14;
   const avatarCY = 56;
   const avatarR = 14;
   await drawAvatar(doc, child, avatarCX, avatarCY, avatarR, { bgR: 217, bgG: 119, bgB: 6, textR: 255, textG: 255, textB: 255 });
 
-  const textX = M + 14 * 2 + 5; // right of avatar
+  const textX = M + 14 * 2 + 5;
   setFont(doc, "bold");
   doc.setFontSize(22);
   doc.setTextColor(28, 25, 23);
@@ -370,7 +425,7 @@ async function renderOfficial(
     }
 
     if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, M, y + 20);
+      await drawImageRow(doc, a.imageURLs, M, y + 20, { list: imgRefs, title: a.title, date: a.date });
     }
 
     doc.setDrawColor(235, 230, 225);
@@ -378,6 +433,7 @@ async function renderOfficial(
     y += blockH + 6;
   }
 
+  await addAppendix(doc, imgRefs, t);
   addFooters(doc, t("pdf.coverFooter"));
 }
 
@@ -390,7 +446,8 @@ async function renderGold(
   child: Child,
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true
+  includeImages = true,
+  imgRefs: ImgRef[]
 ) {
   doc.setFillColor(15, 12, 10);
   doc.rect(0, 0, A4.w, A4.h, "F");
@@ -404,7 +461,6 @@ async function renderGold(
   doc.setTextColor(180, 130, 40);
   doc.text("C H A M P S T E P", M, 22);
 
-  // Avatar circle (gold template: dark background)
   const gAvatarR = 14;
   const gAvatarCX = A4.w - M - gAvatarR;
   const gAvatarCY = 35;
@@ -473,7 +529,7 @@ async function renderGold(
     );
 
     if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, M + 6, y + 20);
+      await drawImageRow(doc, a.imageURLs, M + 6, y + 20, { list: imgRefs, title: a.title, date: a.date });
     }
 
     doc.setDrawColor(40, 35, 25);
@@ -484,7 +540,10 @@ async function renderGold(
   doc.setFillColor(180, 130, 40);
   doc.rect(0, A4.h - 2, A4.w, 2, "F");
 
-  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  await addAppendix(doc, imgRefs, t);
+
+  // Footer loop — runs over all pages including appendix
+  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
@@ -495,14 +554,6 @@ async function renderGold(
 
 // =============================================================================
 // Template 4: Portfolio — Resume-style (Navy sidebar + clean content)
-//
-// Layout:
-//   [62mm sidebar: нэр, дугуй avatar initial, stats, ангилал bar]
-//   [130mm content: амжилт бүр — dot + title + date + meta + description + зураг]
-//
-// Өнгөний схем:
-//   Sidebar: navy (#1E2846), steel blue accent, gold stripe
-//   Content: цагаан дэвсгэр, navy гарчиг, category-өнгийн dot
 // =============================================================================
 
 async function renderPortfolio(
@@ -510,14 +561,13 @@ async function renderPortfolio(
   child: Child,
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true
+  includeImages = true,
+  imgRefs: ImgRef[]
 ) {
-  // ---- Тогтмолууд ----
   const SIDEBAR_W = 62;
   const CONTENT_X = SIDEBAR_W + 9;
   const CONTENT_W = A4.w - CONTENT_X - 8;
 
-  // Өнгөнүүд
   const NAVY: [number, number, number] = [22, 32, 60];
   const STEEL: [number, number, number] = [65, 115, 165];
   const GOLD: [number, number, number] = [212, 160, 23];
@@ -537,7 +587,6 @@ async function renderPortfolio(
     Academic: [16, 185, 129],
   };
 
-  // Stats
   const golds = achievements.filter(a => a.awardType === "Gold").length;
   const silvers = achievements.filter(a => a.awardType === "Silver").length;
   const bronzes = achievements.filter(a => a.awardType === "Bronze").length;
@@ -548,39 +597,31 @@ async function renderPortfolio(
   };
   const maxCat = Math.max(cats.Sports, cats.Arts, cats.Academic, 1);
 
-  // ---- Sidebar зурах функц ----
   async function drawSidebar(pageIdx: number) {
     const cx = SIDEBAR_W / 2;
 
-    // Background
     doc.setFillColor(...NAVY);
     doc.rect(0, 0, SIDEBAR_W, A4.h, "F");
 
-    // Right accent strip
     doc.setFillColor(...STEEL);
     doc.rect(SIDEBAR_W - 2.5, 0, 2.5, A4.h, "F");
 
-    // Gold top stripe
     doc.setFillColor(...GOLD);
     doc.rect(0, 0, SIDEBAR_W, 3.5, "F");
 
-    // Logo text
     setFont(doc, "bold");
     doc.setFontSize(6);
     doc.setTextColor(...GOLD);
     doc.text("CHAMPSTEP", cx, 9, { align: "center" });
 
     if (pageIdx === 1) {
-      // Avatar circle — photo or initial
       await drawAvatar(doc, child, cx, 38, 20, { bgR: DARK[0], bgG: DARK[1], bgB: DARK[2], textR: WHITE[0], textG: WHITE[1], textB: WHITE[2] });
-      // Gold border ring over avatar
       doc.setDrawColor(...GOLD);
       doc.setLineWidth(0.7);
       doc.circle(cx, 38, 20, "S");
 
       let sy = 63;
 
-      // Нэр
       setFont(doc, "bold");
       doc.setFontSize(10);
       doc.setTextColor(...WHITE);
@@ -588,7 +629,6 @@ async function renderPortfolio(
       doc.text(nameLines, cx, sy, { align: "center" });
       sy += nameLines.length * 6.5 + 2;
 
-      // Bio
       if (child.bio) {
         setFont(doc, "normal");
         doc.setFontSize(7);
@@ -598,21 +638,18 @@ async function renderPortfolio(
         sy += Math.min(bioLines.length, 3) * 4.5 + 3;
       }
 
-      // Divider
       doc.setDrawColor(...GOLD);
       doc.setLineWidth(0.25);
       doc.line(7, sy, SIDEBAR_W - 7, sy);
       sy += 6;
 
-      // Статистик гарчиг
       setFont(doc, "bold");
       doc.setFontSize(6.5);
       doc.setTextColor(...GOLD);
       doc.text(t("pdf.statsTotal").toUpperCase(), 7, sy);
       sy += 5;
 
-      // Stat мөрүүд
-      const statRows: Array<[string, string, [number,number,number]]> = [
+      const statRows: Array<[string, string, [number, number, number]]> = [
         [t("pdf.totalEntries"), String(achievements.length), WHITE],
         [t("pdf.goldMedals"), String(golds), [212, 175, 55]],
         [t("awards.Silver"), String(silvers), [192, 192, 200]],
@@ -636,15 +673,13 @@ async function renderPortfolio(
       doc.line(7, sy, SIDEBAR_W - 7, sy);
       sy += 6;
 
-      // Ангилал гарчиг
       setFont(doc, "bold");
       doc.setFontSize(6.5);
       doc.setTextColor(...GOLD);
       doc.text(t("categories.All").toUpperCase(), 7, sy);
       sy += 5;
 
-      // Category bars
-      const catRows: Array<[string, number, [number,number,number]]> = [
+      const catRows: Array<[string, number, [number, number, number]]> = [
         [t("categories.Sports"), cats.Sports, catColor.Sports],
         [t("categories.Arts"), cats.Arts, catColor.Arts],
         [t("categories.Academic"), cats.Academic, catColor.Academic],
@@ -654,11 +689,9 @@ async function renderPortfolio(
         const barW = SIDEBAR_W - 18;
         const fillW = (count / maxCat) * barW;
 
-        // Background bar
         doc.setFillColor(30, 44, 80);
         doc.roundedRect(7, sy - 1.5, barW, 3.5, 1, 1, "F");
 
-        // Fill bar
         if (fillW > 0) {
           doc.setFillColor(...color);
           doc.roundedRect(7, sy - 1.5, fillW, 3.5, 1, 1, "F");
@@ -673,7 +706,6 @@ async function renderPortfolio(
         sy += 10;
       }
 
-      // Төрсөн огноо
       if (child.birthDate) {
         sy += 2;
         doc.setDrawColor(38, 52, 90);
@@ -692,39 +724,33 @@ async function renderPortfolio(
         doc.text(child.birthDate, 7, sy);
       }
     } else {
-      // 2+ хуудас: бяцхан sidebar
       setFont(doc, "bold");
       doc.setFontSize(8.5);
       doc.setTextColor(...WHITE);
       const nameLines = doc.splitTextToSize(child.name, SIDEBAR_W - 10);
       doc.text(nameLines, cx, 22, { align: "center" });
 
-      // Page number
       setFont(doc, "normal");
       doc.setFontSize(7);
       doc.setTextColor(80, 100, 140);
       doc.text(String(pageIdx), cx, A4.h - 10, { align: "center" });
     }
 
-    // Footer
     setFont(doc, "normal");
     doc.setFontSize(5.5);
     doc.setTextColor(55, 72, 110);
     doc.text(t("pdf.coverFooter"), cx, A4.h - 4, { align: "center" });
   }
 
-  // ---- Content хэсгийн амжилт зурах ----
   function achievementBlockH(a: typeof achievements[0], withImg: boolean): number {
     const descH = a.description ? 9 : 0;
     const imgH = withImg && a.imageURLs?.length ? 34 : 0;
     return 5 + 6 + descH + imgH + 5;
   }
 
-  // ---- Эхний хуудас ----
   let pageIdx = 1;
   await drawSidebar(pageIdx);
 
-  // Content header
   let y = 13;
   setFont(doc, "bold");
   doc.setFontSize(16);
@@ -738,12 +764,10 @@ async function renderPortfolio(
   doc.text(t("pdf.subtitle"), CONTENT_X, y);
   y += 3;
 
-  // Gold divider
   doc.setFillColor(...GOLD);
   doc.rect(CONTENT_X, y, CONTENT_W, 0.8, "F");
   y += 6;
 
-  // ---- Амжилтуудын жагсаалт ----
   for (const a of achievements) {
     const blockH = achievementBlockH(a, includeImages);
 
@@ -754,19 +778,16 @@ async function renderPortfolio(
       y = 14;
     }
 
-    // Award dot
     const dotC = awardColor[a.awardType] ?? [150, 150, 150];
     doc.setFillColor(...dotC);
     doc.circle(CONTENT_X + 2.5, y + 3, 2.5, "F");
 
-    // Гарчиг
     setFont(doc, "bold");
     doc.setFontSize(10);
     doc.setTextColor(...NAVY);
     const titleLines = doc.splitTextToSize(a.title, CONTENT_W - 25);
     doc.text(titleLines[0], CONTENT_X + 7, y + 4.5);
 
-    // Огноо (баруун тал)
     setFont(doc, "normal");
     doc.setFontSize(7);
     doc.setTextColor(120, 130, 155);
@@ -774,7 +795,6 @@ async function renderPortfolio(
 
     y += 6;
 
-    // Category mini dot + meta
     const catC = catColor[a.category] ?? [130, 130, 130];
     doc.setFillColor(...catC);
     doc.circle(CONTENT_X + 8, y + 1, 1.5, "F");
@@ -788,7 +808,6 @@ async function renderPortfolio(
     );
     y += 5;
 
-    // Тайлбар
     if (a.description) {
       setFont(doc, "normal");
       doc.setFontSize(7.5);
@@ -798,7 +817,7 @@ async function renderPortfolio(
       y += descLines.slice(0, 2).length * 4 + 1;
     }
 
-    // Зураг
+    // Portfolio зураг — inline loop (FAST compression for thumbnail)
     if (includeImages && a.imageURLs?.length) {
       const imgs = a.imageURLs.slice(0, 3);
       const n = imgs.length;
@@ -808,7 +827,17 @@ async function renderPortfolio(
         const ix = CONTENT_X + 7 + i * (iw + gap);
         try {
           const dataUrl = await urlToDataUrl(imgs[i]);
+          if (!dataUrl) { drawImagePlaceholder(doc, ix, y + 1, iw, 30); continue; }
           doc.addImage(dataUrl, "JPEG", ix, y + 1, iw, 30, undefined, "FAST");
+          // Ref бүртгэл (хавсралтад FAST ашиглахгүй — addAppendix дотор шууд addImage хийнэ)
+          const { w: naturalW, h: naturalH } = await imgNaturalDims(dataUrl);
+          imgRefs.push({
+            dataUrl, naturalW, naturalH,
+            achievementTitle: a.title,
+            achievementDate: a.date,
+            page: currentPageNum(doc),
+            x: ix, y: y + 1, w: iw, h: 30,
+          });
         } catch {
           drawImagePlaceholder(doc, ix, y + 1, iw, 30);
         }
@@ -816,12 +845,13 @@ async function renderPortfolio(
       y += 33;
     }
 
-    // Хуваагч
     doc.setDrawColor(215, 220, 232);
     doc.setLineWidth(0.25);
     doc.line(CONTENT_X + 5, y + 2, A4.w - 8, y + 2);
     y += 6;
   }
+
+  await addAppendix(doc, imgRefs, t);
 }
 
 // -----------------------------------------------------------------------------
@@ -916,7 +946,8 @@ async function renderFramed(
   achievements: Achievement[],
   t: (k: string, o?: Record<string, unknown>) => string,
   includeImages = true,
-  frameStyle: FrameStyle = "classic"
+  frameStyle: FrameStyle = "classic",
+  imgRefs: ImgRef[]
 ) {
   const cat = dominantCategory(achievements);
   const { accent, kind } = FRAME_THEMES[cat];
@@ -962,13 +993,16 @@ async function renderFramed(
       doc.text(lines.slice(0, 2), FM + 4, y + 11);
     }
     if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, FM + 4, y + 16);
+      await drawImageRow(doc, a.imageURLs, FM + 4, y + 16, { list: imgRefs, title: a.title, date: a.date });
     }
     doc.setDrawColor(231, 229, 223); doc.setLineWidth(0.3); doc.line(FM, y + blockH, A4.w - FM, y + blockH);
     y += blockH + 6;
   }
 
-  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  await addAppendix(doc, imgRefs, t);
+
+  // Footer loop — runs over all pages including appendix
+  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     setFont(doc, "normal"); doc.setFontSize(8); doc.setTextColor(170, 165, 158);
@@ -977,9 +1011,104 @@ async function renderFramed(
   }
 }
 
+// =============================================================================
+// Appendix — thumbnail тус бүрд бүтэн хуудас + буцах холбоос
+// =============================================================================
+
+async function addAppendix(
+  doc: jsPDF,
+  refs: ImgRef[],
+  t: (k: string, o?: Record<string, unknown>) => string,
+) {
+  if (refs.length === 0) return;
+
+  const BM = 18; // back margin
+
+  for (const ref of refs) {
+    doc.addPage();
+    ref.appendixPage = currentPageNum(doc);
+
+    // Цагаан дэвсгэр
+    doc.setFillColor(252, 250, 248);
+    doc.rect(0, 0, A4.w, A4.h, "F");
+
+    // Хавсралт тэмдэглэгээ (дээд баруун)
+    setFont(doc, "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(185, 175, 165);
+    doc.text(t("pdf.appendixTitle"), A4.w - BM, 10, { align: "right" });
+
+    // Амжилтын гарчиг
+    setFont(doc, "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(28, 25, 23);
+    const titleLines = doc.splitTextToSize(ref.achievementTitle, A4.w - 2 * BM);
+    doc.text(titleLines.slice(0, 2), BM, 20);
+    const titleH = Math.min(titleLines.length, 2) * 6.5;
+
+    // Огноо
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(130, 120, 110);
+    doc.text(ref.achievementDate, BM, 20 + titleH + 2);
+
+    // Хуваагч
+    doc.setDrawColor(220, 215, 210);
+    doc.setLineWidth(0.3);
+    doc.line(BM, 20 + titleH + 7, A4.w - BM, 20 + titleH + 7);
+
+    // Зургийн талбай — харьцааг хадгалж хамгийн томоор нь багтаа
+    const areaTop = 20 + titleH + 12;
+    const areaX = BM;
+    const areaW = A4.w - 2 * BM;
+    const areaH = A4.h - areaTop - 22;
+
+    let iw = areaW;
+    let ih = areaH;
+    if (ref.naturalW > 0 && ref.naturalH > 0) {
+      const aspect = ref.naturalW / ref.naturalH;
+      if (iw / ih > aspect) {
+        iw = ih * aspect;
+      } else {
+        ih = iw / aspect;
+      }
+    }
+    const ix = areaX + (areaW - iw) / 2;
+    const iy = areaTop + (areaH - ih) / 2;
+
+    try {
+      // FAST флаг ашиглахгүй — бүтэн чанараар зурна
+      doc.addImage(ref.dataUrl, "JPEG", ix, iy, iw, ih);
+    } catch {
+      drawImagePlaceholder(doc, ix, iy, iw, ih);
+    }
+
+    // Буцах холбоос + текст
+    const backText = t("pdf.backLink");
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90, 110, 140);
+    doc.text(backText, BM, A4.h - 10);
+    doc.link(BM - 1, A4.h - 15, 38, 8, { pageNumber: ref.page });
+  }
+
+  // Thumbnail хуудас руу буцаж очиж холбоос + ⤢ дүрс тавина
+  for (const ref of refs) {
+    if (!ref.appendixPage) continue;
+    doc.setPage(ref.page);
+    // Thumbnail дээр дарахад appendix руу үсэрнэ
+    doc.link(ref.x, ref.y, ref.w, ref.h, { pageNumber: ref.appendixPage });
+    // Жижиг ⤢ дүрс (томруулж харах заавар)
+    setFont(doc, "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(110, 100, 90);
+    doc.text("⤢", ref.x + ref.w - 0.5, ref.y + ref.h - 0.5, { align: "right" });
+  }
+}
+
 // -----------------------------------------------------------------------------
 function addFooters(doc: jsPDF, footerText: string) {
-  const total = (doc as jsPDF & { internal: { pages: unknown[] } }).internal.pages.length - 1;
+  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     setFont(doc, "normal");

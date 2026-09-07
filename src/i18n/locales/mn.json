@@ -205,6 +205,9 @@
     "portfolioDesc": "Бүрэн портфолио хэв",
     "framed": "🖼 Хүрээт",
     "framedDesc": "Чимэглэлт хүрээ, ангиллын өнгө",
+    "appendixTitle": "Хавсралт",
+    "backLink": "← Буцах",
+    "tapToEnlarge": "Томруулж үзэх",
     "downloadSubtitle": "{{name}}-ийн PDF портфолио татах",
     "includeImages": "Зураг оруулах",
     "premiumMessage": "🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →"
