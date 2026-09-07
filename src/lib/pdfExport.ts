@@ -1,18 +1,19 @@
 // =============================================================================
 // pdfExport v7 — 4 template: official, kids, gold, portfolio (resume-style)
-// Монгол+Англи хэл, NotoSans фонт, зурагтай
+// Монгол+Англи+Орос хэл, NotoSans фонт, зурагтай
 // v7: appendix pages with full-size images + tap-to-enlarge internal links
 // =============================================================================
 
 import { jsPDF } from "jspdf";
 import type { Achievement, Child } from "../types";
+import type { AppLang } from "../i18n";
 
 export type PdfTemplate = "official" | "gold" | "portfolio" | "framed";
 
 interface ExportOpts {
   template?: PdfTemplate;
   filename?: string;
-  language?: "mn" | "en";
+  language?: AppLang;
   includeImages?: boolean;
   t?: (key: string, opts?: Record<string, unknown>) => string;
   // "save" (default) → файл татна; "bloburl" → preview-д зориулж object URL буцаана.

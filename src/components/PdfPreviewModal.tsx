@@ -4,6 +4,7 @@ import { exportPortfolio, type PdfTemplate, type FrameStyle } from "../lib/pdfEx
 
 const FRAME_STYLES: FrameStyle[] = ["classic", "corner", "minimal"];
 import type { Achievement, Child } from "../types";
+import { SUPPORTED_LANGS, type AppLang } from "../i18n";
 
 interface PdfPreviewModalProps {
   open: boolean;
@@ -23,7 +24,9 @@ export default function PdfPreviewModal({
   includeImages,
 }: PdfPreviewModalProps) {
   const { t, i18n } = useTranslation();
-  const language: "mn" | "en" = i18n.language?.startsWith("en") ? "en" : "mn";
+  const language: AppLang = SUPPORTED_LANGS.includes(i18n.resolvedLanguage as AppLang)
+    ? (i18n.resolvedLanguage as AppLang)
+    : "mn";
 
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("classic");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
