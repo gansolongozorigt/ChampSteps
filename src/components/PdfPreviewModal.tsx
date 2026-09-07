@@ -31,6 +31,7 @@ export default function PdfPreviewModal({
   const [generating, setGenerating] = useState(false);
   const [step, setStep] = useState<"select" | "preview">("select");
   const [isMobile, setIsMobile] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const urlRef = useRef<string | null>(null);
 
   const replaceUrl = (url: string | null) => {
@@ -51,6 +52,7 @@ export default function PdfPreviewModal({
     if (open) {
       setSelectedIds(new Set(achievements.map((a) => a.id)));
       setStep("select");
+      setExpanded(false);
     }
   }, [open, achievements]);
 
@@ -109,6 +111,13 @@ export default function PdfPreviewModal({
   const toggleAll = () =>
     setSelectedIds(allSelected ? new Set() : new Set(achievements.map((a) => a.id)));
 
+  // Must stay synchronous (no await before window.open) or popup blockers will cancel it.
+  const openFullscreen = () => {
+    const url = urlRef.current;
+    if (!url) return;
+    window.open(url, "_blank", "noopener");
+  };
+
   async function handleDownload() {
     if (selectedList.length === 0) return;
     try {
@@ -129,6 +138,34 @@ export default function PdfPreviewModal({
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
+
+  const fullscreenIcon = (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
+    </svg>
+  );
+
+  const expandIcon = (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 4h5v5M20 4l-6 6M9 20H4v-5M4 20l6-6" />
+    </svg>
+  );
+
+  const collapseIcon = (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h5M14 10V5M14 10l6-6M10 14H5M10 14v5M10 14l-6 6" />
+    </svg>
+  );
+
+  const pdfIcon = (
+    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5M9 13h6M9 17h6" />
+    </svg>
+  );
+
+  const toolbarBtnClass =
+    "w-8 h-8 rounded-md flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-200/70 disabled:opacity-30 disabled:hover:bg-transparent transition-colors";
 
   const listContent = (
     <>
@@ -160,14 +197,70 @@ export default function PdfPreviewModal({
     </>
   );
 
+  const previewToolbar = (
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-xs font-medium text-stone-500">{t("pdfPreview.preview")}</span>
+      <div className="flex items-center gap-1">
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            title={expanded ? t("pdf.collapse") : t("pdf.expand")}
+            aria-label={expanded ? t("pdf.collapse") : t("pdf.expand")}
+            aria-pressed={expanded}
+            className={toolbarBtnClass}
+          >
+            {expanded ? collapseIcon : expandIcon}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={openFullscreen}
+          disabled={!previewUrl}
+          title={t("pdf.openFullscreen")}
+          aria-label={t("pdf.openFullscreen")}
+          className={toolbarBtnClass}
+        >
+          {fullscreenIcon}
+        </button>
+      </div>
+    </div>
+  );
+
+  const generatingOverlay = generating && (
+    <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
+      <div className="flex items-center gap-2 text-sm text-stone-500">
+        <span className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+        {t("pdfPreview.generating")}
+      </div>
+    </div>
+  );
+
   const previewContent = (
     <div className="flex-1 min-h-0 flex flex-col">
       {selectedList.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-sm text-stone-400 text-center px-4">
           {t("pdfPreview.noneSelected")}
         </div>
+      ) : isMobile ? (
+        // Phones: inline PDF iframes are unreliable (iOS Safari shows only page 1), so offer a button instead.
+        <div className="relative flex-1 min-h-[12rem] flex flex-col items-center justify-center gap-2 px-4">
+          <button
+            type="button"
+            onClick={openFullscreen}
+            disabled={!previewUrl || generating}
+            className="inline-flex items-center gap-3 px-5 py-3.5 rounded-xl bg-stone-950 text-white text-sm font-medium disabled:opacity-40 hover:bg-stone-800 transition-colors"
+          >
+            {pdfIcon}
+            {t("pdf.previewOnPhone")}
+            {fullscreenIcon}
+          </button>
+          <p className="text-xs text-stone-400 text-center">{t("pdf.previewOnPhoneHint")}</p>
+          {generatingOverlay}
+        </div>
       ) : (
         <>
+          {previewToolbar}
           <div className="relative flex-1 min-h-0">
             {previewUrl && (
               <iframe
@@ -176,20 +269,8 @@ export default function PdfPreviewModal({
                 className="w-full h-full rounded-lg border border-stone-200 bg-white"
               />
             )}
-            {generating && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-stone-500">
-                  <span className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
-                  {t("pdfPreview.generating")}
-                </div>
-              </div>
-            )}
+            {generatingOverlay}
           </div>
-          {isMobile && previewUrl && (
-            <a href={previewUrl} target="_blank" rel="noreferrer" className="mt-2 text-center text-xs text-amber-600 hover:text-amber-700">
-              {t("pdfPreview.openNewTab")}
-            </a>
-          )}
         </>
       )}
     </div>
@@ -216,9 +297,16 @@ export default function PdfPreviewModal({
     </button>
   );
 
+  const isExpanded = expanded && !isMobile;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4 print:hidden cs-backdrop-in" onClick={onClose}>
-      <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden flex flex-col cs-panel-in" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`bg-white w-full rounded-2xl shadow-xl overflow-hidden flex flex-col cs-panel-in ${
+          isExpanded ? "max-w-[95vw] h-[95vh]" : "max-w-3xl max-h-[90vh]"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-stone-100">
           <div className="min-w-0">
             <p className="text-base font-medium text-stone-900">{t("pdfPreview.title")}</p>
@@ -253,9 +341,11 @@ export default function PdfPreviewModal({
 
         <div className="flex-1 min-h-0">
           {!isMobile ? (
-            <div className="grid grid-cols-2 h-full">
-              <div className="overflow-y-auto p-4 border-r border-stone-100">{listContent}</div>
-              <div className="bg-stone-50 p-4 flex flex-col">{previewContent}</div>
+            <div className={`grid h-full ${isExpanded ? "grid-cols-1" : "grid-cols-2"}`}>
+              {!isExpanded && (
+                <div className="overflow-y-auto p-4 border-r border-stone-100">{listContent}</div>
+              )}
+              <div className="bg-stone-50 p-4 flex flex-col min-h-0">{previewContent}</div>
             </div>
           ) : step === "select" ? (
             <div className="h-full overflow-y-auto p-4">
