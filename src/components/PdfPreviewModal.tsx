@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { exportPortfolio, type PdfTemplate, type FrameStyle } from "../lib/pdfExport";
+import type { PdfTemplate, FrameStyle } from "../lib/pdfExport";
 
 const FRAME_STYLES: FrameStyle[] = ["classic", "corner", "minimal"];
 import type { Achievement, Child } from "../types";
@@ -80,6 +80,7 @@ export default function PdfPreviewModal({
     setGenerating(true);
     const handle = window.setTimeout(async () => {
       try {
+        const { exportPortfolio } = await import("../lib/pdfExport");
         const url = await exportPortfolio(child, selectedList, {
           t, template, language, includeImages, frameStyle, output: "bloburl",
         });
@@ -125,6 +126,7 @@ export default function PdfPreviewModal({
     if (selectedList.length === 0) return;
     try {
       setGenerating(true);
+      const { exportPortfolio } = await import("../lib/pdfExport");
       await exportPortfolio(child, selectedList, {
         t, template, language, includeImages, frameStyle, output: "save",
       });

@@ -44,7 +44,6 @@ import {
   saveLocalAchievements,
   saveLocalChild,
 } from "./lib/localStore";
-import { exportPortfolio } from "./lib/pdfExport";
 import { celebrate } from "./lib/celebrate";
 import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
 import type { PdfTemplate } from "./lib/pdfExport";
