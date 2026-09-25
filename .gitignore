@@ -6,3 +6,4 @@ src/**/*.js
 src/**/*.js.map
 api/**/*.js
 .DS_Store
+.vercel

@@ -428,6 +428,16 @@
     "success": "{{months}} months free activated!",
     "invalid": "Invalid or expired code."
   },
+  "pay": {
+    "scanQr": "Scan the QR code with your banking app",
+    "chooseBank": "Choose your bank",
+    "checking": "Checking payment…",
+    "success": "Payment received. Your plan is active!",
+    "amount": "Amount due",
+    "simulate": "Test: mark as paid",
+    "error": "Could not create the invoice. Please try again.",
+    "orderId": "Order"
+  },
   "login": {
     "whoAreYou": "WHO ARE YOU?",
     "parent": "Parent",

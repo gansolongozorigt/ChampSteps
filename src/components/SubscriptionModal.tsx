@@ -1,11 +1,18 @@
 // =============================================================================
-// SubscriptionModal v3 — i18n бүрэн дэмжсэн
+// SubscriptionModal v4 — QPay төлбөр (QR + банкны deeplink), i18n бүрэн дэмжсэн
 // =============================================================================
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { redeemPromoCode } from "../lib/firebase";
+import {
+  QPAY_SANDBOX,
+  createQPayInvoice,
+  getQPayStatus,
+  simulateQPayPaid,
+  type CreateInvoiceResponse,
+} from "../lib/qpayClient";
 import type { SubscriptionTier } from "../types";
 
 type Step = "compare" | "pay" | "success";
@@ -20,6 +27,9 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
   const [promoCode, setPromoCode] = useState("");
   const [promoApplying, setPromoApplying] = useState(false);
   const [promoResult, setPromoResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [invoice, setInvoice] = useState<CreateInvoiceResponse | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const pollRef = useRef<number | null>(null);
 
   async function handleApplyPromo() {
     if (!promoCode.trim() || !user) return;
@@ -94,18 +104,85 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     },
   ];
 
-  async function handlePay() {
+  function stopPolling() {
+    if (pollRef.current !== null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  // Модал хаагдахад poll-ийг заавал зогсооно
+  useEffect(() => stopPolling, []);
+
+  async function onPaid() {
+    stopPolling();
+    await refreshSubscription();
+    setStep("success");
+  }
+
+  function startPolling(orderId: string) {
+    stopPolling();
+    pollRef.current = window.setInterval(async () => {
+      try {
+        const st = await getQPayStatus(orderId);
+        if (st.status === "paid") await onPaid();
+      } catch (e) {
+        console.warn("[champstep] qpay status poll failed:", e);
+      }
+    }, 3000);
+  }
+
+  /** Багц сонгоод "Төлөх" дарахад: нэхэмжлэх үүсгэж төлбөрийн алхам руу орно. */
+  async function handleStartPayment() {
     setError(null);
+    if (!user) return;
+
+    // Firebase байхгүй (offline) үед хуучин локал идэвхжүүлэлт хэвээр
+    if (user.isOffline) {
+      setProcessing(true);
+      try {
+        await activateSubscription(selectedTier);
+        setStep("success");
+      } catch (e) {
+        console.error("[champstep] activateSubscription failed:", e);
+        setError(t("sub.error"));
+      } finally {
+        setProcessing(false);
+      }
+      return;
+    }
+
     setProcessing(true);
     try {
-      await new Promise((r) => setTimeout(r, 1800));
-      await activateSubscription(selectedTier);
-      setStep("success");
+      const inv = await createQPayInvoice(selectedTier);
+      setInvoice(inv);
+      setStep("pay");
+      startPolling(inv.orderId);
     } catch (e) {
-      console.error("[champstep] activateSubscription failed:", e);
-      setError(t("sub.error"));
+      console.error("[champstep] createQPayInvoice failed:", e);
+      setError(t("pay.error"));
     } finally {
       setProcessing(false);
+    }
+  }
+
+  function handleBackFromPay() {
+    stopPolling();
+    setInvoice(null);
+    setStep("compare");
+  }
+
+  async function handleSimulatePaid() {
+    if (!invoice) return;
+    setSimulating(true);
+    try {
+      await simulateQPayPaid(invoice.orderId);
+      await onPaid();
+    } catch (e) {
+      console.error("[champstep] simulateQPayPaid failed:", e);
+      setError(t("sub.error"));
+    } finally {
+      setSimulating(false);
     }
   }
 
@@ -206,13 +283,18 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
               )}
             </div>
 
+            {error && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+            )}
             <button
               type="button"
-              onClick={() => setStep("pay")}
-              disabled={selectedTier === subscription || selectedTier === "free"}
+              onClick={handleStartPayment}
+              disabled={processing || selectedTier === subscription || selectedTier === "free"}
               className="mt-3 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
             >
-              {selectedTier === subscription
+              {processing
+                ? t("sub.processing")
+                : selectedTier === subscription
                 ? t("sub.currentPlan")
                 : selectedTier === "free"
                 ? t("sub.freePlan")
@@ -221,52 +303,95 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
           </div>
         )}
 
-        {step === "pay" && (
-          <div className="px-5 py-5">
+        {step === "pay" && invoice && (
+          <div className="px-5 py-5 max-h-[80vh] overflow-y-auto">
             <div className="mb-4 rounded-xl bg-stone-50 p-3 flex items-center justify-between">
-              <span className="text-sm font-medium text-stone-700">{tierInfo?.name}</span>
-              <span className="font-bold text-stone-900">{tierInfo?.price}{t("sub.perMonth")}</span>
+              <div>
+                <span className="block text-sm font-medium text-stone-700">{tierInfo?.name}</span>
+                <span className="block text-[10px] text-stone-400">
+                  {t("pay.orderId")}: {invoice.orderId}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="block text-[10px] text-stone-400">{t("pay.amount")}</span>
+                <span className="font-bold text-stone-900">{tierInfo?.price}{t("sub.perMonth")}</span>
+              </div>
             </div>
-            <p className="text-sm text-stone-500 mb-3">{t("sub.payWith")}</p>
-            <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-xl border border-stone-200 bg-stone-50">
-              <svg width="140" height="140" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <rect width="160" height="160" fill="white" />
-                {Array.from({ length: 12 }).map((_, r) =>
-                  Array.from({ length: 12 }).map((__,c) => {
-                    const seed = (r * 13 + c * 7 + r * c) % 5;
-                    return seed < 2 ? (
-                      <rect key={`${r}-${c}`} x={8 + c * 12} y={8 + r * 12} width="10" height="10" fill="#1c1917" />
-                    ) : null;
-                  })
+
+            {/* Desktop: том QR */}
+            <div className="hidden md:block">
+              <div className="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white p-2">
+                {invoice.qrImage ? (
+                  <img
+                    src={`data:image/png;base64,${invoice.qrImage}`}
+                    alt="QPay QR"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-stone-400">{invoice.qrText}</span>
                 )}
-                <rect x="4" y="4" width="32" height="32" fill="none" stroke="#1c1917" strokeWidth="4" />
-                <rect x="124" y="4" width="32" height="32" fill="none" stroke="#1c1917" strokeWidth="4" />
-                <rect x="4" y="124" width="32" height="32" fill="none" stroke="#1c1917" strokeWidth="4" />
-              </svg>
+              </div>
+              <p className="mt-2 text-center text-xs text-stone-500">{t("pay.scanQr")}</p>
             </div>
-            <p className="mt-2 text-center text-xs text-stone-400">{t("sub.scanQr")}</p>
+
+            {/* Мобайл: жижиг QR + банкны deeplink жагсаалт */}
+            <div className="md:hidden">
+              {invoice.qrImage && (
+                <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white p-1">
+                  <img
+                    src={`data:image/png;base64,${invoice.qrImage}`}
+                    alt="QPay QR"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
+              <p className="mt-3 mb-2 text-xs font-medium text-stone-500">{t("pay.chooseBank")}</p>
+              <ul className="grid grid-cols-2 gap-2">
+                {invoice.urls.map((bank) => (
+                  <li key={bank.name}>
+                    <a
+                      href={bank.link}
+                      className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-left text-xs text-stone-700 hover:bg-stone-50 active:scale-95 transition"
+                    >
+                      {bank.logo && (
+                        <img src={bank.logo} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" loading="lazy" />
+                      )}
+                      <span className="truncate">{bank.description || bank.name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Төлбөр шалгаж байна… */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-stone-500">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" aria-hidden />
+              <span>{t("pay.checking")}</span>
+            </div>
+
             {error && (
               <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
             )}
+
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={() => setStep("compare")}
-                disabled={processing}
-                className="flex-1 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed"
+                onClick={handleBackFromPay}
+                className="flex-1 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
               >
                 {t("sub.back")}
               </button>
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={processing}
-                className="flex-1 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
-              >
-                {processing ? t("sub.processing") : t("sub.confirm")}
-              </button>
+              {QPAY_SANDBOX && (
+                <button
+                  type="button"
+                  onClick={handleSimulatePaid}
+                  disabled={simulating}
+                  className="flex-1 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {simulating ? "…" : t("pay.simulate")}
+                </button>
+              )}
             </div>
-            <p className="mt-2 text-center text-[10px] text-stone-400">{t("sub.demo")}</p>
           </div>
         )}
 
@@ -277,6 +402,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
             <p className="mt-2 text-sm text-stone-500">
               {t("sub.successMsg", { name: tierInfo?.name })}
             </p>
+            {invoice && <p className="mt-1 text-xs text-emerald-600">{t("pay.success")}</p>}
             <button
               type="button"
               onClick={onClose}
