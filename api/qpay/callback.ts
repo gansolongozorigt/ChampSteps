@@ -2,9 +2,9 @@
 // Callback бол зөвхөн дохио: заавал /v2/payment/check-ээр баталгаажуулна.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { adminDb } from "../_lib/firebaseAdmin";
-import { activateSubscription, type PaymentDoc } from "../_lib/activate";
-import { QPayError, checkPayment } from "../_lib/qpay";
+import { adminDb } from "../_lib/firebaseAdmin.js";
+import { activateSubscription, type PaymentDoc } from "../_lib/activate.js";
+import { QPayError, checkPayment } from "../_lib/qpay.js";
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;

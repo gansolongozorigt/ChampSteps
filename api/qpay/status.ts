@@ -2,9 +2,9 @@
 // Зөвхөн бидний Firestore-ийг уншина (QPay-г дуудахгүй) тул client poll хийж болно.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin";
-import type { PaymentDoc } from "../_lib/activate";
-import { PLAN_DURATION_MS } from "../_lib/plans";
+import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
+import type { PaymentDoc } from "../_lib/activate.js";
+import { PLAN_DURATION_MS } from "../_lib/plans.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });

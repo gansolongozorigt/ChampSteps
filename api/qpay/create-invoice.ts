@@ -3,9 +3,9 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Timestamp } from "firebase-admin/firestore";
-import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin";
-import { PLANS, isPaidPlan } from "../_lib/plans";
-import { QPayError, createInvoice } from "../_lib/qpay";
+import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
+import { PLANS, isPaidPlan } from "../_lib/plans.js";
+import { QPayError, createInvoice } from "../_lib/qpay.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });

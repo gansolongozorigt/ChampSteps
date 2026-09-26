@@ -2,8 +2,8 @@
 // callback болон sandbox simulate-paid хоёулаа энэ нэг функцийг ашиглана.
 
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { adminDb } from "./firebaseAdmin";
-import { PLAN_DURATION_MS, type PaidPlan } from "./plans";
+import { adminDb } from "./firebaseAdmin.js";
+import { PLAN_DURATION_MS, type PaidPlan } from "./plans.js";
 
 export interface PaymentDoc {
   uid: string;
