@@ -41,7 +41,7 @@ export default function Toast({ kind, message, durationMs = 4000, onClose }: Toa
       className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 sm:bottom-8"
     >
       <div
-        className={`pointer-events-auto flex max-w-sm items-center gap-3 rounded-full px-4 py-2.5 text-sm shadow-lg shadow-stone-900/20 ${STYLES[kind]}`}
+        className={`cs-toast-in pointer-events-auto flex max-w-sm items-center gap-3 rounded-full px-4 py-2.5 text-sm shadow-lg shadow-stone-900/20 ${STYLES[kind]}`}
       >
         <span
           aria-hidden

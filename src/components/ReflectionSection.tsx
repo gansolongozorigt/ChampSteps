@@ -85,23 +85,28 @@ export default function ReflectionSection({
       {/* Add form */}
       {showForm && (
         <div className="mb-4 rounded-2xl border border-purple-100 bg-purple-50/50 p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="flex flex-col gap-3 mb-3">
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("reflection.fields.date")}
               </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+                <div className="w-full rounded-lg bg-stone-100 px-3 py-1 text-sm text-center text-stone-600 pointer-events-none">
+                  {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("reflection.fields.mood")}
               </label>
-              <div className="flex gap-1.5">
+              <div className="flex gap-2 flex-wrap">
                 {MOOD_VALUES.map((v) => (
                   <button
                     key={v}

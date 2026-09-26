@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b",
+    "lint:api": "tsc -p tsconfig.api.json --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
     "firebase": "^10.13.0",
+    "firebase-admin": "^14.5.0",
     "i18next": "^23.15.1",
     "i18next-browser-languagedetector": "^8.0.0",
     "jspdf": "^2.5.1",

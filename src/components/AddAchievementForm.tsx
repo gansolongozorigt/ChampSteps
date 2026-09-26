@@ -246,7 +246,7 @@ export default function AddAchievementForm({
             {submitting
               ? t("form.actions.saving")
               : isEditing
-              ? "Өөрчлөлт хадгалах"
+              ? t("form.actions.saveChanges")
               : childName
               ? t("form.actions.saveForChild", { name: childName })
               : t("form.actions.save")}
@@ -271,7 +271,7 @@ function Header({ step, childName, isEditing }: { step: Step; childName?: string
         {childName ? t("form.headerEyebrowWithName", { name: childName }) : t("form.headerEyebrow")}
       </p>
       <h2 className="mt-1 font-serif text-2xl text-stone-900">
-        {isEditing ? "Бичлэг засах" : t("form.heading")}
+        {isEditing ? t("form.editHeading") : t("form.heading")}
       </h2>
       <ol className="mt-5 flex items-center gap-2">
         {labels.map((label, i) => {

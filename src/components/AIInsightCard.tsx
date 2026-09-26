@@ -58,7 +58,7 @@ export default function AIInsightCard({ child, achievements }: Props) {
         <button
           onClick={getInsight}
           disabled={loading}
-          className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50 active:scale-95 transition-all"
+          className="cs-shine text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50 active:scale-95 transition-all"
         >
           {loading ? t("ai.loading") : insight ? t("ai.refresh") : t("ai.fetch")}
         </button>

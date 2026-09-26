@@ -9,10 +9,11 @@ import {
   createPromoCode,
   listPromoCodes,
   seedPromoCodes,
+  togglePromoCode,
   type PromoCode,
 } from "../lib/firebase";
 
-const ADMIN_EMAIL = "admin@champsteps.app";
+const ADMIN_EMAIL = "gansolongozorigt7@gmail.com";
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -77,6 +78,7 @@ function PromoSection() {
   const [createMsg, setCreateMsg] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
   async function load() {
     setLoadingCodes(true);
@@ -107,6 +109,16 @@ function PromoSection() {
       await load();
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleToggle(code: string, currentActive: boolean) {
+    setTogglingCode(code);
+    try {
+      await togglePromoCode(code, !currentActive);
+      await load();
+    } finally {
+      setTogglingCode(null);
     }
   }
 
@@ -207,9 +219,14 @@ function PromoSection() {
               <div>
                 <span className="font-mono font-bold text-stone-900">{c.code}</span>
                 <span className="ml-2 text-stone-500">{c.discountMonths}mo</span>
-                <span className={`ml-2 rounded px-1.5 py-0.5 ${c.active ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
-                  {c.active ? t("admin.active") : t("admin.inactive")}
-                </span>
+                <button
+                  type="button"
+                  disabled={togglingCode === c.code}
+                  onClick={() => handleToggle(c.code, c.active)}
+                  className="ml-2 rounded px-1.5 py-0.5 cursor-pointer hover:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  {c.active ? "🟢 Идэвхтэй" : "🔴 Идэвхгүй"}
+                </button>
               </div>
               <span className="text-stone-400 shrink-0">
                 {c.usedBy.length}/{c.maxUses} {t("admin.used")}

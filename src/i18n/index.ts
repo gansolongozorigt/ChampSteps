@@ -10,8 +10,9 @@ import LanguageDetector from "i18next-browser-languagedetector";
 
 import mn from "./locales/mn.json";
 import en from "./locales/en.json";
+import ru from "./locales/ru.json";
 
-export const SUPPORTED_LANGS = ["mn", "en"] as const;
+export const SUPPORTED_LANGS = ["mn", "en", "ru"] as const;
 export type AppLang = (typeof SUPPORTED_LANGS)[number];
 
 i18n
@@ -21,6 +22,7 @@ i18n
     resources: {
       mn: { translation: mn },
       en: { translation: en },
+      ru: { translation: ru },
     },
     fallbackLng: "mn",
     supportedLngs: SUPPORTED_LANGS as unknown as string[],

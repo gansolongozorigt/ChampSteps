@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (mode === "signin") {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password, displayName.trim() || "Хэрэглэгч", role);
+        await signUp(email.trim(), password, displayName.trim() || t("auth.defaultName"), role);
       }
     } catch (err) {
       setError(mapAuthError(err, t));
@@ -135,7 +135,7 @@ export default function LoginPage() {
                   label={t("auth.name")}
                   value={displayName}
                   onChange={setDisplayName}
-                  placeholder={role === "teacher" ? "Багшийн нэр" : "Эцэг эхийн нэр"}
+                  placeholder={role === "teacher" ? t("auth.teacherNamePlaceholder") : t("auth.namePlaceholder")}
                 />
               )}
 
