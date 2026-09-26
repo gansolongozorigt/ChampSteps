@@ -3,9 +3,9 @@
 // Production (QPAY_BASE_URL sandbox биш) үед 404 — огт байхгүй мэт.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin";
-import { activateSubscription, type PaymentDoc } from "../_lib/activate";
-import { isSandbox } from "../_lib/qpay";
+import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
+import { activateSubscription, type PaymentDoc } from "../_lib/activate.js";
+import { isSandbox } from "../_lib/qpay.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!isSandbox()) return res.status(404).send("Not Found");
