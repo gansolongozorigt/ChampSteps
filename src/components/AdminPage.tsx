@@ -1,5 +1,5 @@
 // =============================================================================
-// AdminPage — promo code management (guarded by hardcoded admin email)
+// AdminPage — promo code management. UI gate: ADMIN_EMAIL; enforced server-side in /api/promo/admin.
 // =============================================================================
 
 import { useEffect, useState } from "react";
@@ -11,7 +11,7 @@ import {
   seedPromoCodes,
   togglePromoCode,
   type PromoCode,
-} from "../lib/firebase";
+} from "../lib/promoClient";
 
 const ADMIN_EMAIL = "gansolongozorigt7@gmail.com";
 
@@ -79,11 +79,16 @@ function PromoSection() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
   const [togglingCode, setTogglingCode] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     setLoadingCodes(true);
+    setLoadError(null);
     try {
       setCodes(await listPromoCodes());
+    } catch (e) {
+      console.error("[champstep] promo list failed:", e);
+      setLoadError(t("admin.error"));
     } finally {
       setLoadingCodes(false);
     }
@@ -101,12 +106,14 @@ function PromoSection() {
         code: code.trim().toUpperCase(),
         discountMonths: months,
         maxUses,
-        expiresAt: new Date(expiry),
-        active: true,
+        expiresAt: new Date(expiry).toISOString(),
       });
       setCreateMsg(t("admin.created"));
       setCode("");
       await load();
+    } catch (e) {
+      console.error("[champstep] promo create failed:", e);
+      setCreateMsg(t("admin.error"));
     } finally {
       setCreating(false);
     }
@@ -117,6 +124,9 @@ function PromoSection() {
     try {
       await togglePromoCode(code, !currentActive);
       await load();
+    } catch (e) {
+      console.error("[champstep] promo toggle failed:", e);
+      setLoadError(t("admin.error"));
     } finally {
       setTogglingCode(null);
     }
@@ -129,6 +139,9 @@ function PromoSection() {
       await seedPromoCodes();
       setSeedMsg(t("admin.seeded"));
       await load();
+    } catch (e) {
+      console.error("[champstep] promo seed failed:", e);
+      setSeedMsg(t("admin.error"));
     } finally {
       setSeeding(false);
     }
@@ -208,6 +221,7 @@ function PromoSection() {
 
       {/* Code list */}
       <h4 className="text-xs font-semibold text-stone-500 mb-2">{t("admin.listHeading")}</h4>
+      {loadError && <p className="mb-2 text-xs text-red-600">{loadError}</p>}
       {loadingCodes ? (
         <p className="text-xs text-stone-400">{t("admin.loading")}</p>
       ) : codes.length === 0 ? (
@@ -225,7 +239,7 @@ function PromoSection() {
                   onClick={() => handleToggle(c.code, c.active)}
                   className="ml-2 rounded px-1.5 py-0.5 cursor-pointer hover:opacity-70 transition-opacity disabled:opacity-40"
                 >
-                  {c.active ? "🟢 Идэвхтэй" : "🔴 Идэвхгүй"}
+                  {c.active ? `🟢 ${t("admin.active")}` : `🔴 ${t("admin.inactive")}`}
                 </button>
               </div>
               <span className="text-stone-400 shrink-0">

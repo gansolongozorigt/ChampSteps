@@ -426,7 +426,10 @@
     "placeholder": "Enter promo code",
     "apply": "Apply",
     "success": "{{months}} months free activated!",
-    "invalid": "Invalid or expired code."
+    "invalid": "Invalid or expired code.",
+    "used": "You have already used this code.",
+    "exhausted": "This code has reached its usage limit.",
+    "expired": "This code has expired or is inactive."
   },
   "pay": {
     "scanQr": "Scan the QR code with your banking app",
@@ -473,6 +476,7 @@
     "loading": "Loading…",
     "active": "Active",
     "inactive": "Inactive",
-    "used": "used"
+    "used": "used",
+    "error": "Something went wrong. Please try again."
   }
 }                  

@@ -18,6 +18,28 @@ export interface PaymentDoc {
   paidAt?: Timestamp;
 }
 
+/**
+ * users/{uid}-д бичих багцын талбарууд. QPay (activateSubscription) болон
+ * promo (api/promo/apply) хоёулаа энэ нэг хэлбэрийг ашиглана.
+ */
+export function subscriptionFields(
+  plan: PaidPlan,
+  provider: "qpay" | "promo",
+  startedAt: Date,
+  expiresAt: Date,
+  extra: Record<string, unknown> = {}
+) {
+  const startTs = Timestamp.fromDate(startedAt);
+  const expTs = Timestamp.fromDate(expiresAt);
+  return {
+    subscriptionTier: plan,
+    subscriptionActivatedAt: startTs,
+    subscriptionExpiresAt: expTs,
+    subscription: { plan, provider, startedAt: startTs, expiresAt: expTs, ...extra },
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
 export type ActivateResult =
   | { ok: true; alreadyPaid: boolean; expiresAt: Date }
   | { ok: false; reason: "not_found" };
@@ -52,31 +74,16 @@ export async function activateSubscription(
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + PLAN_DURATION_MS);
-    const nowTs = Timestamp.fromDate(now);
-    const expTs = Timestamp.fromDate(expiresAt);
-
     tx.update(payRef, {
       status: "paid",
       paymentId: opts.paymentId ?? payment.paymentId ?? null,
-      paidAt: nowTs,
+      paidAt: Timestamp.fromDate(now),
     });
 
     const userRef = adminDb.collection("users").doc(payment.uid);
     tx.set(
       userRef,
-      {
-        subscriptionTier: payment.plan,
-        subscriptionActivatedAt: nowTs,
-        subscriptionExpiresAt: expTs,
-        subscription: {
-          plan: payment.plan,
-          provider: "qpay",
-          startedAt: nowTs,
-          expiresAt: expTs,
-          lastOrderId: orderId,
-        },
-        updatedAt: FieldValue.serverTimestamp(),
-      },
+      subscriptionFields(payment.plan, "qpay", now, expiresAt, { lastOrderId: orderId }),
       { merge: true }
     );
 

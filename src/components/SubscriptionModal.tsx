@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
-import { redeemPromoCode } from "../lib/firebase";
+import { PromoError, applyPromoCode } from "../lib/promoClient";
 import {
   QPAY_SANDBOX,
   createQPayInvoice,
@@ -36,13 +36,14 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     setPromoApplying(true);
     setPromoResult(null);
     try {
-      const months = await redeemPromoCode(promoCode.trim(), user.uid);
+      const { months } = await applyPromoCode(promoCode.trim());
       await refreshSubscription();
       setPromoResult({ success: true, message: t("promo.success", { months }) });
     } catch (err) {
-      const code = (err as { message?: string })?.message ?? "";
-      if (code === "used") setPromoResult({ success: false, message: t("promo.used") });
-      else if (code === "exhausted") setPromoResult({ success: false, message: t("promo.exhausted") });
+      const reason = err instanceof PromoError ? err.reason : "unknown";
+      if (reason === "used") setPromoResult({ success: false, message: t("promo.used") });
+      else if (reason === "exhausted") setPromoResult({ success: false, message: t("promo.exhausted") });
+      else if (reason === "expired" || reason === "inactive") setPromoResult({ success: false, message: t("promo.expired") });
       else setPromoResult({ success: false, message: t("promo.invalid") });
     } finally {
       setPromoApplying(false);

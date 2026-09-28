@@ -5,7 +5,7 @@
 // initializeApp-ийг давхар дуудахаас getApps() шалгаж хамгаална.
 
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 function loadServiceAccount(): Record<string, string> {
@@ -40,6 +40,16 @@ const app = getApp();
 
 export const adminAuth = getAuth(app);
 export const adminDb = getFirestore(app);
+
+/** ID token-ийг баталгаажуулж decoded token буцаана (uid, email...). Буруу бол null. */
+export async function verifyIdTokenFull(idToken: unknown): Promise<DecodedIdToken | null> {
+  if (typeof idToken !== "string" || !idToken) return null;
+  try {
+    return await adminAuth.verifyIdToken(idToken);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Firebase ID token-оос uid гаргана. Буруу / хугацаа дууссан бол null.

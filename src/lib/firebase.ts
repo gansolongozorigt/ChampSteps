@@ -181,17 +181,6 @@ export async function getSubscriptionStatus(uid: string): Promise<SubscriptionTi
   return getSubscriptionTier(uid);
 }
 
-export async function activatePremium(uid: string, tier: SubscriptionTier = "family") {
-  const db = requireDb();
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
-  await updateDoc(doc(db, "users", uid), {
-    subscriptionTier: tier,
-    subscriptionActivatedAt: serverTimestamp(),
-    subscriptionExpiresAt: Timestamp.fromDate(expiresAt),
-  });
-}
-
 // -----------------------------------------------------------------------------
 // Children
 // -----------------------------------------------------------------------------
@@ -569,60 +558,4 @@ export async function removeStudentFromTeacher(
   await updateDoc(childRef, {
     teacherIds: teacherIds.filter((id) => id !== teacherId),
   });
-}
-// -----------------------------------------------------------------------------
-// Promo codes
-// -----------------------------------------------------------------------------
-export interface PromoCode {
-  code: string;
-  discountMonths: number;
-  usedBy: string[];
-  maxUses: number;
-  expiresAt: Date;
-  active: boolean;
-}
-
-export async function createPromoCode(data: Omit<PromoCode, "usedBy">) {
-  const db = requireDb();
-  await setDoc(doc(db, "promoCodes", data.code.toUpperCase()), {
-    ...data,
-    code: data.code.toUpperCase(),
-    usedBy: [],
-  });
-}
-
-export async function togglePromoCode(code: string, active: boolean): Promise<void> {
-  const db = requireDb();
-  await updateDoc(doc(db, "promoCodes", code.toUpperCase()), { active });
-}
-
-export async function listPromoCodes(): Promise<PromoCode[]> {
-  const db = requireDb();
-  const snap = await getDocs(collection(db, "promoCodes"));
-  return snap.docs.map((d) => ({ ...(d.data() as PromoCode) }));
-}
-
-export async function seedPromoCodes() {
-  const db = requireDb();
-  const codes = [
-    { code: "CHAMP3", discountMonths: 3, maxUses: 100, active: true, expiresAt: new Date("2027-01-01") },
-    { code: "CHAMP6", discountMonths: 6, maxUses: 50, active: true, expiresAt: new Date("2027-01-01") },
-  ];
-  for (const c of codes) {
-    await setDoc(doc(db, "promoCodes", c.code), { ...c, usedBy: [] });
-  }
-}
-
-export async function redeemPromoCode(code: string, userId: string): Promise<{ months: number }> {
-  const db = requireDb();
-  const ref = doc(db, "promoCodes", code.toUpperCase());
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("not_found");
-  const data = snap.data() as PromoCode;
-  if (!data.active) throw new Error("Код хүчингүй болсон байна");
-  if (data.usedBy.includes(userId)) throw new Error("already_used");
-  if (data.usedBy.length >= data.maxUses) throw new Error("max_uses");
-  if (new Date() > new Date(data.expiresAt)) throw new Error("expired");
-  await updateDoc(ref, { usedBy: [...data.usedBy, userId] });
-  return { months: data.discountMonths };
 }
