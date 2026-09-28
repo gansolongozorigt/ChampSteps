@@ -28,6 +28,8 @@ export interface TimelineDashboardProps {
   onEditProfile?: () => void;
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
+  /** Багшийн горим: засах/устгах/нэмэх, профайл засах нуугдана */
+  readOnly?: boolean;
   champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
   loading?: boolean;
 }
@@ -68,6 +70,7 @@ export default function TimelineDashboard({
   onEditProfile,
   onEditAchievement,
   onDeleteAchievement,
+  readOnly = false,
   champMood = "idle",
   loading = false,
 }: TimelineDashboardProps) {
@@ -125,8 +128,9 @@ export default function TimelineDashboard({
         <header className="flex items-start justify-between gap-3 mb-5">
           <button
             type="button"
-            onClick={onEditProfile}
-            className="flex items-center gap-3 rounded-xl p-1 text-left hover:bg-stone-200/60 transition-colors group"
+            onClick={readOnly ? undefined : onEditProfile}
+            disabled={readOnly}
+            className="flex items-center gap-3 rounded-xl p-1 text-left hover:bg-stone-200/60 transition-colors group disabled:cursor-default disabled:hover:bg-transparent"
           >
             {child.avatarUrl ? (
               <img
@@ -221,7 +225,7 @@ export default function TimelineDashboard({
               ))}
             </div>
           ) : achievements.length === 0 ? (
-            <EmptyState variant="journal" onPrimary={onAddClick} />
+            <EmptyState variant="journal" onPrimary={readOnly ? undefined : onAddClick} />
           ) : grouped.length === 0 ? (
             <EmptyState variant="filtered" onPrimary={resetFilters} />
           ) : (
@@ -244,6 +248,7 @@ export default function TimelineDashboard({
                         achievement={a}
                         locale={locale}
                         deleteConfirm={deleteConfirmId === a.id}
+                        readOnly={readOnly}
                         onEdit={() => onEditAchievement?.(a)}
                         onDeleteRequest={() => handleDeleteConfirm(a.id)}
                         onDeleteConfirm={() => handleDeleteExecute(a.id)}
@@ -272,6 +277,7 @@ function TimelineCard({
   index,
   locale,
   deleteConfirm,
+  readOnly = false,
   onEdit,
   onDeleteRequest,
   onDeleteConfirm,
@@ -281,6 +287,7 @@ function TimelineCard({
   index: number;
   locale: string;
   deleteConfirm: boolean;
+  readOnly?: boolean;
   onEdit: () => void;
   onDeleteRequest: () => void;
   onDeleteConfirm: () => void;
@@ -320,7 +327,8 @@ function TimelineCard({
               <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${award.bg} ${award.text} ${award.ring} ${isMedal ? "cs-glint" : ""}`}>
                 {award.emoji} {t(`awards.${achievement.awardType}`)}
               </span>
-              {/* Edit/Delete — hover-д гарна */}
+              {/* Edit/Delete — hover-д гарна (багшийн горимд байхгүй) */}
+              {!readOnly && (
               <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={onEdit}
@@ -341,6 +349,7 @@ function TimelineCard({
                   </svg>
                 </button>
               </div>
+              )}
             </div>
           </div>
 

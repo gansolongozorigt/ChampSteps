@@ -11,12 +11,15 @@ export interface PracticeLogSectionProps {
   logs: PracticeLog[];
   onAdd: (log: Omit<PracticeLog, "id" | "childId" | "createdAt">) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Багшийн горим: нэмэх/устгах товч нуугдана */
+  readOnly?: boolean;
 }
 
 export default function PracticeLogSection({
   logs,
   onAdd,
   onDelete,
+  readOnly = false,
 }: PracticeLogSectionProps) {
   const { t, i18n } = useTranslation();
 
@@ -70,13 +73,15 @@ export default function PracticeLogSection({
             <p className="text-xs text-stone-500 mt-0.5">{totalText()}</p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
-        >
-          {t("practice.addButton")}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
+          >
+            {t("practice.addButton")}
+          </button>
+        )}
       </div>
 
       {/* Add form */}
@@ -184,7 +189,7 @@ export default function PracticeLogSection({
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {deleteId === log.id ? (
+                  {readOnly ? null : deleteId === log.id ? (
                     <div className="flex gap-1">
                       <button
                         type="button"

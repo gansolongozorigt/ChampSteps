@@ -19,7 +19,11 @@ function saveLocal(childId: string, items: Reflection[]) {
   localStorage.setItem(`${KEY}.${childId}`, JSON.stringify(items));
 }
 
-export function useReflections(childId: string) {
+/**
+ * @param enabled  false → Firestore-д subscribe хийхгүй (багшийн горим:
+ *                 reflections нь эцэг эхэд л зориулагдсан, rules хориглоно).
+ */
+export function useReflections(childId: string, enabled = true) {
   const [reflections, setReflections] = useState<Reflection[]>(() =>
     isFirebaseConfigured ? [] : loadLocal(childId)
   );
@@ -27,6 +31,11 @@ export function useReflections(childId: string) {
 
   useEffect(() => {
     if (!childId) return;
+    if (!enabled) {
+      setReflections([]);
+      setLoading(false);
+      return;
+    }
     if (!isFirebaseConfigured) {
       setReflections(loadLocal(childId));
       setLoading(false);
@@ -38,7 +47,7 @@ export function useReflections(childId: string) {
       setLoading(false);
     });
     return unsub;
-  }, [childId]);
+  }, [childId, enabled]);
 
   function addLocal(r: Reflection) {
     setReflections((prev) => {

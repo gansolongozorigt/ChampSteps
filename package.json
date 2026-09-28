@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc -b",
-    "lint:api": "tsc -p tsconfig.api.json --noEmit"
+    "lint:api": "tsc -p tsconfig.api.json --noEmit",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test tests/rules/\"",
+    "test:rules:api": "node tests/rules/api-runner.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
@@ -22,11 +24,13 @@
     "react-i18next": "^15.0.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vercel/node": "^5.7.15",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "firebase-tools": "^15.31.0",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",

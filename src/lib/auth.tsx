@@ -13,7 +13,6 @@ import {
 import type { User as FirebaseUser } from "firebase/auth";
 
 import {
-  activatePremium,
   getSubscriptionStatus,
   isFirebaseConfigured,
   onAuthChange,
@@ -54,6 +53,7 @@ interface AuthContextValue {
   signInOffline: (displayName?: string, role?: UserRole) => void;
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  /** Зөвхөн offline (Firebase-гүй) горимд локал багц идэвхжүүлнэ. Online-д багц зөвхөн серверээр (QPay / promo) идэвхжинэ. */
   activateSubscription: (tier?: SubscriptionTier) => Promise<void>;
 }
 
@@ -208,8 +208,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubscription(tier);
           return;
         }
-        await activatePremium(user.uid, tier);
-        setSubscription(tier);
+        // Online: users/{uid}-ийн багцын талбарыг client бичих эрхгүй (Firestore rules).
+        throw new Error("auth.errors.serverOnly");
       },
     }),
     [user, loading, subscription]

@@ -10,6 +10,7 @@ import AddAchievementForm from "./components/AddAchievementForm";
 // import ChampMascot from "./components/ChampMascot";
 import AboutPage from "./components/AboutPage";
 import AdminPage from "./components/AdminPage";
+import CoachNotes from "./components/CoachNotes";
 import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
@@ -114,7 +115,7 @@ function Dashboard() {
   const { logs: practiceLogs, addLocal: addLocalLog, removeLocal: removeLocalLog } =
     usePracticeLogs(child?.childId ?? "");
   const { reflections, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
-    useReflections(child?.childId ?? "");
+    useReflections(child?.childId ?? "", user?.role !== "teacher");
 
   useEffect(() => {
     async function load() {
@@ -333,6 +334,8 @@ function Dashboard() {
   }
 
   const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
+  // Багш: хүүхдийн өгөгдлийг зөвхөн уншина (Firestore rules-тэй нийцнэ), coach notes л бичнэ
+  const isTeacher = user?.role === "teacher";
   const isPremium = subscription !== "free";
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
@@ -460,9 +463,11 @@ function Dashboard() {
                       <p className="text-[10px] text-stone-500 truncate">{user.email}</p>
                     </div>
                   )}
-                  <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                    {t("profile.edit")}
-                  </button>
+                  {!isTeacher && (
+                    <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                      {t("profile.edit")}
+                    </button>
+                  )}
                   <button onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("nav.about")}
                   </button>
@@ -592,6 +597,7 @@ function Dashboard() {
               child={child}
               achievements={achievements}
               loading={loadingAch && isFirebaseConfigured}
+              readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
@@ -601,7 +607,7 @@ function Dashboard() {
           {activeSection === "practice" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
               <SectionHeader title={t("practice.title")} subtitle={child.name} />
-              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} />
+              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} readOnly={isTeacher} />
             </div>
           )}
           {activeSection === "reflection" && (
@@ -620,6 +626,16 @@ function Dashboard() {
               <div className="grid gap-4">
                 {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
                 {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
+                {user && isFirebaseConfigured && (
+                  <CoachNotes
+                    childId={child.childId}
+                    childName={child.name}
+                    teacherId={user.uid}
+                    teacherName={user.displayName}
+                    isTeacher={isTeacher}
+                    teacherIds={child.teacherIds ?? []}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -727,7 +743,7 @@ function Dashboard() {
       </nav>
 
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
-      {activeSection === "achievements" && (
+      {activeSection === "achievements" && !isTeacher && (
         <button type="button" onClick={() => setShowForm(true)} aria-label={t("app.addAchievement")}
           className="group fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 hover:scale-105 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
           style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}>

@@ -4,7 +4,6 @@ import {
   createCoachNote,
   deleteCoachNote,
   subscribeCoachNotes,
-  getUserDoc,
   type CoachNote,
 } from "../lib/firebase";
 
@@ -37,23 +36,16 @@ export default function CoachNotes({
     return () => unsub();
   }, [childId]);
 
-  // Хүүхдэд холбогдсон багшийн нэрийг татах
+  // Холбогдсон багшийн нэр: users/{uid}-ийг өөр хэрэглэгч уншиж чадахгүй (rules),
+  // тиймээс нэрийг тухайн багшийн бичсэн тэмдэглэлээс авна.
   useEffect(() => {
     if (isTeacher || teacherIds.length === 0) return;
-    async function loadTeachers() {
-      const results: { uid: string; name: string }[] = [];
-      for (const uid of teacherIds) {
-        try {
-          const doc = await getUserDoc(uid);
-          if (doc) results.push({ uid, name: doc.displayName ?? t("coach.defaultName") });
-        } catch {
-          // ignore
-        }
-      }
-      setConnectedTeachers(results);
-    }
-    loadTeachers();
-  }, [teacherIds, isTeacher]);
+    const names = new Map<string, string>();
+    for (const n of notes) if (n.teacherId && n.teacherName) names.set(n.teacherId, n.teacherName);
+    setConnectedTeachers(
+      teacherIds.map((uid) => ({ uid, name: names.get(uid) ?? t("coach.defaultName") }))
+    );
+  }, [teacherIds, isTeacher, notes, t]);
 
   async function handleAdd() {
     if (!text.trim()) return;
