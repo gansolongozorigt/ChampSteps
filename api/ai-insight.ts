@@ -75,7 +75,7 @@ ${summary}
       return res.status(502).json({ error: "Anthropic API error", detail: errText });
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { content?: { text?: string }[] };
     const insight = data?.content?.[0]?.text ?? "";
 
     return res.status(200).json({ insight });

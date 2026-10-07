@@ -1,18 +1,18 @@
-// api/_lib/plans.ts — Багц → дүнгийн серверийн хүснэгт.
-// Түлхүүрүүд src/types/index.ts дахь SubscriptionTier-тэй яг таарна
-// ("free" төлбөргүй тул энд байхгүй). Дүнг client-ээс хэзээ ч авахгүй.
+// api/_lib/plans.ts — server view of the plan table. Values come from
+// shared/plans.js (single source of truth, shared with the client).
+// Amounts are NEVER taken from the client.
+import { PLANS as ALL_PLANS, PLAN_DURATION_MS, isPaidPlanId, type PaidPlanId } from "../../shared/plans.js";
 
-export const PLANS = {
-  family: { amount: 9900, label: "Гэр бүл" },
-  master: { amount: 24900, label: "Мастер" },
-  coach: { amount: 49900, label: "Багш" },
-} as const;
+export type PaidPlan = PaidPlanId;
 
-export type PaidPlan = keyof typeof PLANS;
+export const PLANS: Record<PaidPlan, { amount: number; label: string }> = {
+  family: { amount: ALL_PLANS.family.amount, label: ALL_PLANS.family.label.mn },
+  master: { amount: ALL_PLANS.master.amount, label: ALL_PLANS.master.label.mn },
+  coach: { amount: ALL_PLANS.coach.amount, label: ALL_PLANS.coach.label.mn },
+};
 
 export function isPaidPlan(value: unknown): value is PaidPlan {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(PLANS, value);
+  return isPaidPlanId(value);
 }
 
-/** Сарын багцын хугацаа (Part 1: тогтмол 30 хоног). */
-export const PLAN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+export { PLAN_DURATION_MS, ALL_PLANS };

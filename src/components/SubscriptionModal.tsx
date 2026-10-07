@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { PromoError, applyPromoCode } from "../lib/promoClient";
+import { PLANS, formatMnt } from "../../shared/plans.js";
 import {
   QPAY_SANDBOX,
   createQPayInvoice,
@@ -65,9 +66,9 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     {
       id: "free",
       name: t("sub.tierNames.free"),
-      price: "₮0",
-      children: t("sub.children", { n: 1 }),
-      achievements: t("sub.entries", { n: 30 }),
+      price: formatMnt(PLANS.free.amount),
+      children: t("sub.children", { n: PLANS.free.maxChildren }),
+      achievements: t("sub.entries", { n: PLANS.free.maxAchievements }),
       pdf: false,
       ai: false,
       color: "border-stone-200",
@@ -75,8 +76,8 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     {
       id: "family",
       name: t("sub.tierNames.family"),
-      price: "₮9,900",
-      children: t("sub.children", { n: 3 }),
+      price: formatMnt(PLANS.family.amount),
+      children: t("sub.children", { n: PLANS.family.maxChildren }),
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: false,
@@ -86,8 +87,8 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     {
       id: "master",
       name: t("sub.tierNames.master"),
-      price: "₮24,900",
-      children: t("sub.children", { n: 10 }),
+      price: formatMnt(PLANS.master.amount),
+      children: t("sub.children", { n: PLANS.master.maxChildren }),
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: true,
@@ -96,8 +97,8 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
     {
       id: "coach",
       name: t("sub.tierNames.coach"),
-      price: "₮49,900",
-      children: t("sub.children", { n: 30 }),
+      price: formatMnt(PLANS.coach.amount),
+      children: t("sub.children", { n: PLANS.coach.maxChildren }),
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: true,
