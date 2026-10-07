@@ -100,3 +100,12 @@ export async function cleanupAllTestUsers(): Promise<number> {
   for (const e of qa) await cleanupTestUser(e);
   return qa.length;
 }
+
+/** Debug/assert helper: number of docs in `col` whose childId belongs to this test user's children. */
+export async function countChildDocs(email: string, col: string): Promise<number> {
+  const uid = await uidByEmail(email);
+  const kids = await db().collection("children").where("parentId", "==", uid).get();
+  let n = 0;
+  for (const k of kids.docs) n += (await db().collection(col).where("childId", "==", k.id).get()).size;
+  return n;
+}

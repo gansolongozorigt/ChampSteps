@@ -93,12 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionTier>("free");
-  // Role chosen on the sign-up form. onAuthStateChanged fires BEFORE ensureUserDoc()
-  // has written users/{uid}.role, so without this a new teacher briefly looked like a parent.
-  const pendingRole = useRef<UserRole | null>(null);
+  // onAuthStateChanged fires BEFORE signUpWithEmail() has finished (updateProfile +
+  // ensureUserDoc). The dashboard must not mount until users/{uid}.role exists: mounting
+  // earlier made a new teacher look like a parent AND created Firestore listeners during the
+  // sign-up token refresh, which were rejected with permission-denied and stayed dead.
+  const signingUp = useRef(false);
 
   async function resolveRole(uid: string): Promise<UserRole | undefined> {
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 40; attempt++) {
       try {
         const data = await getUserDoc(uid);
         const r = data?.role;
@@ -106,11 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.error("[champstep] getUserDoc failed:", e);
       }
-      if (pendingRole.current) return pendingRole.current;
       await new Promise((r) => setTimeout(r, 500));
     }
-    console.warn("[champstep] users doc has no role after 10s; defaulting to parent");
+    if (signingUp.current) return undefined; // signUp() will set it
+    console.warn("[champstep] users doc has no role after 20s; defaulting to parent");
     return "parent";
+  }
+  /** Set role without creating a new user object when nothing changes (avoids duplicate effects). */
+  function applyRole(uid: string, role: UserRole | undefined) {
+    setUser((prev) => (prev && prev.uid === uid && prev.role !== role ? { ...prev, role } : prev));
   }
 
   useEffect(() => {
@@ -127,11 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthChange(async (fbUser) => {
       if (fbUser) {
         // Show the loader (role undefined) until users/{uid}.role is known.
-        setUser(fbUserToApp(fbUser, pendingRole.current ?? undefined));
+        setUser((prev) => (prev && prev.uid === fbUser.uid ? prev : fbUserToApp(fbUser, undefined)));
         setLoading(false);
         const role = await resolveRole(fbUser.uid);
-        pendingRole.current = null;
-        setUser((prev) => (prev && prev.uid === fbUser.uid ? { ...prev, role } : fbUserToApp(fbUser, role)));
+        if (role) applyRole(fbUser.uid, role);
 
         try {
           const sub = await getSubscriptionStatus(fbUser.uid);
@@ -162,24 +167,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signUp(email, password, displayName, role) {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
-        pendingRole.current = role;
+        signingUp.current = true;
         try {
           const u = await signUpWithEmail(email, password, displayName, role);
-          // users/{uid}.role is written now — reflect it in context immediately.
-          setUser((prev) => (prev && prev.uid === u.uid ? { ...prev, role } : prev));
-        } catch (e) {
-          pendingRole.current = null;
-          throw e;
+          // profile + users/{uid}.role are written now — safe to mount the dashboard.
+          applyRole(u.uid, role);
+        } finally {
+          signingUp.current = false;
         }
       },
       async signInWithGoogle(role = "parent") {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
-        pendingRole.current = role;
+        signingUp.current = true;
         try {
           const u = await fbSignInWithGoogle(role);
-          setUser((prev) => (prev && prev.uid === u.uid ? { ...prev, role: prev.role ?? role } : prev));
+          const data = await getUserDoc(u.uid);
+          const r = data?.role;
+          applyRole(u.uid, r === "parent" || r === "teacher" ? r : role);
         } finally {
-          pendingRole.current = null;
+          signingUp.current = false;
         }
       },
 

@@ -11,6 +11,8 @@ test("parent: sign up → dashboard → sign out → sign in again", async ({ co
   await signUp(page, acc);
   await waitForDashboard(page);
   await expect(page.getByText(tr("app.achievementsTitle", { name: "Хүүхэд" }))).toBeVisible();
+  // free tier: no AI insight card (server would 403 anyway)
+  await expect(page.getByRole("button", { name: tr("ai.fetch") })).toHaveCount(0);
   await signOut(page);
   await signIn(page, acc);
   await waitForDashboard(page);
