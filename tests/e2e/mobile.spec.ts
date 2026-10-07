@@ -11,8 +11,26 @@ test("390×844: bottom nav has 5 tabs; modal scrolls; save buttons reachable", a
   await waitForDashboard(page);
 
   const bottomNav = page.locator("nav").last();
-  await expect(bottomNav.getByRole("button")).toHaveCount(6); // 5 tabs + upgrade button (free tier)
   for (const s of ["achievements", "practice", "reflection", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
+
+  // upgrade bar (free tier): dismiss → hidden, stays hidden after reload (7-day snooze)
+  const bar = page.getByTestId("upgrade-bar");
+  await expect(bar).toBeVisible();
+  await expect(bottomNav.getByRole("button")).toHaveCount(7); // 5 tabs + dismiss + upgrade
+  await bar.getByRole("button", { name: tr("sub.upgradeBarDismiss") }).click();
+  await expect(bar).toBeHidden();
+  await page.reload();
+  await waitForDashboard(page);
+  await expect(page.getByTestId("upgrade-bar")).toBeHidden();
+  await expect(bottomNav.getByRole("button")).toHaveCount(5);
+
+  // iOS safe areas: header/nav carry env(safe-area-inset-*) padding; computed value is 0 outside iOS
+  const header = page.locator("header").first();
+  await expect(header).toHaveClass(/safe-area-inset-top/);
+  expect(await header.evaluate((el) => getComputedStyle(el).paddingTop)).toBe("0px");
+  const hasRule = await page.evaluate(() => Array.from(document.styleSheets).some((ss) => { try { return Array.from(ss.cssRules).some((r) => r.cssText.includes("padding-top: env(safe-area-inset-top)")); } catch { return false; } }));
+  expect(hasRule).toBe(true);
+  expect(await bottomNav.evaluate((el) => el.style.paddingBottom)).toContain("safe-area-inset-bottom");
 
   // add-achievement modal: reach step 4 and the save button must be in the viewport
   await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click();

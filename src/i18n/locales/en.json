@@ -406,6 +406,7 @@
     "defaultName": "Teacher"
   },
   "sub": {
+    "upgradeBarDismiss": "Dismiss upgrade bar",
     "downgradeBlocked": "You already have a higher plan active (until {{until}})",
     "expiredBanner": "Your {{plan}} plan has expired — switched to Free, your data is kept.",
     "expiringToday": "Your {{plan}} plan ends today",
@@ -466,6 +467,7 @@
     "expired": "This code has expired or is inactive."
   },
   "pay": {
+    "disabledInfo": "Payments will open soon. If you have a promo code, enter it below.",
     "qrAlt": "QPay QR code",
     "scanQr": "Scan the QR code with your banking app",
     "chooseBank": "Choose your bank",

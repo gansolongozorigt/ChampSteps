@@ -66,6 +66,9 @@ const makeInitialChild = (parentId: string): Child => ({
 });
 
 const seedAchievements: Achievement[] = [];
+/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
+const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
+const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -99,6 +102,9 @@ function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [upgradeBarDismissed, setUpgradeBarDismissed] = useState<boolean>(() => {
+    try { const at = Number(localStorage.getItem(UPGRADE_BAR_KEY) ?? 0); return Date.now() - at < UPGRADE_BAR_SNOOZE_MS; } catch { return false; }
+  });
   const [modalTier, setModalTier] = useState<SubscriptionTier | undefined>(undefined);
   const openSubscription = (tier?: SubscriptionTier) => { setModalTier(tier); setShowSubscription(true); };
   const [showAddChild, setShowAddChild] = useState(false);
@@ -382,6 +388,16 @@ function Dashboard() {
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
+  // ≥90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
+  // counts when it can actually be approached (free = 1 child would otherwise pin the bar forever).
+  const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
+  const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
+  const nearLimit = achNear || childNear;
+  const showUpgradeBar = !isPremium && (!upgradeBarDismissed || nearLimit);
+  function dismissUpgradeBar() {
+    try { localStorage.setItem(UPGRADE_BAR_KEY, String(Date.now())); } catch { /* private mode */ }
+    setUpgradeBarDismissed(true);
+  }
 
   const navItems: { id: NavSection; label: string; icon: React.ReactNode }[] = [
     {
@@ -765,13 +781,18 @@ function Dashboard() {
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {!isPremium && (
-          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
+        {showUpgradeBar && (
+          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="text-[10px] text-stone-400">
-              {showLimitWarning
+              {achNear || showLimitWarning
                 ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                : childNear
+                ? <span className="text-amber-400 font-medium">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
                 : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
             </span>
+            {!nearLimit && (
+              <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="ml-auto rounded px-1.5 py-1 text-xs text-stone-500 hover:text-stone-200">✕</button>
+            )}
             <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
               {t("sub.upgrade")}
             </button>
