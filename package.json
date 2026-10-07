@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
     "test:plans": "node --test tests/plans.test.mjs",
-    "test:api": "node --test tests/ai-insight-cors.test.mjs"
+    "test:api": "node --test tests/ai-insight-cors.test.mjs tests/subscription-math.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",

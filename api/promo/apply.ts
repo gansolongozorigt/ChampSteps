@@ -3,13 +3,14 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { currentFromUserDoc, planNextSubscription } from "../_lib/subscriptionMath.js";
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import { subscriptionFields } from "../_lib/activate.js";
 import {
   MONTH_MS, PROMO_PLAN, normalizeCode, promoExpiresAt, promoMonths, type PromoCodeDoc,
 } from "../_lib/promo.js";
 
-type Reason = "not_found" | "inactive" | "expired" | "used" | "exhausted";
+type Reason = "not_found" | "inactive" | "expired" | "used" | "exhausted" | "downgrade";
 class PromoReject extends Error {
   constructor(public reason: Reason) { super(reason); }
 }
@@ -42,7 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const months = promoMonths(promo);
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + months * MONTH_MS);
+      const userSnap = await tx.get(userRef);
+      const next = planNextSubscription(currentFromUserDoc(userSnap.data()), PROMO_PLAN, now, months * MONTH_MS);
+      if (!next.ok) throw new PromoReject("downgrade");
+      const expiresAt = next.expiresAt;
 
       tx.update(promoRef, {
         usedBy: FieldValue.arrayUnion(uid),

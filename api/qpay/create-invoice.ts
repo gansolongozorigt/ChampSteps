@@ -5,6 +5,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import { PLANS, isPaidPlan } from "../_lib/plans.js";
+import { currentFromUserDoc, planNextSubscription } from "../_lib/subscriptionMath.js";
 import { QPayError, createInvoice } from "../_lib/qpay.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -16,6 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
   if (!isPaidPlan(plan)) return res.status(400).json({ error: "Invalid plan" });
+  // A user with a higher ACTIVE tier may not buy a lower one (no downgrades).
+  const userSnap = await adminDb.collection("users").doc(uid).get();
+  const next = planNextSubscription(currentFromUserDoc(userSnap.data()), plan, new Date());
+  if (!next.ok) {
+    return res.status(409).json({ error: "downgrade", activeTier: next.activeTier, activeUntil: next.activeUntil?.toISOString() ?? null });
+  }
 
   const { amount, label } = PLANS[plan];
   const orderId = `CS-${Date.now()}-${uid.slice(0, 6)}`;

@@ -4,7 +4,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import type { PaymentDoc } from "../_lib/activate.js";
-import { PLAN_DURATION_MS } from "../_lib/plans.js";
+import { currentFromUserDoc } from "../_lib/subscriptionMath.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -22,8 +22,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payment = snap.data() as PaymentDoc;
     if (payment.uid !== uid) return res.status(403).json({ error: "Forbidden" });
 
-    const paidAt = payment.paidAt?.toDate();
-    const expiresAt = paidAt ? new Date(paidAt.getTime() + PLAN_DURATION_MS).toISOString() : null;
+    // the real expiry lives on users/{uid} (renewals extend it)
+    const userSnap = await adminDb.collection("users").doc(uid).get();
+    const cur = currentFromUserDoc(userSnap.data());
+    const expiresAt = payment.status === "paid" ? (cur.expiresAt?.toISOString() ?? null) : null;
 
     return res.status(200).json({ status: payment.status, plan: payment.plan, expiresAt });
   } catch (err) {
