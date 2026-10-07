@@ -13,14 +13,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function TermsPage() {
-  const { i18n } = useTranslation();
-  const isMn = (i18n.resolvedLanguage ?? i18n.language) === "mn";
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("terms");
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "terms",   label: isMn ? "Үйлчилгээний нөхцөл" : "Terms of Service" },
-    { id: "refund",  label: isMn ? "Буцаан олгох бодлого" : "Refund Policy" },
-    { id: "privacy", label: isMn ? "Нууцлалын бодлого"   : "Privacy Policy" },
+    { id: "terms",   label: t("terms.tabTerms") },
+    { id: "refund",  label: t("terms.tabRefund") },
+    { id: "privacy", label: t("terms.tabPrivacy") },
   ];
 
   return (
@@ -28,7 +27,7 @@ export default function TermsPage() {
       {/* Header */}
       <div className="mb-2">
         <h2 className="text-xl font-semibold text-stone-900">
-          {isMn ? "Нөхцөл" : "Terms"}
+          {t("terms.title")}
         </h2>
       </div>
 
@@ -52,83 +51,33 @@ export default function TermsPage() {
       {/* Tab 1 — Terms of Service */}
       {tab === "terms" && (
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <p className="text-[10px] text-stone-400 mb-4">
-            {isMn ? "Сүүлд шинэчлэгдсэн: 2025 оны 5-р сар" : "Last updated: May 2025"}
-          </p>
-
-          <Section title={isMn ? "1. Үйлчилгээний тухай" : "1. About the Service"}>
-            {isMn
-              ? 'ChampStep нь хүүхдийн амжилт бүртгэх цахим үйлчилгээ. "Итгэлийн Шинэ Улирал" ХХК-аас үзүүлдэг.'
-              : "ChampStep is a digital service for recording children's achievements, provided by New Season for Faith Co.,Ltd."}
-          </Section>
-
-          <Section title={isMn ? "2. Бүртгэл ба хэрэглэгчийн эрх" : "2. Registration & User Rights"}>
-            {isMn
-              ? "И-мэйл хаягаараа бүртгүүлнэ. Бүртгүүлэхэд картын мэдээлэл шаардахгүй. Нууц үгээ хэзээ ч хуваалцаж болохгүй."
-              : "Register with your email. No card details required to register. Never share your password with others."}
-          </Section>
-
-          <Section title={isMn ? "3. Захиалга ба төлбөр" : "3. Subscription & Payment"}>
-            {isMn
-              ? "Премиум захиалга сар бүр автоматаар шинэчлэгдэнэ. Цуцлаагүй бол дараа сарын эхэнд дахин төлбөр авна. Төлбөрийг банкны картаар авна."
-              : "Premium subscriptions renew automatically each month. Unless cancelled, you will be charged at the start of the next month. Payments are made by bank card."}
-          </Section>
-
-          <Section title={isMn ? "4. Хориглох зүйл" : "4. Prohibited Activities"}>
-            {isMn
-              ? "Бусдын хувийн мэдээлэл оруулах, систем эвдэх, хуурамч бүртгэл үүсгэх, зохиогчийн эрх зөрчихийг хориглоно."
-              : "Prohibited: entering others' personal data, damaging the system, creating fake accounts, or copyright infringement."}
-          </Section>
-
-          <Section title={isMn ? "5. Үйлчилгээний зогсолт" : "5. Service Termination"}>
-            {isMn
-              ? "Дүрэм зөрчсөн тохиолдолд урьдчилан мэдэгдэлгүйгээр бүртгэлийг хаах эрхтэй. Та өөрийн бүртгэлийг хүссэн үедээ устгаж болно."
-              : "We reserve the right to terminate accounts violating our rules without prior notice. You may delete your own account at any time."}
-          </Section>
+          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+          <Section title={t("terms.s1Title")}>{t("terms.s1")}</Section>
+          <Section title={t("terms.s2Title")}>{t("terms.s2")}</Section>
+          <Section title={t("terms.s3Title")}>{t("terms.s3")}</Section>
+          <Section title={t("terms.s4Title")}>{t("terms.s4")}</Section>
+          <Section title={t("terms.s5Title")}>{t("terms.s5")}</Section>
         </div>
       )}
 
       {/* Tab 2 — Refund Policy */}
       {tab === "refund" && (
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <Section title={isMn ? "1. Цуцлах нөхцөл" : "1. Cancellation Terms"}>
-            {isMn
-              ? "Захиалгаа хүссэн үедээ цуцалж болно. Цуцалсны дараа дараагийн тооцооны үеэс идэвхгүй болно. Одоогийн сарын хугацаа дуустал үйлчилгээ ашиглах боломжтой."
-              : "You may cancel your subscription at any time. Cancellation takes effect from the next billing cycle. You may continue using the service until the period ends."}
+          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+          <Section title={t("terms.r1Title")}>{t("terms.r1")}</Section>
+          <Section title={t("terms.r2Title")}>{t("terms.r2")}</Section>
+          <Section title={t("terms.r3Title")}>
+            <ul className="list-disc list-inside space-y-1">
+              <li>{t("terms.r3a")}</li>
+              <li>{t("terms.r3b")}</li>
+              <li>{t("terms.r3c")}</li>
+              <li>{t("terms.r3d")}</li>
+            </ul>
           </Section>
-
-          <Section title={isMn ? "2. Буцаан олгох нөхцөл" : "2. Refund Conditions"}>
-            {isMn
-              ? "Техникийн алдаанаас болж үйлчилгээ ашиглах боломжгүй болсон тохиолдолд 7 хоногийн дотор хүсэлт гаргавал буцааж олгоно. Хүсэлтийг info@champstep.mn руу илгээнэ."
-              : "If the service is unavailable due to technical errors, refunds are available within 7 days upon request. Send requests to info@champstep.mn."}
-          </Section>
-
-          <Section title={isMn ? "3. Буцаан олгохгүй тохиолдол" : "3. Non-refundable Cases"}>
-            {isMn ? (
-              <ul className="list-disc list-inside space-y-1">
-                <li>Захиалга ашигласны дараа цуцалсан тохиолдол</li>
-                <li>Нөхцөл зөрчсөний улмаас бүртгэл хаагдсан тохиолдол</li>
-                <li>Хэрэглэгчийн алдаанаас үүдсэн асуудал</li>
-              </ul>
-            ) : (
-              <ul className="list-disc list-inside space-y-1">
-                <li>Cancellation after using the subscription</li>
-                <li>Account terminated due to policy violations</li>
-                <li>Issues caused by user error</li>
-              </ul>
-            )}
-          </Section>
-
-          <Section title={isMn ? "4. Буцаан олгох хугацаа" : "4. Refund Timeline"}>
-            {isMn
-              ? "Хүсэлтийг 3–5 ажлын өдрийн дотор шийдвэрлэнэ. Мөнгийг банкны дансанд 7–14 ажлын өдрийн дотор буцаана."
-              : "Requests are processed within 3–5 business days. Funds are returned to your bank account within 7–14 business days."}
-          </Section>
+          <Section title={t("terms.r4Title")}>{t("terms.r4")}</Section>
 
           <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mt-2">
-            <p className="text-[12px] text-amber-800 mb-2">
-              {isMn ? "Буцаан олгох хүсэлт илгээх:" : "Submit a refund request:"}
-            </p>
+            <p className="text-[12px] text-amber-800 mb-2">{t("terms.refundCta")}</p>
             <a href="mailto:info@champstep.mn"
               className="text-[13px] font-semibold text-amber-700 hover:underline">
               info@champstep.mn
@@ -140,29 +89,18 @@ export default function TermsPage() {
       {/* Tab 3 — Privacy Policy */}
       {tab === "privacy" && (
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <Section title={isMn ? "1. Цуглуулдаг мэдээлэл" : "1. Data We Collect"}>
-            {isMn
-              ? "И-мэйл хаяг, нэр, хүүхдийн амжилтын мэдээлэл. Картын мэдээлэл манай системд хадгалагддаггүй — банкны системээр дамждаг."
-              : "Email address, name, and children's achievement data. Card information is NOT stored in our system — it passes through the bank's payment system."}
-          </Section>
-
-          <Section title={isMn ? "2. Мэдээллийг хэрхэн ашиглах" : "2. How We Use Your Data"}>
-            {isMn
-              ? "Зөвхөн үйлчилгээ үзүүлэх, захиалга удирдах, техникийн дэмжлэг үзүүлэх зорилгоор ашиглана. Гуравдагч этгээдэд зардаггүй, дамжуулдаггүй."
-              : "Used only to provide the service, manage subscriptions, and offer technical support. Never sold or transferred to third parties."}
-          </Section>
-
-          <Section title={isMn ? "3. Мэдээллийн аюулгүй байдал" : "3. Data Security"}>
-            {isMn
-              ? "Бүх мэдээлэл Firebase дээр SSL шифрлэлттэй хадгалагдана. Нэвтрэх эрхийг Firebase Authentication удирддаг."
-              : "All data is stored on Firebase with SSL encryption. Access is managed by Firebase Authentication."}
-          </Section>
+          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+          <Section title={t("terms.p1Title")}>{t("terms.p1")}</Section>
+          <Section title={t("terms.p2Title")}>{t("terms.p2")}</Section>
+          <Section title={t("terms.p3Title")}>{t("terms.p3")}</Section>
+          <Section title={t("terms.p4Title")}>{t("terms.p4")}</Section>
+          <Section title={t("terms.p5Title")}>{t("terms.p5")}</Section>
         </div>
       )}
 
       {/* Footer */}
       <p className="text-center text-[11px] text-stone-400 py-2">
-        © 2025 Итгэлийн Шинэ Улирал ХХК · info@champstep.mn
+        {t("terms.footer")}
       </p>
     </div>
   );

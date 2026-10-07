@@ -10,15 +10,14 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function AboutPage() {
-  const { i18n } = useTranslation();
-  const isMn = (i18n.resolvedLanguage ?? i18n.language) === "mn";
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="mb-5">
         <h2 className="text-xl font-semibold text-stone-900">
-          {isMn ? "Бидний тухай" : "About Us"}
+          {t("about.title")}
         </h2>
       </div>
 
@@ -53,42 +52,36 @@ export default function AboutPage() {
               <span>Champ</span>
               <span style={{ background: "linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Step</span>
             </p>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest">Digital Portfolio App</p>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest">{t("about.tagline")}</p>
           </div>
         </div>
         <p className="text-[13px] text-stone-600 leading-relaxed">
-          {isMn
-            ? "ChampStep нь хүүхдийн амжилт, ур чадвар, өсөлтийг бүртгэж PDF портфолио үүсгэх монгол эцэг эх, багш нарт зориулсан дижитал апп юм."
-            : "ChampStep is a digital portfolio app for Mongolian parents and teachers to record children's achievements and export beautiful PDF portfolios."}
+          {t("about.intro")}
         </p>
       </div>
 
       {/* Company info card */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">
-          {isMn ? "Байгууллагын мэдээлэл" : "Company Information"}
+          {t("about.companyHeading")}
         </h3>
         <div>
-          <InfoRow label={isMn ? "Нэр" : "Name"}>
-            {isMn ? '"Итгэлийн Шинэ Улирал" ХХК' : "New Season for Faith Co.,Ltd"}
-          </InfoRow>
-          <InfoRow label={isMn ? "Хаяг" : "Address"}>
-            {isMn
-              ? "Улаанбаатар хот, Баянзүрх дүүрэг, 42-р хороо, 14-р хороолол, Алтан тэвш, 60б, 21 тоот"
-              : "Altantevsh 60b apt 21, 14th khoroolol, 42nd khoroo, Bayanzurkh, Ulaanbaatar, Mongolia"}
-          </InfoRow>
-          <InfoRow label={isMn ? "Веб" : "Website"}>
+          <InfoRow label={t("about.nameLabel")}>{t("about.name")}</InfoRow>
+          <InfoRow label={t("about.regLabel")}>{t("about.reg")}</InfoRow>
+          <InfoRow label={t("about.stateRegLabel")}>{t("about.stateReg")}</InfoRow>
+          <InfoRow label={t("about.addressLabel")}>{t("about.address")}</InfoRow>
+          <InfoRow label={t("about.webLabel")}>
             <a href="https://www.champstep.mn" target="_blank" rel="noopener noreferrer"
               className="text-amber-600 hover:underline">
               www.champstep.mn
             </a>
           </InfoRow>
-          <InfoRow label={isMn ? "И-мэйл" : "Email"}>
+          <InfoRow label={t("about.emailLabel")}>
             <a href="mailto:info@champstep.mn" className="text-amber-600 hover:underline">
               info@champstep.mn
             </a>
           </InfoRow>
-          <InfoRow label={isMn ? "Утас" : "Phone"}>
+          <InfoRow label={t("about.phoneLabel")}>
             +976 8998-3613
           </InfoRow>
         </div>
@@ -97,64 +90,34 @@ export default function AboutPage() {
       {/* Service info card */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">
-          {isMn ? "Үйлчилгээний мэдээлэл" : "Service Information"}
+          {t("about.serviceHeading")}
         </h3>
         <div>
-          <InfoRow label={isMn ? "Төрөл" : "Type"}>
-            {isMn ? "Цахим захиалгат үйлчилгээ (SaaS)" : "Digital subscription service (SaaS)"}
-          </InfoRow>
-          <InfoRow label={isMn ? "Хүргэлт" : "Delivery"}>
-            {isMn
-              ? "Тэр даруй — бүртгэлийн дараа шууд ашиглана"
-              : "Instant — available immediately after signup"}
-          </InfoRow>
-          <InfoRow label={isMn ? "Төлбөр" : "Payment"}>
-            {isMn
-              ? "Сарын захиалга — банкны картаар"
-              : "Monthly subscription — paid by bank card"}
-          </InfoRow>
-          <InfoRow label={isMn ? "Картын мэдээлэл" : "Card data"}>
-            {isMn
-              ? "Манай системд хадгалдаггүй — банкны gateway-ээр дамждаг"
-              : "Not stored by us — processed by payment gateway"}
-          </InfoRow>
+          <InfoRow label={t("about.typeLabel")}>{t("about.type")}</InfoRow>
+          <InfoRow label={t("about.deliveryLabel")}>{t("about.delivery")}</InfoRow>
+          <InfoRow label={t("about.paymentLabel")}>{t("about.payment")}</InfoRow>
+          <InfoRow label={t("about.paymentDataLabel")}>{t("about.paymentData")}</InfoRow>
         </div>
       </div>
 
       {/* Pricing card */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">
-          {isMn ? "Үнийн жагсаалт" : "Pricing"}
+          {t("about.pricingHeading")}
         </h3>
         <div className="space-y-2">
           {[
-            {
-              name: isMn ? "Үнэгүй" : "Free",
-              price: "₮0",
-              desc: isMn ? "1 хүүхэд · 30 бичлэг хүртэл" : "1 child · Up to 30 entries",
-            },
-            {
-              name: isMn ? "Гэр бүл" : "Family",
-              price: "₮9,900",
-              desc: isMn ? "3 хүүхэд · Хязгааргүй бичлэг · PDF" : "3 children · Unlimited entries · PDF",
-            },
-            {
-              name: isMn ? "Мастер" : "Master",
-              price: "₮24,900",
-              desc: isMn ? "10 хүүхэд · Хязгааргүй бичлэг · PDF · AI" : "10 children · Unlimited entries · PDF · AI",
-            },
-            {
-              name: isMn ? "Багш" : "Coach",
-              price: "₮49,900",
-              desc: isMn ? "30 хүүхэд · Хязгааргүй бичлэг · PDF · AI" : "30 children · Unlimited entries · PDF · AI",
-            },
+            { name: t("about.tierFree"),   price: "₮0",      desc: t("about.tierFreeDesc") },
+            { name: t("about.tierFamily"), price: "₮9,900",  desc: t("about.tierFamilyDesc") },
+            { name: t("about.tierMaster"), price: "₮24,900", desc: t("about.tierMasterDesc") },
+            { name: t("about.tierCoach"),  price: "₮49,900", desc: t("about.tierCoachDesc") },
           ].map((tier) => (
             <div key={tier.name} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
               <div>
                 <p className="text-[13px] font-medium text-stone-800">{tier.name}</p>
                 <p className="text-[11px] text-stone-400">{tier.desc}</p>
               </div>
-              <span className="text-[13px] font-semibold text-amber-600">{tier.price}<span className="text-[10px] text-stone-400 font-normal">{isMn ? "/сар" : "/mo"}</span></span>
+              <span className="text-[13px] font-semibold text-amber-600">{tier.price}<span className="text-[10px] text-stone-400 font-normal">{t("about.per")}</span></span>
             </div>
           ))}
         </div>
@@ -163,9 +126,7 @@ export default function AboutPage() {
       {/* Contact amber card */}
       <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
         <p className="text-[13px] text-amber-800 leading-relaxed mb-3">
-          {isMn
-            ? "Асуулт, гомдол, санал хүсэлт байвал и-мэйл хаягаар бидэнтэй холбогдоно уу. 24 цагийн дотор хариу өгнө."
-            : "For questions, complaints, or feedback, please contact us by email. We respond within 24 hours."}
+          {t("about.contact")}
         </p>
         <a href="mailto:info@champstep.mn"
           className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-amber-700 hover:text-amber-900 transition-colors">
@@ -178,7 +139,7 @@ export default function AboutPage() {
 
       {/* Footer */}
       <p className="text-center text-[11px] text-stone-400 py-2">
-        © 2025 Итгэлийн Шинэ Улирал ХХК · info@champstep.mn
+        {t("about.footer")}
       </p>
     </div>
   );
