@@ -9,3 +9,4 @@ api/**/*.js
 .vercel
 *-debug.log
 firebase-export-*
+scratch/
