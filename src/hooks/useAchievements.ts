@@ -42,6 +42,15 @@ export function useAchievements(
       setLoading(false);
       return;
     }
+    // No child selected yet (children still loading): do not query Firestore.
+    // where("childId","==","") makes the rules' get(/children/"") fail →
+    // permission-denied → spurious "errorLoading" toast. Same guard as
+    // usePracticeLogs / useReflections.
+    if (!childId) {
+      setAchievements([]);
+      setError(null);
+      return;
+    }
     setLoading(true);
     const unsubscribe = subscribeAchievements(
       childId,

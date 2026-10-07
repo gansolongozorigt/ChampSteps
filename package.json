@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "tsc -b",
     "lint:api": "tsc -p tsconfig.api.json --noEmit",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs tests/rules/legacy-user.test.mjs\"",
     "test:rules:api": "node tests/rules/api-runner.mjs"
   },
   "dependencies": {
