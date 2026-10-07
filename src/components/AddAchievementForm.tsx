@@ -5,7 +5,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { AchievementCategory, AchievementDraft, AwardType } from "../types";
-import { compressImages } from "../utils/image";
+import { compressImages, validateImageFile } from "../utils/image";
 import { awardStyles, categoryStyles, formatDate } from "../utils/format";
 
 const CATEGORIES: AchievementCategory[] = ["Sports", "Arts", "Academic"];
@@ -28,6 +28,8 @@ export interface AddAchievementFormProps {
   initialDraft?: Partial<AchievementDraft>;
   onSubmit: (draft: AchievementDraft) => Promise<void> | void;
   onCancel?: () => void;
+  /** Rejected/undecodable photo → parent shows a toast. */
+  onError?: (message: string) => void;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -38,6 +40,7 @@ export default function AddAchievementForm({
   initialDraft,
   onSubmit,
   onCancel,
+  onError,
 }: AddAchievementFormProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -82,9 +85,20 @@ export default function AddAchievementForm({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const incoming = Array.from(files).slice(0, Math.max(0, 8 - kept.length - draft.images.length));
-    const compressed = await compressImages(incoming, { maxDimension: 1600, quality: 0.8 });
-    update("images", [...draft.images, ...compressed]);
+    const all = Array.from(files);
+    const rejected = all.map(validateImageFile).find((r) => r !== null);
+    if (rejected) {
+      onError?.(t(rejected === "size" ? "form.validation.imageSize" : "form.validation.imageType"));
+      return;
+    }
+    const incoming = all.slice(0, Math.max(0, 8 - kept.length - draft.images.length));
+    try {
+      const compressed = await compressImages(incoming, { maxDimension: 1600, quality: 0.8 });
+      update("images", [...draft.images, ...compressed]);
+    } catch (e) {
+      console.warn("[champstep] image decode failed:", e);
+      onError?.(t("form.validation.imageType")); // HEIC/corrupt: browser could not decode it
+    }
   }
 
   function removeImage(index: number) {
@@ -194,7 +208,7 @@ export default function AddAchievementForm({
                 <span className="text-3xl" aria-hidden>📸</span>
                 <span className="text-sm font-medium">{t("form.fields.uploadCta")}</span>
                 <span className="text-xs text-stone-400">{t("form.fields.uploadHint")}</span>
-                <input type="file" accept="image/*" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { const fl = e.target.files; void handleFiles(fl); }} />
               </label>
             </Field>
             {kept.length > 0 && (

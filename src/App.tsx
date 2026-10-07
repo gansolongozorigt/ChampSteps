@@ -796,7 +796,7 @@ function Dashboard() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
-            <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} />
+            <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
           </div>
         </div>
       )}
@@ -807,6 +807,7 @@ function Dashboard() {
               childId={child.childId}
               childName={child.name}
               initialDraft={editingAchievement}
+              onError={(m) => setToast({ kind: "error", message: m })}
               onCancel={() => setEditingAchievement(null)}
               onSubmit={async (draft) => {
                 if (isFirebaseConfigured) {
@@ -827,7 +828,7 @@ function Dashboard() {
           </div>
         </div>
       )}
-      {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} />}
+      {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} onError={(m) => setToast({ kind: "error", message: m })} />}
       {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
       <PdfPreviewModal
         open={previewOpen}
