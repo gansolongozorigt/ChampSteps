@@ -41,6 +41,9 @@ import {
   type DocumentData,
   type Firestore,
   type QueryDocumentSnapshot,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
 } from "firebase/firestore";
 import {
   getDownloadURL,
@@ -87,7 +90,13 @@ let _auth: Auth | null = null;
 
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig);
-  _db = getFirestore(app);
+  // Offline-first: IndexedDB cache shared across tabs (cold start offline still shows data).
+    try {
+      _db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+    } catch (e) {
+      console.warn("[champstep] persistent cache unavailable, falling back:", e);
+      _db = getFirestore(app);
+    }
   _storage = getStorage(app);
   _auth = getAuth(app);
 }
