@@ -1,8 +1,11 @@
-// AIInsightCard.tsx — хэл дамжуулж, зөв хэлээр хариу авна
+// AIInsightCard.tsx — хэл дамжуулж, зөв хэлээр хариу авна.
+// /api/ai-insight нь Bearer idToken шаардана; AI-гүй багцад карт огт харагдахгүй.
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Achievement, Child } from "../types";
+import { Achievement, Child, TIER_LIMITS } from "../types";
+import { useAuth } from "../lib/auth";
+import { auth } from "../lib/firebase";
 
 interface Props {
   child: Child;
@@ -11,9 +14,13 @@ interface Props {
 
 export default function AIInsightCard({ child, achievements }: Props) {
   const { t, i18n } = useTranslation();
+  const { subscription } = useAuth();
   const [insight, setInsight] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+
+  // Free / Family багцад AI байхгүй — картыг огт үзүүлэхгүй.
+  if (!TIER_LIMITS[subscription]?.hasAI) return null;
 
   const getInsight = async () => {
     setLoading(true);
@@ -27,22 +34,31 @@ export default function AIInsightCard({ child, achievements }: Props) {
       // i18n.language нь "mn" эсвэл "en" байна — API-д дамжуулна
       const language = i18n.language?.startsWith("en") ? "en" : "mn";
 
+      const idToken = await auth?.currentUser?.getIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (idToken) headers.Authorization = `Bearer ${idToken}`;
+
       const response = await fetch("/api/ai-insight", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           childName: child.name,
           birthDate: child.birthDate,
           summary,
-          language, // ← шинэ: хэл дамжуулна
+          language, // ← хэл дамжуулна
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t("ai.error"));
-      setInsight(data.insight);
+      const data = (await response.json().catch(() => ({}))) as { insight?: string; error?: string };
+      if (!response.ok) {
+        if (response.status === 429) throw new Error("ai.rateLimited");
+        if (response.status === 403 && data.error === "tier_required") throw new Error("ai.tierRequired");
+        throw new Error("ai.error");
+      }
+      setInsight(data.insight ?? "");
     } catch (e) {
-      setError(t("ai.error"));
+      const key = e instanceof Error && e.message.startsWith("ai.") ? e.message : "ai.error";
+      setError(t(key));
     } finally {
       setLoading(false);
     }

@@ -13,7 +13,8 @@
     "test:rules:api": "node tests/rules/api-runner.mjs",
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
-    "test:plans": "node --test tests/plans.test.mjs"
+    "test:plans": "node --test tests/plans.test.mjs",
+    "test:api": "node --test tests/ai-insight-cors.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
