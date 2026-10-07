@@ -109,3 +109,15 @@ export async function countChildDocs(email: string, col: string): Promise<number
   for (const k of kids.docs) n += (await db().collection(col).where("childId", "==", k.id).get()).size;
   return n;
 }
+
+/** Server-only subscription fields for a TEST uid (expiresAt null = legacy/no expiry). */
+export async function setSubscription(email: string, tier: "free" | "family" | "master" | "coach", expiresAt: Date | null) {
+  const uid = await uidByEmail(email);
+  const { Timestamp, FieldValue } = await import("firebase-admin/firestore");
+  await db().collection("users").doc(uid).set({
+    subscriptionTier: tier,
+    subscriptionExpiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : FieldValue.delete(),
+    expiredFrom: FieldValue.delete(),
+    expiredAt: FieldValue.delete(),
+  }, { merge: true });
+}
