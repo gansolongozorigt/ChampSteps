@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,7 +40,8 @@ export interface AppUser {
   uid: string;
   email: string;
   displayName: string;
-  role: UserRole;
+  /** undefined while users/{uid} has not been read yet — App shows a loader, never a dashboard. */
+  role: UserRole | undefined;
   isOffline: boolean;
 }
 
@@ -63,7 +65,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // Helpers
 // -----------------------------------------------------------------------------
 
-function fbUserToApp(u: FirebaseUser, role: UserRole = "parent"): AppUser {
+function fbUserToApp(u: FirebaseUser, role: UserRole | undefined): AppUser {
   return {
     uid: u.uid,
     email: u.email ?? "",
@@ -91,6 +93,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionTier>("free");
+  // Role chosen on the sign-up form. onAuthStateChanged fires BEFORE ensureUserDoc()
+  // has written users/{uid}.role, so without this a new teacher briefly looked like a parent.
+  const pendingRole = useRef<UserRole | null>(null);
+
+  async function resolveRole(uid: string): Promise<UserRole | undefined> {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      try {
+        const data = await getUserDoc(uid);
+        const r = data?.role;
+        if (r === "parent" || r === "teacher") return r;
+      } catch (e) {
+        console.error("[champstep] getUserDoc failed:", e);
+      }
+      if (pendingRole.current) return pendingRole.current;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    console.warn("[champstep] users doc has no role after 10s; defaulting to parent");
+    return "parent";
+  }
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -105,17 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsub = onAuthChange(async (fbUser) => {
       if (fbUser) {
-        // Firestore-с role унших
-        let role: UserRole = "parent";
-        try {
-          const userData = await getUserDoc(fbUser.uid);
-          role = (userData?.role as UserRole) ?? "parent";
-        } catch (e) {
-          console.error("[champstep] getUserDoc failed:", e);
-        }
-
-        const appUser = fbUserToApp(fbUser, role);
-        setUser(appUser);
+        // Show the loader (role undefined) until users/{uid}.role is known.
+        setUser(fbUserToApp(fbUser, pendingRole.current ?? undefined));
+        setLoading(false);
+        const role = await resolveRole(fbUser.uid);
+        pendingRole.current = null;
+        setUser((prev) => (prev && prev.uid === fbUser.uid ? { ...prev, role } : fbUserToApp(fbUser, role)));
 
         try {
           const sub = await getSubscriptionStatus(fbUser.uid);
@@ -144,15 +160,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
         await signInWithEmail(email, password);
       },
-
       async signUp(email, password, displayName, role) {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
-        await signUpWithEmail(email, password, displayName, role);
+        pendingRole.current = role;
+        try {
+          const u = await signUpWithEmail(email, password, displayName, role);
+          // users/{uid}.role is written now — reflect it in context immediately.
+          setUser((prev) => (prev && prev.uid === u.uid ? { ...prev, role } : prev));
+        } catch (e) {
+          pendingRole.current = null;
+          throw e;
+        }
       },
-
       async signInWithGoogle(role = "parent") {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
-        await fbSignInWithGoogle(role);
+        pendingRole.current = role;
+        try {
+          const u = await fbSignInWithGoogle(role);
+          setUser((prev) => (prev && prev.uid === u.uid ? { ...prev, role: prev.role ?? role } : prev));
+        } finally {
+          pendingRole.current = null;
+        }
       },
 
       signInOffline(displayName?: string, role: UserRole = "parent") {

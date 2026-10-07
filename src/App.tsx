@@ -78,6 +78,8 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <LoginPage />;
+  // users/{uid}.role not read yet → keep loading; never render a parent dashboard by default
+  if (!user.role) return <FullScreenLoader />;
   return <Dashboard />;
 }
 
@@ -130,8 +132,9 @@ function Dashboard() {
         let list: Child[] = [];
         if (user.role === "teacher") {
           list = await getChildrenForTeacher(user.uid);
-        } else {
+        } else if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
+          // Only a PARENT ever gets an auto-created first child (never a teacher uid).
           if (list.length === 0) {
             const initial = makeInitialChild(user.uid);
             await createChild({ ...initial, parentId: user.uid });
