@@ -275,7 +275,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
                   disabled={promoApplying || !promoCode.trim()}
                   className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
                 >
-                  {promoApplying ? "..." : t("promo.apply")}
+                  {promoApplying ? t("promo.applying") : t("promo.apply")}
                 </button>
               </div>
               {promoResult && (
@@ -326,7 +326,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
                 {invoice.qrImage ? (
                   <img
                     src={`data:image/png;base64,${invoice.qrImage}`}
-                    alt="QPay QR"
+                    alt={t("pay.qrAlt")}
                     className="h-full w-full object-contain"
                   />
                 ) : (
@@ -342,7 +342,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
                 <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white p-1">
                   <img
                     src={`data:image/png;base64,${invoice.qrImage}`}
-                    alt="QPay QR"
+                    alt={t("pay.qrAlt")}
                     className="h-full w-full object-contain"
                   />
                 </div>

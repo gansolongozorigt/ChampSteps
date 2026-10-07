@@ -104,6 +104,7 @@
     }
   },
   "nav": {
+    "admin": "Admin",
     "pdfDownload": "Download PDF",
     "subscription": "Subscription",
     "achievements": "Achievements",
@@ -434,6 +435,7 @@
     "processing": "Processing…"
   },
   "promo": {
+    "applying": "Checking…",
     "label": "Promo code",
     "placeholder": "Enter promo code",
     "apply": "Apply",
@@ -444,6 +446,7 @@
     "expired": "This code has expired or is inactive."
   },
   "pay": {
+    "qrAlt": "QPay QR code",
     "scanQr": "Scan the QR code with your banking app",
     "chooseBank": "Choose your bank",
     "checking": "Checking payment…",

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InviteCodeError } from "../lib/firebase";
 
 // -----------------------------------------------------------------------------
 // Багшийн тал — код үүсгэх
@@ -121,15 +122,11 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
       setSuccess(t("invite.parent.success"));
       setCode("");
     } catch (e) {
-      const msg = (e as Error).message;
-      if (msg.includes("аль хэдийн") || msg.includes("already"))
-        setError(t("invite.parent.errors.used"));
-      else if (msg.includes("дууссан") || msg.includes("expired"))
-        setError(t("invite.parent.errors.expired"));
-      else if (msg.includes("олдсонгүй") || msg.includes("not found"))
-        setError(t("invite.parent.errors.notFound"));
-      else
-        setError(t("invite.parent.errors.invalid"));
+      const code = e instanceof InviteCodeError ? e.code : "unknown";
+      if (code === "used") setError(t("invite.parent.errors.used"));
+      else if (code === "expired") setError(t("invite.parent.errors.expired"));
+      else if (code === "child_not_found") setError(t("invite.parent.errors.notFound"));
+      else setError(t("invite.parent.errors.invalid")); // not_found / permission / network
     } finally {
       setLoading(false);
     }

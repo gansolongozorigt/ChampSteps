@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await activateSubscription(orderId, { paymentId: `SIMULATED-${Date.now()}` });
     if (!result.ok) return res.status(404).json({ error: "Not found" });
 
-    console.log("[qpay] SANDBOX simulate-paid:", orderId, uid, payment.plan);
+    console.log("[qpay] SANDBOX simulate-paid:", orderId, payment.plan);
     return res.status(200).json({
       status: "paid",
       plan: payment.plan,

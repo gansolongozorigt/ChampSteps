@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           createdAt: Timestamp.now(),
           createdBy: decoded.uid,
         });
-        console.log("[promo] admin create:", code, "by", decoded.uid);
+        console.log("[promo] admin create:", code);
         return res.status(200).json({ ok: true });
       }
       case "toggle": {

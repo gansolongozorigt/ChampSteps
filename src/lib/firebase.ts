@@ -278,21 +278,30 @@ export async function createInviteCode(teacherId: string, teacherName: string): 
   return code;
 }
 
+export type InviteCodeErrorCode = "not_found" | "used" | "expired" | "child_not_found";
+/** Thrown by useInviteCode(); UI maps `code` to a translated message (never match on text). */
+export class InviteCodeError extends Error {
+  constructor(public code: InviteCodeErrorCode) {
+    super(`invite_code_${code}`);
+    this.name = "InviteCodeError";
+  }
+}
+
 export async function useInviteCode(code: string, childId: string): Promise<InviteCode | null> {
   const db = requireDb();
   const ref = doc(db, "inviteCodes", code.toUpperCase());
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) throw new Error("Код буруу байна.");
+  if (!snap.exists()) throw new InviteCodeError("not_found");
 
   const data = snap.data() as InviteCode;
 
-  if (data.used) throw new Error("Энэ код аль хэдийн ашиглагдсан байна.");
-  if (new Date(data.expiresAt) < new Date()) throw new Error("Кодын хугацаа дууссан байна.");
+  if (data.used) throw new InviteCodeError("used");
+  if (new Date(data.expiresAt) < new Date()) throw new InviteCodeError("expired");
 
   const childRef = doc(db, "children", childId);
   const childSnap = await getDoc(childRef);
-  if (!childSnap.exists()) throw new Error("Хүүхэд олдсонгүй.");
+  if (!childSnap.exists()) throw new InviteCodeError("child_not_found");
 
   const childData = childSnap.data() as Child;
   const teacherIds = childData.teacherIds ?? [];

@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return { months, expiresAt };
     });
 
-    console.log("[promo] applied:", code, uid, result.months, "mo");
+    console.log("[promo] applied:", code, result.months, "mo");
     return res.status(200).json({
       plan: PROMO_PLAN,
       months: result.months,

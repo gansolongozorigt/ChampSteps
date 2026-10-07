@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await activateSubscription(order, { paymentId: check.paymentId });
     if (!result.ok) return res.status(404).send("NOT_FOUND");
 
-    console.log("[qpay] activated:", order, payment.uid, payment.plan, result.alreadyPaid ? "(already)" : "");
+    console.log("[qpay] activated:", order, payment.plan, result.alreadyPaid ? "(already)" : "");
     return res.status(200).send("SUCCESS");
   } catch (err) {
     if (err instanceof QPayError) {

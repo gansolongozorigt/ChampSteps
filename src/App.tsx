@@ -514,7 +514,7 @@ function Dashboard() {
                   </button>
                   {user?.email === "gansolongozorigt7@gmail.com" && (
                     <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
-                      ⚙ Admin
+                      ⚙ {t("nav.admin")}
                     </button>
                   )}
                   <button onClick={() => { setShowUserMenu(false); handleSignOut(); }} className="w-full text-left px-3 py-2.5 text-[12px] text-red-400 hover:bg-stone-800 transition-colors border-t border-stone-800">
