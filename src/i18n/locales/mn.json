@@ -73,6 +73,8 @@
       "uploadHint": "JPG / PNG · ачаалахын өмнө автоматаар жижгэрнэ"
     },
     "validation": {
+      "imageSize": "Зураг 10MB-аас бага байх ёстой.",
+      "imageType": "JPG, PNG эсвэл WebP зураг сонгоно уу (HEIC дэмжигдэхгүй).",
       "required": "Заавал бөглөнө",
       "descriptionTooShort": "Нэг, хоёр өгүүлбэрээр түүхийг нь дүрслээрэй"
     },

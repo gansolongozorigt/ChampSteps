@@ -59,7 +59,7 @@
       "uploadCta": "Нажмите, чтобы загрузить фото",
       "uploadHint": "JPG / PNG · сжимается автоматически перед загрузкой"
     },
-    "validation": { "required": "Обязательно", "descriptionTooShort": "Опишите историю в одном-двух предложениях" },
+    "validation": { "required": "Обязательно", "descriptionTooShort": "Опишите историю в одном-двух предложениях", "imageType": "Выберите изображение JPG, PNG или WebP (HEIC не поддерживается).", "imageSize": "Размер изображения должен быть меньше 10 МБ." },
     "review": {
       "heading": "Проверка",
       "labels": { "title": "Название", "date": "Дата", "location": "Место", "category": "Категория", "award": "Награда", "description": "Описание", "photos": "Фото" },
