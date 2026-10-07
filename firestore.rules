@@ -75,11 +75,12 @@ service cloud.firestore {
         && !('subscriptionActivatedAt' in request.resource.data)
         && !('subscriptionExpiresAt' in request.resource.data);
 
-      // Profile edits only; subscription, role and uid are immutable from the client.
+      // Profile edits only; subscription (incl. expiredFrom/expiredAt), role and uid are server-only.
       allow update: if signedIn() && uid() == userId
         && !affectedKeys().hasAny([
              'subscriptionTier', 'subscriptionActivatedAt',
-             'subscriptionExpiresAt', 'subscription', 'role', 'uid'
+             'subscriptionExpiresAt', 'subscription', 'expiredFrom', 'expiredAt',
+             'role', 'uid'
            ]);
 
       allow delete: if false;

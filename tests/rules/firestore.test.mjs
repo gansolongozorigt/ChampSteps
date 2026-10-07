@@ -228,6 +228,8 @@ test("users (no subscriptionTier): owner updates profile; adding subscription/ro
   await assertFails(updateDoc(ref, { subscriptionTier: "master" }));
   await assertFails(updateDoc(ref, { subscription: { plan: "family" } }));
   await assertFails(updateDoc(ref, { subscriptionExpiresAt: "2030-01-01" }));
+  await assertFails(updateDoc(ref, { expiredFrom: "master" }));
+  await assertFails(updateDoc(ref, { expiredAt: "2026-01-01" }));
   await assertFails(updateDoc(ref, { displayName: "x", role: "teacher" }));
   await assertFails(updateDoc(ref, { uid: "someone" }));
   // setDoc without merge on an existing doc is an update: dropping role is fine
