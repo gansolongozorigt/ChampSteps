@@ -49,6 +49,8 @@ export default function ReflectionSection({
       setMood(3);
       setDate(new Date().toISOString().slice(0, 10));
       setShowForm(false);
+    } catch {
+      // parent already showed the error toast; keep the form open with the text
     } finally {
       setSaving(false);
     }

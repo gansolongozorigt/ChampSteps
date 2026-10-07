@@ -39,6 +39,8 @@ export default function PracticeLogSection({
       setDate(new Date().toISOString().slice(0, 10));
       setDuration(60);
       setShowForm(false);
+    } catch {
+      // parent already showed the error toast; keep the form open with the text
     } finally {
       setSaving(false);
     }

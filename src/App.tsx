@@ -222,8 +222,9 @@ function Dashboard() {
         const saved = await fbUpdateChild(next, avatarFile);
         setChildren((prev) => prev.map((c) => c.childId === saved.childId ? saved : c));
         setToast({ kind: "success", message: t("status.savedProfile") });
-      } catch {
+      } catch (e) {
         setToast({ kind: "error", message: t("status.errorSaving") });
+        throw e; // editor stays open with the draft
       }
       return;
     }
@@ -286,7 +287,7 @@ function Dashboard() {
     if (!child) return;
     if (isFirebaseConfigured) {
       try { await createPracticeLog(child.childId, log); }
-      catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
@@ -296,7 +297,7 @@ function Dashboard() {
     if (!child) return;
     if (isFirebaseConfigured) {
       try { await createReflection(child.childId, r); }
-      catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
     }
     addLocalReflection({ id: crypto.randomUUID(), childId: child.childId, ...r, createdAt: new Date().toISOString() });

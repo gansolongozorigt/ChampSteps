@@ -58,6 +58,8 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
     try {
       await onSave({ ...draft, name: draft.name.trim() }, avatarFile);
       onClose();
+    } catch {
+      // parent already showed the error toast; keep the editor open with the draft
     } finally {
       setSaving(false);
     }

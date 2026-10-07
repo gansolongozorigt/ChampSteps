@@ -28,6 +28,7 @@ export default function CoachNotes({
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [connectedTeachers, setConnectedTeachers] = useState<{ uid: string; name: string }[]>([]);
 
   // Firestore-оос бодит цагт уншина
@@ -50,16 +51,21 @@ export default function CoachNotes({
   async function handleAdd() {
     if (!text.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       await createCoachNote(childId, teacherId, teacherName, text.trim());
       setText("");
+    } catch (e) {
+      console.error("[champstep] coach note save failed:", e);
+      setError(t("status.errorSaving")); // text stays in the box
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    await deleteCoachNote(id);
+    try { await deleteCoachNote(id); }
+    catch (e) { console.error("[champstep] coach note delete failed:", e); setError(t("status.errorSaving")); }
   }
 
   function formatDate(createdAt: string | unknown) {
@@ -105,6 +111,7 @@ export default function CoachNotes({
           >
             {saving ? t("coach.saving") : t("coach.addButton")}
           </button>
+          {error && <p className="mt-2 text-xs text-rose-600" role="alert">{error}</p>}
         </div>
       )}
 
