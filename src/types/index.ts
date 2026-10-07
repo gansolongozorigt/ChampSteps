@@ -119,7 +119,10 @@ export type AchievementDraft = Omit<
   Achievement,
   "id" | "childId" | "imageURLs" | "createdAt" | "updatedAt"
 > & {
+  /** New photos to upload. */
   images: File[];
+  /** Edit mode: already-uploaded photos the user kept (others are removed). */
+  keptImageURLs?: string[];
 };
 
 // -----------------------------------------------------------------------------

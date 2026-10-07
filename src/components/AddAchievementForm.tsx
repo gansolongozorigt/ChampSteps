@@ -49,6 +49,10 @@ export default function AddAchievementForm({
     ...initialDraft,
     images: [],
   });
+  // Edit mode: photos already uploaded; the user may remove some.
+  const [kept, setKept] = useState<string[]>(
+    () => (initialDraft as { imageURLs?: string[] } | undefined)?.imageURLs ?? []
+  );
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof AchievementDraft, string>>>({});
 
@@ -78,7 +82,7 @@ export default function AddAchievementForm({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const incoming = Array.from(files).slice(0, 8 - draft.images.length);
+    const incoming = Array.from(files).slice(0, Math.max(0, 8 - kept.length - draft.images.length));
     const compressed = await compressImages(incoming, { maxDimension: 1600, quality: 0.8 });
     update("images", [...draft.images, ...compressed]);
   }
@@ -91,7 +95,7 @@ export default function AddAchievementForm({
     if (!validateStep(2)) { setStep(2); return; }
     setSubmitting(true);
     try {
-      await onSubmit(draft);
+      await onSubmit(isEditing ? { ...draft, keptImageURLs: kept } : draft);
       setDraft(EMPTY_DRAFT);
       setStep(1);
     } finally {
@@ -193,6 +197,19 @@ export default function AddAchievementForm({
                 <input type="file" accept="image/*" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
               </label>
             </Field>
+            {kept.length > 0 && (
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {kept.map((url, i) => (
+                  <li key={url + i} className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+                    <img src={url} alt="" className="h-24 w-full object-cover" />
+                    <button type="button" onClick={() => setKept((k) => k.filter((_, j) => j !== i))}
+                      className="absolute right-1 top-1 rounded-full bg-white/90 px-2 py-0.5 text-[11px] text-stone-700 shadow hover:bg-white">
+                      {t("form.actions.remove")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {previews.length > 0 && (
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {previews.map((p, i) => (
@@ -219,7 +236,7 @@ export default function AddAchievementForm({
             <ReviewRow label={t("form.review.labels.category")} value={t(`categories.${draft.category}`)} />
             <ReviewRow label={t("form.review.labels.award")} value={`${awardStyles[draft.awardType].emoji} ${t(`awards.${draft.awardType}`)}`} />
             <ReviewRow label={t("form.review.labels.description")} value={draft.description} />
-            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: draft.images.length })} />
+            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: kept.length + draft.images.length })} />
           </section>
         )}
       </div>

@@ -811,8 +811,8 @@ function Dashboard() {
               onSubmit={async (draft) => {
                 if (isFirebaseConfigured) {
                   try {
-                    const { updateAchievement } = await import("./lib/firebase");
-                    await updateAchievement(editingAchievement.id, { title: draft.title, date: draft.date, location: draft.location, category: draft.category, description: draft.description, awardType: draft.awardType });
+                    const { updateAchievementWithImages } = await import("./lib/firebase");
+                    await updateAchievementWithImages(editingAchievement.id, child.childId, draft, editingAchievement.imageURLs ?? []);
                     setEditingAchievement(null);
                     setToast({ kind: "success", message: t("status.entryUpdated") });
                   } catch {
@@ -958,9 +958,15 @@ function LanguageChip() {
   );
 }
 
-function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void }) {
+function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void | Promise<void> }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  async function submit() {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    try { await onAdd(name.trim()); } finally { setSubmitting(false); }
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 cs-backdrop-in" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl cs-panel-in">
@@ -968,7 +974,7 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim())}
+          onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
           placeholder={t("children.namePlaceholder")}
           className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
           autoFocus
@@ -978,8 +984,8 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
             {t("form.actions.cancel")}
           </button>
           <button
-            onClick={() => name.trim() && onAdd(name.trim())}
-            disabled={!name.trim()}
+            onClick={() => void submit()}
+            disabled={!name.trim() || submitting}
             className="px-4 py-2 text-[13px] font-medium bg-stone-950 text-white rounded-lg hover:bg-stone-800 disabled:opacity-40 active:scale-95 transition-all"
           >
             {t("children.addChild")}

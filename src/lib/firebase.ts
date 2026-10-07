@@ -48,6 +48,7 @@ import {
   ref,
   uploadBytes,
   type FirebaseStorage,
+  deleteObject,
 } from "firebase/storage";
 
 import type {
@@ -308,18 +309,42 @@ export async function useInviteCode(code: string, childId: string): Promise<Invi
 // Achievements
 // -----------------------------------------------------------------------------
 
-export async function createAchievement(childId: string, draft: AchievementDraft) {
-  const db = requireDb();
+/**
+ * Upload achievement photos. All-or-nothing: if any upload fails, the ones that
+ * already succeeded are deleted again (no orphaned Storage objects) and the
+ * error is rethrown.
+ */
+export async function uploadAchievementImages(childId: string, files: File[]): Promise<string[]> {
   const storage = requireStorage();
-
-  const imageURLs: string[] = await Promise.all(
-    (draft.images ?? []).map(async (rawFile) => {
+  const results = await Promise.allSettled(
+    files.map(async (rawFile, i) => {
       const file = await compressImage(rawFile, { maxDimension: 1600, quality: 0.8 });
-      const path = `achievements/${childId}/${Date.now()}_${safeName(file.name)}`;
+      const path = `achievements/${childId}/${Date.now()}_${i}_${safeName(file.name)}`;
       const snapshot = await uploadBytes(ref(storage, path), file);
-      return getDownloadURL(snapshot.ref);
+      return { path, url: await getDownloadURL(snapshot.ref) };
     })
   );
+  const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (failed) {
+    await Promise.allSettled(
+      results
+        .filter((r): r is PromiseFulfilledResult<{ path: string; url: string }> => r.status === "fulfilled")
+        .map((r) => deleteObject(ref(storage, r.value.path)))
+    );
+    throw failed.reason;
+  }
+  return (results as PromiseFulfilledResult<{ path: string; url: string }>[]).map((r) => r.value.url);
+}
+
+/** Best-effort removal of a Storage object by its download URL (edit: photo removed). */
+async function deleteImageByUrl(url: string) {
+  try { await deleteObject(ref(requireStorage(), url)); }
+  catch (e) { console.warn("[champstep] could not delete old image:", e); }
+}
+
+export async function createAchievement(childId: string, draft: AchievementDraft) {
+  const db = requireDb();
+  const imageURLs = await uploadAchievementImages(childId, draft.images ?? []);
 
   const docRef = await addDoc(collection(db, "achievements"), {
     childId,
@@ -340,6 +365,32 @@ export async function createAchievement(childId: string, draft: AchievementDraft
 /** Firestore rejects `undefined` values — drop them before writing. */
 function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
+/**
+ * Edit: text fields + photos. New files are uploaded first (all-or-nothing);
+ * imageURLs becomes keptImageURLs + new ones; removed photos are deleted
+ * from Storage best-effort after the document update succeeded.
+ */
+export async function updateAchievementWithImages(
+  id: string,
+  childId: string,
+  draft: AchievementDraft,
+  previousImageURLs: string[]
+) {
+  const kept = draft.keptImageURLs ?? previousImageURLs;
+  const added = await uploadAchievementImages(childId, draft.images ?? []);
+  await updateAchievement(id, {
+    title: draft.title.trim(),
+    date: draft.date,
+    location: draft.location.trim(),
+    category: draft.category,
+    description: draft.description.trim(),
+    awardType: draft.awardType,
+    imageURLs: [...kept, ...added],
+  });
+  const removed = previousImageURLs.filter((u) => !kept.includes(u));
+  await Promise.allSettled(removed.map(deleteImageByUrl));
 }
 
 export async function updateAchievement(id: string, data: Partial<Achievement>) {
