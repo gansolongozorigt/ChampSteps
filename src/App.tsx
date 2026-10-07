@@ -15,6 +15,8 @@ import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
+import SubscriptionPage from "./components/SubscriptionPage";
+import ExpiryBanner from "./components/ExpiryBanner";
 import PdfPreviewModal from "./components/PdfPreviewModal";
 import TimelineDashboard from "./components/TimelineDashboard";
 import Toast, { type ToastKind } from "./components/Toast";
@@ -51,7 +53,7 @@ import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms";
+type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
 
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
@@ -97,6 +99,8 @@ function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [modalTier, setModalTier] = useState<SubscriptionTier | undefined>(undefined);
+  const openSubscription = (tier?: SubscriptionTier) => { setModalTier(tier); setShowSubscription(true); };
   const [showAddChild, setShowAddChild] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -509,6 +513,9 @@ function Dashboard() {
                   <button onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("nav.about")}
                   </button>
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("subscription"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.subscriptionPage")}
+                  </button>
                   <button onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
                     {t("nav.terms")}
                   </button>
@@ -624,6 +631,7 @@ function Dashboard() {
 
         {/* ══ MAIN CONTENT ══ */}
         <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
+          <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
               🏫 {t("status.teacherMode")}
@@ -685,6 +693,12 @@ function Dashboard() {
           {activeSection === "terms" && (
             <div className="px-4 py-6 max-w-2xl mx-auto">
               <TermsPage />
+            </div>
+          )}
+          {activeSection === "subscription" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <SectionHeader title={t("nav.subscriptionPage")} subtitle={user?.displayName} />
+              <SubscriptionPage onOpenModal={openSubscription} onToast={(kind, message) => setToast({ kind, message })} />
             </div>
           )}
           {activeSection === "pdf" && (
@@ -829,7 +843,7 @@ function Dashboard() {
         </div>
       )}
       {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} onError={(m) => setToast({ kind: "error", message: m })} />}
-      {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
+      {showSubscription && <SubscriptionModal initialTier={modalTier} onClose={() => { setShowSubscription(false); setModalTier(undefined); }} />}
       <PdfPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
