@@ -5,9 +5,11 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import type { PaymentDoc } from "../_lib/activate.js";
 import { currentFromUserDoc } from "../_lib/subscriptionMath.js";
+import { isConfigured } from "../_lib/qpay.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!isConfigured()) return res.status(503).json({ error: "payments_disabled" });
 
   const { idToken, orderId } = (req.body ?? {}) as { idToken?: unknown; orderId?: unknown };
 

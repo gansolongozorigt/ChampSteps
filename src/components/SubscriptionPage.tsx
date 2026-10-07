@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import { getPaymentsForUser, type PaymentRecord } from "../lib/firebase";
 import { daysLeft, isActive } from "../lib/subscription";
 import { PLANS, formatMnt } from "../../shared/plans.js";
+import { getQPayConfig } from "../lib/qpayClient";
 import type { SubscriptionTier } from "../types";
 
 export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal: (tier?: SubscriptionTier) => void; onToast: (kind: "success" | "error" | "info", message: string) => void }) {
@@ -12,6 +13,8 @@ export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal
   const { user, subscription, subscriptionInfo, refreshSubscription } = useAuth();
   const [payments, setPayments] = useState<PaymentRecord[] | null>(null);
   const [checking, setChecking] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
+  useEffect(() => { let alive = true; getQPayConfig().then((c) => { if (alive) setPaymentsEnabled(c.enabled); }); return () => { alive = false; }; }, []);
   const locale = i18n.language?.startsWith("en") ? "en-US" : i18n.language?.startsWith("ru") ? "ru-RU" : "mn-MN";
 
   useEffect(() => {
@@ -46,8 +49,11 @@ export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal
         {!active && subscriptionInfo.expiredFrom && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("sub.expiredBanner", { plan: t(`sub.tierNames.${subscriptionInfo.expiredFrom}`) })}</p>
         )}
+        {paymentsEnabled === false && (
+          <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" role="status" data-testid="payments-disabled">{t("pay.disabledInfo")}</p>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
-          {active && (
+          {active && paymentsEnabled !== false && (
             <button type="button" onClick={() => onOpenModal(subscriptionInfo.tier)} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800">{t("sub.renew")}</button>
           )}
           <button type="button" onClick={() => onOpenModal()} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50">{t("sub.changePlan")}</button>

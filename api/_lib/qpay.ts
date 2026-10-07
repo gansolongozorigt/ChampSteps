@@ -26,6 +26,10 @@ function baseUrl(): string {
   return env("QPAY_BASE_URL").replace(/\/+$/, "");
 }
 
+/** All four QPay env vars present? Production runs WITHOUT them until the merchant contract is signed. */
+export function isConfigured(): boolean {
+  return ["QPAY_BASE_URL", "QPAY_USERNAME", "QPAY_PASSWORD", "QPAY_INVOICE_CODE"].every((k) => !!process.env[k]);
+}
 export function isSandbox(): boolean {
   return (process.env.QPAY_BASE_URL ?? "").includes("sandbox");
 }

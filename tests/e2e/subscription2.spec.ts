@@ -69,3 +69,26 @@ test("forgot password: sends a reset mail and never reveals whether the account 
   await page.getByRole("button", { name: tr("auth.forgotPassword") }).click();
   await expect(page.getByText(tr("auth.resetSent"))).toBeVisible({ timeout: 20_000 });
 });
+
+test("payments not configured (503 payments_disabled) → info box instead of Pay; promo still there", async ({ context }) => {
+  const page = await newPage(context);
+  await page.route("**/api/qpay/config", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ enabled: false, sandbox: false }) }));
+  await page.route("**/api/qpay/create-invoice", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "payments_disabled" }) }));
+  await page.goto("/");
+  await page.locator("#email").fill(parent.email);
+  await page.locator("#password").fill(parent.password);
+  await page.getByRole("button", { name: tr("auth.signIn"), exact: true }).click();
+  await waitForDashboard(page);
+  await page.locator("header").first().getByTitle(tr("nav.subscription")).click();
+  const modal = page.locator(".cs-panel-in").filter({ has: page.getByRole("heading", { name: tr("sub.title") }) });
+  await expect(modal.getByTestId("payments-disabled")).toHaveText(tr("pay.disabledInfo"));
+  await expect(modal.getByRole("button", { name: tr("sub.pay"), exact: true })).toHaveCount(0);
+  await expect(modal.getByPlaceholder(tr("promo.placeholder"))).toBeVisible();
+  await page.mouse.click(5, 400);
+  // subscription page: Renew replaced by the same info
+  await openUserMenu(page);
+  await page.getByRole("button", { name: tr("nav.subscriptionPage") }).click();
+  const sp = page.getByTestId("subscription-page");
+  await expect(sp.getByTestId("payments-disabled")).toBeVisible();
+  await expect(sp.getByRole("button", { name: tr("sub.renew"), exact: true })).toHaveCount(0); // (the expiry banner's Renew is outside the page)
+});

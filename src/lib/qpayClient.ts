@@ -46,6 +46,19 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
   return res.json() as Promise<T>;
 }
 
+export interface QPayConfig { enabled: boolean; sandbox: boolean }
+/** Whether the payment provider is configured on the server (no auth). Network errors → assume enabled. */
+export async function getQPayConfig(): Promise<QPayConfig> {
+  try {
+    const res = await fetch("/api/qpay/config", { cache: "no-store" });
+    if (!res.ok) return { enabled: true, sandbox: false };
+    return (await res.json()) as QPayConfig;
+  } catch {
+    return { enabled: true, sandbox: false };
+  }
+}
+export const PAYMENTS_DISABLED = "payments_disabled";
+
 export async function createQPayInvoice(plan: string): Promise<CreateInvoiceResponse> {
   return post<CreateInvoiceResponse>("/api/qpay/create-invoice", { idToken: await idToken(), plan });
 }

@@ -8,8 +8,10 @@ import { useAuth } from "../lib/auth";
 import { PromoError, applyPromoCode } from "../lib/promoClient";
 import { PLANS, formatMnt } from "../../shared/plans.js";
 import {
+  PAYMENTS_DISABLED,
   QPAY_SANDBOX,
   createQPayInvoice,
+  getQPayConfig,
   getQPayStatus,
   simulateQPayPaid,
   type CreateInvoiceResponse,
@@ -37,6 +39,14 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
   const [promoResult, setPromoResult] = useState<{ success: boolean; message: string } | null>(null);
   const [invoice, setInvoice] = useState<CreateInvoiceResponse | null>(null);
   const [simulating, setSimulating] = useState(false);
+  // null = not known yet; false = QPay not configured on the server (shown as an info box, promo still works)
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!user || user.isOffline) { setPaymentsEnabled(true); return; }
+    getQPayConfig().then((c) => { if (alive) setPaymentsEnabled(c.enabled); });
+    return () => { alive = false; };
+  }, [user]);
   const pollRef = useRef<number | null>(null);
 
   async function handleApplyPromo() {
@@ -172,7 +182,9 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
       startPolling(inv.orderId);
     } catch (e) {
       console.error("[champstep] createQPayInvoice failed:", e);
-      setError((e as Error).message === "downgrade" ? downgradeMsg() : t("pay.error"));
+      const msg = (e as Error).message;
+      if (msg === PAYMENTS_DISABLED) { setPaymentsEnabled(false); return; }
+      setError(msg === "downgrade" ? downgradeMsg() : t("pay.error"));
     } finally {
       setProcessing(false);
     }
@@ -304,6 +316,12 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
             {error && (
               <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
             )}
+            {paymentsEnabled === false && (
+              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-900" role="status" data-testid="payments-disabled">
+                {t("pay.disabledInfo")}
+              </div>
+            )}
+            {paymentsEnabled !== false && (
             <button
               type="button"
               onClick={handleStartPayment}
@@ -318,6 +336,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                 ? t("sub.freePlan")
                 : t("sub.pay")}
             </button>
+            )}
           </div>
         )}
 

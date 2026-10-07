@@ -6,10 +6,11 @@ import { Timestamp } from "firebase-admin/firestore";
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import { PLANS, isPaidPlan } from "../_lib/plans.js";
 import { currentFromUserDoc, planNextSubscription } from "../_lib/subscriptionMath.js";
-import { QPayError, createInvoice } from "../_lib/qpay.js";
+import { QPayError, createInvoice, isConfigured } from "../_lib/qpay.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!isConfigured()) return res.status(503).json({ error: "payments_disabled" });
 
   const { idToken, plan } = (req.body ?? {}) as { idToken?: unknown; plan?: unknown };
 
