@@ -36,7 +36,7 @@ import {
   useInviteCode,
   deleteAchievement,
   getChildrenForParent,
-  getChildrenForTeacher,
+  subscribeChildrenForTeacher,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -120,6 +120,14 @@ function Dashboard() {
     useReflections(child?.childId ?? "", user?.role !== "teacher");
 
   useEffect(() => {
+    if (user && isFirebaseConfigured && user.role === "teacher") {
+      // Teacher roster is live: a newly linked student appears without a reload.
+      return subscribeChildrenForTeacher(
+        user.uid,
+        (list) => { setChildren(list); setLoadingChildren(false); },
+        (e) => { console.error("[champstep] teacher children failed:", e); setLoadingChildren(false); setToast({ kind: "error", message: t("status.errorLoading") }); }
+      );
+    }
     async function load() {
       if (!user) return;
       if (!isFirebaseConfigured) {
@@ -130,9 +138,7 @@ function Dashboard() {
       }
       try {
         let list: Child[] = [];
-        if (user.role === "teacher") {
-          list = await getChildrenForTeacher(user.uid);
-        } else if (user.role === "parent") {
+        if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
           // Only a PARENT ever gets an auto-created first child (never a teacher uid).
           if (list.length === 0) {
@@ -332,6 +338,31 @@ function Dashboard() {
 
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
+    if (user?.role === "teacher") {
+      // A teacher with no linked students yet: show the invite panel instead of a dead end.
+      return (
+        <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-stone-100 font-sans">
+          <header className="flex items-center justify-between bg-stone-950 px-4 py-3 text-white">
+            <span className="font-semibold">Champ<span className="text-amber-400">Step</span></span>
+            <div className="flex items-center gap-2">
+              <LanguageChip />
+              <button type="button" onClick={handleSignOut} className="rounded-lg border border-stone-700 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-800">
+                {t("auth.signOut")}
+              </button>
+            </div>
+          </header>
+          <div className="bg-emerald-50 px-4 py-2 text-center text-sm text-emerald-800">🏫 {t("status.teacherMode")}</div>
+          <main className="mx-auto max-w-2xl px-4 py-8">
+            <h1 className="text-xl font-semibold text-stone-900">{t("invite.teacher.noStudentsTitle")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("invite.teacher.noStudentsHint")}</p>
+            <div className="mt-6">
+              <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
+            </div>
+          </main>
+          {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
         <p className="text-stone-500">{t("status.childNotFound")}</p>

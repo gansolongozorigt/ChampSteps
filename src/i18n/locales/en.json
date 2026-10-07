@@ -340,6 +340,8 @@
   },
   "invite": {
     "teacher": {
+      "noStudentsHint": "Create an invite code and give it to the parent. As soon as the parent enters it, the child appears here.",
+      "noStudentsTitle": "No students linked yet",
       "heading": "Add a student",
       "subtitle": "Send a code to the parent to add your student",
       "createButton": "Generate invite code",

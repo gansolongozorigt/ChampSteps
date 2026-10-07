@@ -20,7 +20,8 @@ test.afterAll(async () => { await cleanupTestUser(parent.email); await cleanupTe
 test("new teacher lands in teacher mode and can create an invite code", async () => {
   // Expected: teacher banner + coach section reachable right after sign-up.
   await expect(teacherPage.getByText(tr("status.teacherMode"))).toBeVisible({ timeout: 20_000 });
-  await nav(teacherPage, "coach");
+  // no students yet → the invite panel is shown directly (no dashboard/nav)
+  await expect(teacherPage.getByText(tr("invite.teacher.noStudentsTitle"))).toBeVisible();
   await teacherPage.getByRole("button", { name: tr("invite.teacher.createButton") }).click();
   const code = teacherPage.getByText(tr("invite.teacher.codeLabel")).locator("xpath=following-sibling::p[1]");
   await expect(code).toHaveText(/^[A-Z0-9]{6}$/);

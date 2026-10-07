@@ -237,17 +237,22 @@ export async function getChildrenForTeacher(teacherId: string): Promise<Child[]>
 
 export function subscribeChildrenForTeacher(
   teacherId: string,
-  cb: (children: Child[]) => void
+  cb: (children: Child[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(
     collection(db, "children"),
     where("teacherIds", "array-contains", teacherId)
   );
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id } as Child));
-    cb(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id } as Child));
+      cb(list);
+    },
+    (err) => { console.error("[champstep] children (teacher) error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
