@@ -347,7 +347,7 @@ function Dashboard() {
       // A teacher with no linked students yet: show the invite panel instead of a dead end.
       return (
         <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-stone-100 font-sans">
-          <header className="flex items-center justify-between bg-stone-950 px-4 py-3 text-white">
+          <header className="flex items-center justify-between bg-stone-950 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-white">
             <span className="font-semibold">Champ<span className="text-amber-400">Step</span></span>
             <div className="flex items-center gap-2">
               <LanguageChip />
@@ -457,7 +457,7 @@ function Dashboard() {
     <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh bg-stone-100 font-sans">
 
       {/* TOP BAR — мобайл + desktop header */}
-      <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header">
+      <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {/* Gradient лого */}
@@ -808,14 +808,14 @@ function Dashboard() {
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
             <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
           </div>
         </div>
       )}
       {editingAchievement && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
             <AddAchievementForm
               childId={child.childId}
@@ -983,7 +983,7 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
     try { await onAdd(name.trim()); } finally { setSubmitting(false); }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 cs-backdrop-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] cs-backdrop-in" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl cs-panel-in">
         <h2 className="text-lg font-semibold text-stone-900 mb-4">{t("children.addChild")}</h2>
         <input

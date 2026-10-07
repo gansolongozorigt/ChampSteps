@@ -305,7 +305,7 @@ export default function PdfPreviewModal({
   const isExpanded = expanded && !isMobile;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4 print:hidden cs-backdrop-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4 print:hidden cs-backdrop-in" onClick={onClose}>
       <div
         className={`bg-white w-full rounded-2xl shadow-xl overflow-hidden flex flex-col cs-panel-in ${
           isExpanded ? "max-w-[95vw] h-[95vh]" : "max-w-3xl max-h-[90vh]"

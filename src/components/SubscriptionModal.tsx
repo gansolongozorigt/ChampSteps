@@ -202,7 +202,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4 print:hidden cs-backdrop-in"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4 print:hidden cs-backdrop-in"
       onClick={onClose}
     >
       <div

@@ -77,7 +77,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-stone-50 to-amber-50 font-sans">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-4 sm:px-6">
+      <header className="flex items-center justify-between px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
         <div className="flex items-center gap-2">
           {/* Logo */}
           <div className="flex h-8 w-8 items-center justify-center rounded bg-stone-900 overflow-hidden">

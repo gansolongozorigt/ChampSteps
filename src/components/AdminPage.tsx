@@ -22,7 +22,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
   if (!user || user.email !== ADMIN_EMAIL) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         onClick={onClose}
       >
         <div
@@ -43,7 +43,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-2 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
