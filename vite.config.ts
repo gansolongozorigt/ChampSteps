@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // E2E only: proxy /api/* to a deployed backend (Vite dev has no serverless functions).
+  server: process.env.E2E_API_PROXY
+    ? { proxy: { '/api': { target: process.env.E2E_API_PROXY, changeOrigin: true } } }
+    : undefined,
   plugins: [
     react(),
     VitePWA({

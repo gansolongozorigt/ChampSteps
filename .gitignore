@@ -10,3 +10,5 @@ api/**/*.js
 *-debug.log
 firebase-export-*
 scratch/
+playwright-report/
+test-results/

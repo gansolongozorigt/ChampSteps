@@ -10,7 +10,9 @@
     "lint": "tsc -b",
     "lint:api": "tsc -p tsconfig.api.json --noEmit",
     "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs tests/rules/legacy-user.test.mjs\"",
-    "test:rules:api": "node tests/rules/api-runner.mjs"
+    "test:rules:api": "node tests/rules/api-runner.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report scratch/qa-20261007/report"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vercel/node": "^5.7.15",
