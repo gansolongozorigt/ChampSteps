@@ -168,7 +168,7 @@ export default function ReflectionSection({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={saving || !content.trim()}
+              disabled={saving || (!content.trim() && !parentNote.trim())}
               className="rounded-lg bg-purple-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-purple-800 disabled:opacity-50"
             >
               {saving ? t("reflection.actions.saving") : t("reflection.actions.save")}
