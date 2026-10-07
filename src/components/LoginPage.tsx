@@ -6,14 +6,15 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import LanguageToggle from "./LanguageToggle";
 import { useAuth } from "../lib/auth";
-import { isFirebaseConfigured } from "../lib/firebase";
+import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
 import type { UserRole } from "../types";
 
 type Mode = "signin" | "signup";
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { signIn, signUp, signInWithGoogle, signInOffline } = useAuth();
+  const [info, setInfo] = useState<string | null>(null);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [role, setRole] = useState<UserRole>("parent");
@@ -52,6 +53,23 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgot() {
+    setError(null);
+    setInfo(null);
+    if (!email.trim()) { setError(t("auth.resetEnterEmail")); return; }
+    setSubmitting(true);
+    try {
+      await sendPasswordReset(email.trim(), i18n.language ?? "mn");
+      setInfo(t("auth.resetSent"));
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? "";
+      // Never reveal whether the e-mail exists.
+      if (code.includes("user-not-found")) setInfo(t("auth.resetSent"));
+      else setError(mapAuthError(err, t));
+    } finally {
+      setSubmitting(false);
+    }
+  }
   function handleOffline() {
     signInOffline(displayName.trim() || undefined, role);
   }
@@ -162,6 +180,14 @@ export default function LoginPage() {
                 minLength={6}
               />
 
+              {mode === "signin" && (
+                <button type="button" onClick={handleForgot} disabled={submitting || !isFirebaseConfigured} className="-mt-1 self-end text-xs text-stone-500 hover:text-stone-900 hover:underline disabled:opacity-50">
+                  {t("auth.forgotPassword")}
+                </button>
+              )}
+              {info && (
+                <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700" role="status">{info}</div>
+              )}
               {error && (
                 <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                   {error}
