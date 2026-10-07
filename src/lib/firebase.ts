@@ -213,7 +213,7 @@ export async function updateChild(next: Child, avatarFile?: File) {
   }
   await updateDoc(childRef, {
     name: next.name,
-    birthDate: next.birthDate,
+    birthDate: next.birthDate ?? "",
     bio: next.bio ?? "",
     avatarUrl: avatarUrl ?? null,
     updatedAt: serverTimestamp(),
@@ -277,7 +277,7 @@ export async function useInviteCode(code: string, childId: string): Promise<Invi
   const ref = doc(db, "inviteCodes", code.toUpperCase());
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) return null;
+  if (!snap.exists()) throw new Error("Код буруу байна.");
 
   const data = snap.data() as InviteCode;
 
@@ -332,10 +332,15 @@ export async function createAchievement(childId: string, draft: AchievementDraft
   return docRef.id;
 }
 
+/** Firestore rejects `undefined` values — drop them before writing. */
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
 export async function updateAchievement(id: string, data: Partial<Achievement>) {
   const db = requireDb();
   await updateDoc(doc(db, "achievements", id), {
-    ...data,
+    ...omitUndefined(data as Record<string, unknown>),
     updatedAt: serverTimestamp(),
   });
 }
@@ -390,7 +395,7 @@ export async function createPracticeLog(childId: string, log: Omit<PracticeLog, 
   const db = requireDb();
   const docRef = await addDoc(collection(db, "practiceLogs"), {
     childId,
-    ...log,
+    ...omitUndefined(log as Record<string, unknown>),
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -426,7 +431,7 @@ export async function createReflection(
   const db = requireDb();
   const docRef = await addDoc(collection(db, "reflections"), {
     childId,
-    ...reflection,
+    ...omitUndefined(reflection as Record<string, unknown>),
     createdAt: serverTimestamp(),
   });
   return docRef.id;

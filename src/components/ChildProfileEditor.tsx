@@ -56,7 +56,7 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(draft, avatarFile);
+      await onSave({ ...draft, name: draft.name.trim() }, avatarFile);
       onClose();
     } finally {
       setSaving(false);
@@ -70,7 +70,7 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-xl"
+        className="w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-xl"
       >
         <header>
           <p className="text-xs uppercase tracking-widest text-stone-500">{t("app.journal")}</p>

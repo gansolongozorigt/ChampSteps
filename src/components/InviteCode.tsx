@@ -173,7 +173,7 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
           <button
             type="button"
             onClick={handleLink}
-            disabled={loading || code.length !== 6}
+            disabled={loading || code.trim().length !== 6}
             className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
             {loading ? t("invite.parent.connecting") : t("invite.parent.connectButton")}
