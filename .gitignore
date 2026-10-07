@@ -7,3 +7,5 @@ src/**/*.js.map
 api/**/*.js
 .DS_Store
 .vercel
+*-debug.log
+firebase-export-*

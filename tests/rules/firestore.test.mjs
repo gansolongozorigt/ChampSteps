@@ -5,7 +5,7 @@ import {
   collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where,
 } from "firebase/firestore";
 import {
-  createEnv, seed, asUser, asAnon, PARENT, TEACHER, OTHER, CHILD, STRANGER_CHILD,
+  createEnv, seed, asUser, asAnon, PARENT, TEACHER, OTHER, CHILD, STRANGER_CHILD, LEGACY_CHILD, LEGACY_USER,
 } from "./helpers.mjs";
 
 let env;
@@ -166,4 +166,51 @@ test("promoCodes: no client access", async () => {
 test("unknown collection: denied", async () => {
   await assertFails(setDoc(doc(asUser(env, PARENT), "misc", "x"), { a: 1 }));
   await assertFails(getDoc(doc(asUser(env, PARENT), "misc", "x")));
+});
+
+// ---- legacy docs: children without teacherIds, users without subscriptionTier
+test("children (no teacherIds): parent reads/lists/updates/deletes; teacher & stranger denied", async () => {
+  await assertSucceeds(getDoc(doc(asUser(env, PARENT), "children", LEGACY_CHILD)));
+  await assertSucceeds(getDocs(query(collection(asUser(env, PARENT), "children"), where("parentId", "==", PARENT))));
+  await assertSucceeds(updateDoc(doc(asUser(env, PARENT), "children", LEGACY_CHILD), { name: "Renamed" }));
+  // parent may backfill teacherIds, but only as a list
+  await assertFails(updateDoc(doc(asUser(env, PARENT), "children", LEGACY_CHILD), { teacherIds: "not-a-list" }));
+  await assertSucceeds(updateDoc(doc(asUser(env, PARENT), "children", LEGACY_CHILD), { teacherIds: [] }));
+
+  await assertFails(getDoc(doc(asUser(env, TEACHER), "children", LEGACY_CHILD)));
+  await assertFails(getDoc(doc(asUser(env, OTHER), "children", LEGACY_CHILD)));
+  await assertFails(updateDoc(doc(asUser(env, TEACHER), "children", LEGACY_CHILD), { teacherIds: [TEACHER] }));
+  await assertSucceeds(deleteDoc(doc(asUser(env, PARENT), "children", LEGACY_CHILD)));
+});
+
+test("child data (no teacherIds): parent full access; teacher/stranger denied; storage-style get() does not error", async () => {
+  await assertSucceeds(getDoc(doc(asUser(env, PARENT), "achievements", "ach_legacy")));
+  await assertSucceeds(getDocs(query(collection(asUser(env, PARENT), "achievements"), where("childId", "==", LEGACY_CHILD))));
+  await assertSucceeds(setDoc(doc(asUser(env, PARENT), "achievements", "ach_legacy2"), { childId: LEGACY_CHILD, title: "x", date: "2026-02-02" }));
+  await assertSucceeds(setDoc(doc(asUser(env, PARENT), "practiceLogs", "log_legacy"), { childId: LEGACY_CHILD, date: "2026-02-02", duration: 5, content: "c" }));
+  await assertSucceeds(getDoc(doc(asUser(env, PARENT), "reflections", "ref_legacy")));
+  await assertSucceeds(deleteDoc(doc(asUser(env, PARENT), "achievements", "ach_legacy")));
+
+  await assertFails(getDoc(doc(asUser(env, TEACHER), "achievements", "ach_legacy2")));
+  await assertFails(getDocs(query(collection(asUser(env, TEACHER), "achievements"), where("childId", "==", LEGACY_CHILD))));
+  await assertFails(setDoc(doc(asUser(env, TEACHER), "coachNotes", "n_legacy"), { childId: LEGACY_CHILD, teacherId: TEACHER, teacherName: "T", content: "hi" }));
+  await assertFails(getDoc(doc(asUser(env, OTHER), "achievements", "ach_legacy2")));
+  await assertFails(getDoc(doc(asUser(env, TEACHER), "reflections", "ref_legacy")));
+});
+
+test("users (no subscriptionTier): owner updates profile; adding subscription/role fields denied", async () => {
+  const ref = doc(asUser(env, LEGACY_USER), "users", LEGACY_USER);
+  await assertSucceeds(getDoc(ref));
+  await assertSucceeds(updateDoc(ref, { displayName: "New", phone: "1" }));
+  // affectedKeys() must include keys that are ADDED, not only changed
+  await assertFails(updateDoc(ref, { subscriptionTier: "free" }));
+  await assertFails(updateDoc(ref, { subscriptionTier: "master" }));
+  await assertFails(updateDoc(ref, { subscription: { plan: "family" } }));
+  await assertFails(updateDoc(ref, { subscriptionExpiresAt: "2030-01-01" }));
+  await assertFails(updateDoc(ref, { displayName: "x", role: "teacher" }));
+  await assertFails(updateDoc(ref, { uid: "someone" }));
+  // setDoc without merge on an existing doc is an update: dropping role is fine
+  // for the client, but it still cannot sneak in a tier
+  await assertFails(setDoc(ref, { uid: LEGACY_USER, role: "parent", subscriptionTier: "coach" }));
+  await assertSucceeds(setDoc(ref, { uid: LEGACY_USER, role: "parent", displayName: "Z" }));
 });

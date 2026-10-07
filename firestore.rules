@@ -10,7 +10,8 @@
 //   • payments: owner reads, nobody writes from the client.
 //   • Child data: parent (children.parentId) has full access. An invited
 //     teacher (uid in children.teacherIds) can read and may only write
-//     coachNotes. reflections are parent-only.
+//     coachNotes. reflections are parent-only. Children docs without a
+//     teacherIds field are treated as having no teachers (see isTeacherOf).
 //   • promoCodes: no client access at all (server only).
 // =============================================================================
 rules_version = '2';
@@ -31,13 +32,18 @@ service cloud.firestore {
     function isChildOwner(childId) {
       return signedIn() && childData(childId).parentId == uid();
     }
+    // Legacy children docs may lack teacherIds: never let a missing/odd field
+    // make the rule error out (an error == deny for the parent too).
+    function isTeacherOf(d) {
+      return 'teacherIds' in d && d.teacherIds is list && uid() in d.teacherIds;
+    }
     function isChildTeacher(childId) {
-      return signedIn() && uid() in childData(childId).teacherIds;
+      return signedIn() && isTeacherOf(childData(childId));
     }
     function canViewChild(childId) {
       return signedIn()
         && (childData(childId).parentId == uid()
-            || uid() in childData(childId).teacherIds);
+            || isTeacherOf(childData(childId)));
     }
     function affectedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
@@ -76,7 +82,14 @@ service cloud.firestore {
 
     // ---- children --------------------------------------------------------
     match /children/{childId} {
-      allow get, list: if signedIn()
+      // get: a single doc may lack teacherIds → tolerant helper.
+      allow get: if signedIn()
+        && (resource.data.parentId == uid() || isTeacherOf(resource.data));
+      // list: evaluated against the query, not the doc. Only
+      // where('parentId','==',uid) or where('teacherIds','array-contains',uid)
+      // queries can pass, and the latter guarantees teacherIds is a list.
+      // ('teacherIds' in resource.data is NOT provable from a query.)
+      allow list: if signedIn()
         && (resource.data.parentId == uid() || uid() in resource.data.teacherIds);
 
       allow create: if signedIn()
@@ -86,10 +99,13 @@ service cloud.firestore {
         && request.resource.data.teacherIds.size() == 0;
 
       // Owner edits profile and manages teacherIds (invite link / unlink).
+      // teacherIds, when present, must stay a list.
       allow update: if signedIn()
         && resource.data.parentId == uid()
         && request.resource.data.parentId == resource.data.parentId
-        && request.resource.data.childId == resource.data.childId;
+        && request.resource.data.childId == resource.data.childId
+        && (!('teacherIds' in request.resource.data)
+            || request.resource.data.teacherIds is list);
 
       allow delete: if signedIn() && resource.data.parentId == uid();
     }

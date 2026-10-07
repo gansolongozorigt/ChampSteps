@@ -9,17 +9,20 @@ const TOKEN = process.env.RULES_TOKEN;
 if (!TOKEN) { console.error("RULES_TOKEN missing"); process.exit(2); }
 
 const PARENT = "parent_uid_001", TEACHER = "teacher_uid_001", OTHER = "other_uid_001";
-const CHILD = "child_parent_1", STRANGER_CHILD = "child_other_1";
+const CHILD = "child_parent_1", STRANGER_CHILD = "child_other_1", LEGACY_CHILD = "child_legacy_1", LEGACY_USER = "parent_legacy_001";
 const D = "/databases/(default)/documents";
 
 const CHILD_DOC = { childId: CHILD, parentId: PARENT, teacherIds: [TEACHER], name: "Kid" };
 const STRANGER_DOC = { childId: STRANGER_CHILD, parentId: OTHER, teacherIds: [], name: "Other" };
+const LEGACY_DOC = { childId: LEGACY_CHILD, parentId: PARENT, name: "Legacy" }; // no teacherIds
 const getMocks = [
   { function: "get", args: [{ exactValue: `${D}/children/${CHILD}` }], result: { value: { data: CHILD_DOC } } },
   { function: "get", args: [{ exactValue: `${D}/children/${STRANGER_CHILD}` }], result: { value: { data: STRANGER_DOC } } },
+  { function: "get", args: [{ exactValue: `${D}/children/${LEGACY_CHILD}` }], result: { value: { data: LEGACY_DOC } } },
 ];
 const fsGetMocks = [
   { function: "firestore.get", args: [{ exactValue: `${D}/children/${CHILD}` }], result: { value: { data: CHILD_DOC } } },
+  { function: "firestore.get", args: [{ exactValue: `${D}/children/${LEGACY_CHILD}` }], result: { value: { data: LEGACY_DOC } } },
 ];
 
 const auth = (uid) => (uid ? { uid, token: { sub: uid } } : undefined);
@@ -45,6 +48,8 @@ const REF = { childId: CHILD, mood: 4, content: "secret" };
 const NOTE = { childId: CHILD, teacherId: TEACHER, teacherName: "T", content: "n" };
 const INV = { code: "ABC123", teacherId: TEACHER, teacherName: "T", used: false, expiresAt: "2099-01-01", createdAt: "2026-01-01" };
 const PAY = { uid: PARENT, plan: "family", amount: 9900, status: "pending", provider: "qpay" };
+const LEGACY_USER_DOC = { uid: LEGACY_USER, role: "parent", displayName: "L" }; // no subscriptionTier
+const LEGACY_ACH = { childId: LEGACY_CHILD, title: "Silver", date: "2026-01-01" };
 
 const firestoreCases = [
   fs("anon cannot read users", "DENY", null, "get", `users/${PARENT}`, { existing: USER }),
@@ -114,6 +119,28 @@ const firestoreCases = [
   fs("promoCodes: get denied", "DENY", PARENT, "get", "promoCodes/CHAMP3", { existing: { code: "CHAMP3", usedBy: [] } }),
   fs("promoCodes: update denied", "DENY", PARENT, "update", "promoCodes/CHAMP3", { existing: { code: "CHAMP3", usedBy: [] }, next: { code: "CHAMP3", usedBy: [PARENT] } }),
   fs("unknown collection denied", "DENY", PARENT, "create", "misc/x", { next: { a: 1 } }),
+  // legacy: children without teacherIds
+  fs("legacy child: parent get", "ALLOW", PARENT, "get", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),
+  fs("legacy child: teacher get denied", "DENY", TEACHER, "get", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),
+  fs("legacy child: stranger get denied", "DENY", OTHER, "get", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),
+  fs("legacy child: parent update name", "ALLOW", PARENT, "update", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC, next: { ...LEGACY_DOC, name: "R" } }),
+  fs("legacy child: parent backfills teacherIds []", "ALLOW", PARENT, "update", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC, next: { ...LEGACY_DOC, teacherIds: [] } }),
+  fs("legacy child: teacherIds must be a list", "DENY", PARENT, "update", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC, next: { ...LEGACY_DOC, teacherIds: "x" } }),
+  fs("legacy child: parent delete", "ALLOW", PARENT, "delete", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),
+  fs("legacy child: achievements parent get", "ALLOW", PARENT, "get", "achievements/al1", { existing: LEGACY_ACH }),
+  fs("legacy child: achievements parent create", "ALLOW", PARENT, "create", "achievements/al2", { next: LEGACY_ACH }),
+  fs("legacy child: achievements teacher get denied", "DENY", TEACHER, "get", "achievements/al1", { existing: LEGACY_ACH }),
+  fs("legacy child: achievements stranger get denied", "DENY", OTHER, "get", "achievements/al1", { existing: LEGACY_ACH }),
+  fs("legacy child: reflections parent get", "ALLOW", PARENT, "get", "reflections/rl1", { existing: { ...REF, childId: LEGACY_CHILD } }),
+  fs("legacy child: coachNotes teacher create denied", "DENY", TEACHER, "create", "coachNotes/nl1", { next: { ...NOTE, childId: LEGACY_CHILD } }),
+  // legacy: users without subscriptionTier
+  fs("legacy user: owner get", "ALLOW", LEGACY_USER, "get", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC }),
+  fs("legacy user: owner updates profile", "ALLOW", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, displayName: "N", phone: "1" } }),
+  fs("legacy user: cannot add subscriptionTier free", "DENY", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, subscriptionTier: "free" } }),
+  fs("legacy user: cannot add subscriptionTier master", "DENY", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, subscriptionTier: "master" } }),
+  fs("legacy user: cannot add subscription map", "DENY", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, subscription: { plan: "family" } } }),
+  fs("legacy user: cannot add subscriptionExpiresAt", "DENY", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, subscriptionExpiresAt: "2030-01-01" } }),
+  fs("legacy user: cannot change role", "DENY", LEGACY_USER, "update", `users/${LEGACY_USER}`, { existing: LEGACY_USER_DOC, next: { ...LEGACY_USER_DOC, role: "teacher" } }),
 ];
 
 const storageCases = [
@@ -128,6 +155,10 @@ const storageCases = [
   st("storage: anon read denied", "DENY", null, "get", `achievements/${CHILD}/a.png`, { existing: true }),
   st("storage: parent delete", "ALLOW", PARENT, "delete", `achievements/${CHILD}/a.png`, { existing: true }),
   st("storage: unknown folder denied", "DENY", PARENT, "create", `misc/${CHILD}/x.png`),
+  st("storage legacy child: parent uploads", "ALLOW", PARENT, "create", `achievements/${LEGACY_CHILD}/a.png`),
+  st("storage legacy child: parent reads", "ALLOW", PARENT, "get", `achievements/${LEGACY_CHILD}/a.png`, { existing: true }),
+  st("storage legacy child: teacher read denied", "DENY", TEACHER, "get", `achievements/${LEGACY_CHILD}/a.png`, { existing: true }),
+  st("storage legacy child: stranger read denied", "DENY", OTHER, "get", `achievements/${LEGACY_CHILD}/a.png`, { existing: true }),
 ];
 
 async function run(label, file, cases) {

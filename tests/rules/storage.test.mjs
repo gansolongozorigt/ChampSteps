@@ -2,7 +2,7 @@
 import { test, before, after, beforeEach } from "node:test";
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import { getBytes, ref, uploadBytes, deleteObject } from "firebase/storage";
-import { createEnv, seed, PARENT, TEACHER, OTHER, CHILD } from "./helpers.mjs";
+import { createEnv, seed, PARENT, TEACHER, OTHER, CHILD, LEGACY_CHILD } from "./helpers.mjs";
 
 let env;
 before(async () => { env = await createEnv(); });
@@ -41,4 +41,13 @@ test("storage: teacher reads but cannot write; stranger and anon denied", async 
 test("storage: parent deletes own; paths outside known folders denied", async () => {
   await assertSucceeds(deleteObject(ref(stor(PARENT), `achievements/${CHILD}/seed.png`)));
   await assertFails(uploadBytes(ref(stor(PARENT), `misc/${CHILD}/x.png`), png(), { contentType: "image/png" }));
+});
+
+test("storage (child without teacherIds): parent reads/writes; teacher & stranger denied", async () => {
+  await assertSucceeds(uploadBytes(ref(stor(PARENT), `achievements/${LEGACY_CHILD}/a.png`), png(), { contentType: "image/png" }));
+  await assertSucceeds(getBytes(ref(stor(PARENT), `achievements/${LEGACY_CHILD}/a.png`)));
+  await assertFails(getBytes(ref(stor(TEACHER), `achievements/${LEGACY_CHILD}/a.png`)));
+  await assertFails(getBytes(ref(stor(OTHER), `achievements/${LEGACY_CHILD}/a.png`)));
+  await assertFails(uploadBytes(ref(stor(TEACHER), `avatars/${LEGACY_CHILD}/t.png`), png(), { contentType: "image/png" }));
+  await assertSucceeds(deleteObject(ref(stor(PARENT), `achievements/${LEGACY_CHILD}/a.png`)));
 });

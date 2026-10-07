@@ -9,6 +9,10 @@ export const TEACHER = "teacher_uid_001";
 export const OTHER = "other_uid_001";
 export const CHILD = "child_parent_1";
 export const STRANGER_CHILD = "child_other_1";
+/** Legacy child doc: parent-owned, NO teacherIds field at all. */
+export const LEGACY_CHILD = "child_legacy_1";
+/** Legacy user doc: no subscriptionTier field. */
+export const LEGACY_USER = "parent_legacy_001";
 
 export async function createEnv() {
   return initializeTestEnvironment({
@@ -35,6 +39,10 @@ export async function seed(env) {
     await setDoc(doc(db, "users", OTHER), { uid: OTHER, role: "parent", subscriptionTier: "free", displayName: "O" });
     await setDoc(doc(db, "children", CHILD), { childId: CHILD, parentId: PARENT, teacherIds: [TEACHER], name: "Kid" });
     await setDoc(doc(db, "children", STRANGER_CHILD), { childId: STRANGER_CHILD, parentId: OTHER, teacherIds: [], name: "Other kid" });
+    await setDoc(doc(db, "children", LEGACY_CHILD), { childId: LEGACY_CHILD, parentId: PARENT, name: "Legacy kid" });
+    await setDoc(doc(db, "users", LEGACY_USER), { uid: LEGACY_USER, role: "parent", displayName: "L" });
+    await setDoc(doc(db, "achievements", "ach_legacy"), { childId: LEGACY_CHILD, title: "Silver", date: "2026-01-01" });
+    await setDoc(doc(db, "reflections", "ref_legacy"), { childId: LEGACY_CHILD, date: "2026-01-01", mood: 2, content: "secret" });
     await setDoc(doc(db, "achievements", "ach1"), { childId: CHILD, title: "Gold", date: "2026-01-01" });
     await setDoc(doc(db, "practiceLogs", "log1"), { childId: CHILD, date: "2026-01-01", duration: 30, content: "x" });
     await setDoc(doc(db, "reflections", "ref1"), { childId: CHILD, date: "2026-01-01", mood: 4, content: "secret" });

@@ -21,10 +21,14 @@ service firebase.storage {
     function isChildOwner(childId) {
       return signedIn() && childData(childId).parentId == request.auth.uid;
     }
+    // Tolerate legacy children docs without teacherIds (missing → no teachers).
+    function isTeacherOf(d) {
+      return 'teacherIds' in d && d.teacherIds is list && request.auth.uid in d.teacherIds;
+    }
     function canViewChild(childId) {
       return signedIn()
         && (childData(childId).parentId == request.auth.uid
-            || request.auth.uid in childData(childId).teacherIds);
+            || isTeacherOf(childData(childId)));
     }
     function isImageUnder(maxBytes) {
       return request.resource.contentType.matches('image/.*')
