@@ -104,6 +104,7 @@
     }
   },
   "nav": {
+    "subscriptionPage": "Захиалга",
     "admin": "Админ",
     "pdfDownload": "PDF Татах",
     "subscription": "Сарын эрх",
@@ -116,6 +117,9 @@
     "terms": "Нөхцөл"
   },
   "auth": {
+    "resetEnterEmail": "Эхлээд имэйлээ оруулна уу.",
+    "resetSent": "Нууц үг сэргээх холбоосыг имэйлээр илгээлээ. Шуудангаа шалгана уу.",
+    "forgotPassword": "Нууц үгээ мартсан уу?",
     "signInTitle": "ChampStep-д нэвтрэх",
     "signUpTitle": "Шинээр бүртгүүлэх",
     "subtitle": "Хүүхдийнхээ амжилтуудыг цуглуулж, PDF портфолио үүсгэцгээе.",
@@ -402,6 +406,22 @@
     "defaultName": "Багш"
   },
   "sub": {
+    "downgradeBlocked": "Танд илүү өндөр багц идэвхтэй байна ({{until}} хүртэл)",
+    "expiredBanner": "{{plan}} багц дууссан — Үнэгүй багц руу шилжлээ, өгөгдөл хадгалагдсан.",
+    "expiringToday": "{{plan}} багц өнөөдөр дуусна",
+    "expiringBanner": "{{plan}} багц {{days}} хоногийн дараа дуусна",
+    "paymentPending": "Хүлээгдэж буй",
+    "paymentPaid": "Төлсөн",
+    "paymentsEmpty": "Төлбөр хийгдээгүй байна.",
+    "paymentsTitle": "Төлбөрийн түүх",
+    "noExpiry": "Хугацаагүй",
+    "daysLeft": "{{days}} хоног",
+    "daysLeftLabel": "Үлдсэн хоног",
+    "expiresOn": "Дуусах огноо",
+    "statusUpToDate": "Захиалгын мэдээлэл шинэчлэгдлээ.",
+    "checkStatus": "Захиалгаа шалгах",
+    "changePlan": "Багц өөрчлөх",
+    "renew": "Сунгах",
     "title": "ChampStep Эрх",
     "subtitle": "Premium болсноор PDF, олон хүүхэд, AI зөвлөгөө авна.",
     "tierNames": {

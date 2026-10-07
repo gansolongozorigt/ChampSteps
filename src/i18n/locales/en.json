@@ -104,6 +104,7 @@
     }
   },
   "nav": {
+    "subscriptionPage": "Subscription",
     "admin": "Admin",
     "pdfDownload": "Download PDF",
     "subscription": "Subscription",
@@ -116,6 +117,9 @@
     "terms": "Terms"
   },
   "auth": {
+    "resetEnterEmail": "Enter your e-mail first.",
+    "resetSent": "We sent a password reset link to your e-mail. Please check your inbox.",
+    "forgotPassword": "Forgot your password?",
     "signInTitle": "Sign in to ChampStep",
     "signUpTitle": "Create your account",
     "subtitle": "Collect your child's wins and build a beautiful portfolio.",
@@ -402,6 +406,22 @@
     "defaultName": "Teacher"
   },
   "sub": {
+    "downgradeBlocked": "You already have a higher plan active (until {{until}})",
+    "expiredBanner": "Your {{plan}} plan has expired — switched to Free, your data is kept.",
+    "expiringToday": "Your {{plan}} plan ends today",
+    "expiringBanner": "Your {{plan}} plan ends in {{days}} days",
+    "paymentPending": "Pending",
+    "paymentPaid": "Paid",
+    "paymentsEmpty": "No payments yet.",
+    "paymentsTitle": "Payment history",
+    "noExpiry": "No expiry",
+    "daysLeft": "{{days}} days",
+    "daysLeftLabel": "Days left",
+    "expiresOn": "Expires on",
+    "statusUpToDate": "Subscription is up to date.",
+    "checkStatus": "Check subscription",
+    "changePlan": "Change plan",
+    "renew": "Renew",
     "title": "ChampStep Plans",
     "subtitle": "Upgrade to unlock PDF portfolios, multi-child, and AI insights.",
     "tierNames": {

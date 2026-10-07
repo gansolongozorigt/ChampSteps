@@ -22,6 +22,7 @@ import {
   updateProfile,
   type Auth,
   type User as FirebaseUser,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   addDoc,
@@ -65,6 +66,7 @@ import type {
   UserRole,
 } from "../types";
 import { compressImage } from "../utils/image";
+import { infoFromDoc, toDate, type SubscriptionInfo } from "./subscription";
 
 // -----------------------------------------------------------------------------
 // Init
@@ -189,6 +191,39 @@ export async function getSubscriptionTier(uid: string): Promise<SubscriptionTier
 
 export async function getSubscriptionStatus(uid: string): Promise<SubscriptionTier> {
   return getSubscriptionTier(uid);
+}
+
+/** Tier + expiry + expired-from, straight from users/{uid}. */
+export async function getSubscriptionInfo(uid: string): Promise<SubscriptionInfo> {
+  return infoFromDoc(await getUserDoc(uid));
+}
+
+export interface PaymentRecord {
+  orderId: string;
+  plan: "family" | "master" | "coach";
+  amount: number;
+  status: "pending" | "paid";
+  createdAt: Date | null;
+  paidAt: Date | null;
+}
+
+/** payments where uid == me (rules: owner read). Sorted newest first on the client (no composite index). */
+export async function getPaymentsForUser(uid: string): Promise<PaymentRecord[]> {
+  const db = requireDb();
+  const snap = await getDocs(query(collection(db, "payments"), where("uid", "==", uid)));
+  return snap.docs
+    .map((d) => {
+      const x = d.data();
+      return { orderId: d.id, plan: x.plan, amount: Number(x.amount ?? 0), status: x.status === "paid" ? "paid" : "pending", createdAt: toDate(x.createdAt), paidAt: toDate(x.paidAt) } as PaymentRecord;
+    })
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+}
+
+/** Password reset e-mail in the UI language. Callers must NOT reveal whether the account exists. */
+export async function sendPasswordReset(email: string, lang: string) {
+  const a = requireAuth();
+  a.languageCode = lang.slice(0, 2);
+  await sendPasswordResetEmail(a, email);
 }
 
 // -----------------------------------------------------------------------------

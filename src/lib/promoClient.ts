@@ -14,7 +14,7 @@ export interface PromoCode {
   active: boolean;
 }
 
-export type PromoRejectReason = "not_found" | "inactive" | "expired" | "used" | "exhausted";
+export type PromoRejectReason = "not_found" | "inactive" | "expired" | "used" | "exhausted" | "downgrade";
 
 export class PromoError extends Error {
   constructor(public reason: PromoRejectReason | "invalid_code" | "unknown", public status: number) {

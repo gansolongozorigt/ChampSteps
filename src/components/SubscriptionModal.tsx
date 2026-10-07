@@ -15,14 +15,21 @@ import {
   type CreateInvoiceResponse,
 } from "../lib/qpayClient";
 import type { SubscriptionTier } from "../types";
+import { isDowngrade, visibleTiers } from "../lib/subscription";
 
 type Step = "compare" | "pay" | "success";
 
-export default function SubscriptionModal({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-  const { user, subscription, activateSubscription, refreshSubscription } = useAuth();
+export default function SubscriptionModal({ onClose, initialTier }: { onClose: () => void; initialTier?: SubscriptionTier }) {
+  const { t, i18n } = useTranslation();
+  const { user, subscription, subscriptionInfo, activateSubscription, refreshSubscription } = useAuth();
   const [step, setStep] = useState<Step>("compare");
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("family");
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(
+    initialTier && initialTier !== "free" ? initialTier : subscription !== "free" ? subscription : user?.role === "teacher" ? "coach" : "family"
+  );
+  const untilText = subscriptionInfo.expiresAt
+    ? subscriptionInfo.expiresAt.toLocaleDateString(i18n.language?.startsWith("en") ? "en-US" : i18n.language?.startsWith("ru") ? "ru-RU" : "mn-MN", { year: "numeric", month: "long", day: "numeric" })
+    : t("sub.noExpiry");
+  const downgradeMsg = () => t("sub.downgradeBlocked", { until: untilText });
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -45,6 +52,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
       if (reason === "used") setPromoResult({ success: false, message: t("promo.used") });
       else if (reason === "exhausted") setPromoResult({ success: false, message: t("promo.exhausted") });
       else if (reason === "expired" || reason === "inactive") setPromoResult({ success: false, message: t("promo.expired") });
+      else if (reason === "downgrade") setPromoResult({ success: false, message: downgradeMsg() });
       else setPromoResult({ success: false, message: t("promo.invalid") });
     } finally {
       setPromoApplying(false);
@@ -105,6 +113,8 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
       color: "border-purple-300",
     },
   ];
+  // Parents see free/family/master, teachers see free/coach.
+  const TIERS_VISIBLE = TIERS.filter((tier) => visibleTiers(user?.role).includes(tier.id));
 
   function stopPolling() {
     if (pollRef.current !== null) {
@@ -162,7 +172,7 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
       startPolling(inv.orderId);
     } catch (e) {
       console.error("[champstep] createQPayInvoice failed:", e);
-      setError(t("pay.error"));
+      setError((e as Error).message === "downgrade" ? downgradeMsg() : t("pay.error"));
     } finally {
       setProcessing(false);
     }
@@ -208,15 +218,18 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
           <div className="px-5 py-5 max-h-[80vh] overflow-y-auto">
             <p className="text-sm text-stone-500 mb-4">{t("sub.subtitle")}</p>
             <div className="space-y-3">
-              {TIERS.map((tier) => {
+              {TIERS_VISIBLE.map((tier) => {
                 const isCurrent = subscription === tier.id;
                 const isSelected = selectedTier === tier.id;
+                const blocked = isDowngrade(subscriptionInfo, tier.id) || tier.id === "free";
                 return (
                   <button
                     key={tier.id}
                     type="button"
-                    onClick={() => !isCurrent && setSelectedTier(tier.id)}
-                    disabled={isCurrent}
+                    onClick={() => !blocked && setSelectedTier(tier.id)}
+                    disabled={blocked}
+                    aria-disabled={blocked}
+                    title={isDowngrade(subscriptionInfo, tier.id) ? downgradeMsg() : undefined}
                     className={`w-full rounded-xl border-2 p-4 text-left transition ${
                       isSelected && !isCurrent
                         ? `${tier.color} bg-stone-50 ring-2 ring-stone-900`
@@ -238,6 +251,9 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
                             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                               {t("sub.current")}
                             </span>
+                          )}
+                          {isDowngrade(subscriptionInfo, tier.id) && (
+                            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">{downgradeMsg()}</span>
                           )}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-stone-500">
@@ -291,13 +307,13 @@ export default function SubscriptionModal({ onClose }: { onClose: () => void }) 
             <button
               type="button"
               onClick={handleStartPayment}
-              disabled={processing || selectedTier === subscription || selectedTier === "free"}
+              disabled={processing || selectedTier === "free" || isDowngrade(subscriptionInfo, selectedTier)}
               className="mt-3 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
             >
               {processing
                 ? t("sub.processing")
                 : selectedTier === subscription
-                ? t("sub.currentPlan")
+                ? t("sub.renew")
                 : selectedTier === "free"
                 ? t("sub.freePlan")
                 : t("sub.pay")}

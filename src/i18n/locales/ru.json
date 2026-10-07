@@ -78,6 +78,7 @@
     }
   },
   "nav": {
+    "subscriptionPage": "Подписка",
     "admin": "Админ",
     "pdfDownload": "Скачать PDF",
     "subscription": "Подписка",
@@ -90,6 +91,9 @@
     "terms": "Условия"
   },
   "auth": {
+    "resetEnterEmail": "Сначала введите e-mail.",
+    "resetSent": "Ссылка для сброса пароля отправлена на вашу почту.",
+    "forgotPassword": "Забыли пароль?",
     "signInTitle": "Вход в ChampStep",
     "signUpTitle": "Создайте аккаунт",
     "subtitle": "Собирайте победы вашего ребёнка и создайте красивое портфолио.",
@@ -319,6 +323,22 @@
     "defaultName": "Преподаватель"
   },
   "sub": {
+    "downgradeBlocked": "У вас уже активен более высокий тариф (до {{until}})",
+    "expiredBanner": "Тариф {{plan}} истёк — переключено на Бесплатный, данные сохранены.",
+    "expiringToday": "Тариф {{plan}} заканчивается сегодня",
+    "expiringBanner": "Тариф {{plan}} заканчивается через {{days}} дн.",
+    "paymentPending": "Ожидает",
+    "paymentPaid": "Оплачено",
+    "paymentsEmpty": "Платежей пока нет.",
+    "paymentsTitle": "История платежей",
+    "noExpiry": "Без срока",
+    "daysLeft": "{{days}} дн.",
+    "daysLeftLabel": "Осталось дней",
+    "expiresOn": "Истекает",
+    "statusUpToDate": "Данные подписки обновлены.",
+    "checkStatus": "Проверить подписку",
+    "changePlan": "Сменить тариф",
+    "renew": "Продлить",
     "processing": "Обработка…",
     "title": "Планы ChampStep",
     "subtitle": "Перейдите на платный план, чтобы открыть PDF-портфолио, нескольких детей и AI-аналитику.",

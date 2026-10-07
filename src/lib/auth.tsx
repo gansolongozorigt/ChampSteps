@@ -14,7 +14,7 @@ import {
 import type { User as FirebaseUser } from "firebase/auth";
 
 import {
-  getSubscriptionStatus,
+  getSubscriptionInfo,
   isFirebaseConfigured,
   onAuthChange,
   signInWithEmail,
@@ -31,6 +31,8 @@ import {
   type OfflineUser,
 } from "./localStore";
 import type { SubscriptionTier, UserRole } from "../types";
+import { FREE_INFO, effectiveTier, type SubscriptionInfo } from "./subscription";
+import { fetchSubscriptionStatus } from "./subscriptionClient";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -48,7 +50,10 @@ export interface AppUser {
 interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
+  /** Effective tier: expired paid plans count as "free". Use this for every limit/feature check. */
   subscription: SubscriptionTier;
+  /** Raw tier + expiry + expired-from (for the subscription page and banners). */
+  subscriptionInfo: SubscriptionInfo;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, role: UserRole) => Promise<void>;
   signInWithGoogle: (role?: UserRole) => Promise<void>;
@@ -92,7 +97,8 @@ function offlineToApp(u: OfflineUser): AppUser {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState<SubscriptionTier>("free");
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>(FREE_INFO);
+  const subscription = effectiveTier(subscriptionInfo);
   // onAuthStateChanged fires BEFORE signUpWithEmail() has finished (updateProfile +
   // ensureUserDoc). The dashboard must not mount until users/{uid}.role exists: mounting
   // earlier made a new teacher look like a parent AND created Firestore listeners during the
@@ -124,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const offline = loadOfflineUser();
       if (offline) {
         setUser(offlineToApp(offline));
-        setSubscription(loadLocalSubscription().status);
+        setSubscriptionInfo({ ...FREE_INFO, tier: loadLocalSubscription().status });
       }
       setLoading(false);
       return;
@@ -139,15 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (role) applyRole(fbUser.uid, role);
 
         try {
-          const sub = await getSubscriptionStatus(fbUser.uid);
-          setSubscription(sub);
+          setSubscriptionInfo(await getSubscriptionInfo(fbUser.uid));
         } catch (e) {
-          console.error("[champstep] getSubscriptionStatus failed:", e);
-          setSubscription("free");
+          console.error("[champstep] getSubscriptionInfo failed:", e);
+          setSubscriptionInfo(FREE_INFO);
         }
+        // Server decides expiry (sets users/{uid} to free + expiredFrom when the plan ran out).
+        fetchSubscriptionStatus().then((s) => { if (s) setSubscriptionInfo(s); }).catch((e) => console.warn("[champstep] subscription status:", e));
       } else {
         setUser(null);
-        setSubscription("free");
+        setSubscriptionInfo(FREE_INFO);
       }
       setLoading(false);
     });
@@ -160,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       subscription,
+      subscriptionInfo,
 
       async signIn(email, password) {
         if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
@@ -199,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         saveOfflineUser(offline);
         setUser(offlineToApp(offline));
-        setSubscription(loadLocalSubscription().status);
+        setSubscriptionInfo({ ...FREE_INFO, tier: loadLocalSubscription().status });
       },
 
       async signOut() {
@@ -211,20 +219,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           saveOfflineUser(null);
         }
         setUser(null);
-        setSubscription("free");
+        setSubscriptionInfo(FREE_INFO);
       },
 
       async refreshSubscription() {
         if (!user) return;
         if (user.isOffline) {
-          setSubscription(loadLocalSubscription().status);
+          setSubscriptionInfo({ ...FREE_INFO, tier: loadLocalSubscription().status });
           return;
         }
         try {
-          const sub = await getSubscriptionStatus(user.uid);
-          setSubscription(sub);
+          const s = await fetchSubscriptionStatus();
+          setSubscriptionInfo(s ?? (await getSubscriptionInfo(user.uid)));
         } catch (e) {
           console.error("[champstep] refreshSubscription failed:", e);
+          setSubscriptionInfo(await getSubscriptionInfo(user.uid));
+          throw e;
         }
       },
 
@@ -239,14 +249,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             activatedAt: now.toISOString(),
             expiresAt: exp.toISOString(),
           });
-          setSubscription(tier);
+          setSubscriptionInfo({ ...FREE_INFO, tier, expiresAt: exp });
           return;
         }
         // Online: users/{uid}-ийн багцын талбарыг client бичих эрхгүй (Firestore rules).
         throw new Error("auth.errors.serverOnly");
       },
     }),
-    [user, loading, subscription]
+    [user, loading, subscription, subscriptionInfo]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
