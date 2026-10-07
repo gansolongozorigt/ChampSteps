@@ -36,10 +36,14 @@ export default function ReflectionSection({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function handleAdd() {
-    if (!content.trim()) return;
+    const childText = content.trim();
+    const parentText = parentNote.trim();
+    // Either section may be filled; an empty one stays empty. Never send
+    // `undefined` to Firestore (addDoc rejects it) — omit the key instead.
+    if (!childText && !parentText) return;
     setSaving(true);
     try {
-      await onAdd({ date, mood, content: content.trim(), parentNote: parentNote.trim() || undefined });
+      await onAdd({ date, mood, content: childText, ...(parentText ? { parentNote: parentText } : {}) });
       setContent("");
       setParentNote("");
       setMood(3);
@@ -211,7 +215,7 @@ export default function ReflectionSection({
                             {isExpanded ? t("reflection.actions.collapse") : t("reflection.actions.expand")}
                           </button>
                         )}
-                        {isExpanded && r.parentNote && (
+                        {(isExpanded || !r.content) && r.parentNote && (
                           <div className="mt-2 rounded-lg bg-stone-50 px-3 py-2">
                             <p className="text-xs text-stone-500 font-medium mb-0.5">
                               {t("reflection.parentNoteLabel")}

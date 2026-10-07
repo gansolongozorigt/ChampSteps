@@ -48,6 +48,17 @@ service cloud.firestore {
     function affectedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
+    // Optional string field: absent or a string.
+    function optStr(d, k) {
+      return !(k in d) || d[k] is string;
+    }
+    // reflections: child note (content) and parent note (parentNote) are both
+    // optional strings, but at least one must be non-empty.
+    function reflectionNotesOk(d) {
+      return optStr(d, 'content') && optStr(d, 'parentNote')
+        && (('content' in d && d.content != '')
+            || ('parentNote' in d && d.parentNote != ''));
+    }
 
     // ---- users -----------------------------------------------------------
     match /users/{userId} {
@@ -130,9 +141,11 @@ service cloud.firestore {
     // ---- reflections: PRIVATE, parent only ------------------------------
     match /reflections/{docId} {
       allow get, list: if isChildOwner(resource.data.childId);
-      allow create: if isChildOwner(request.resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId)
+        && reflectionNotesOk(request.resource.data);
       allow update: if isChildOwner(resource.data.childId)
-        && request.resource.data.childId == resource.data.childId;
+        && request.resource.data.childId == resource.data.childId
+        && reflectionNotesOk(request.resource.data);
       allow delete: if isChildOwner(resource.data.childId);
     }
 

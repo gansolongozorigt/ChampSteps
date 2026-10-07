@@ -121,6 +121,27 @@ test("reflections: parent only; teacher gets nothing", async () => {
   await assertFails(getDocs(query(collection(asUser(env, OTHER), "reflections"), where("childId", "==", CHILD))));
 });
 
+test("reflections: child-only, parent-only or both notes save; both empty denied; teacher denied", async () => {
+  const db = asUser(env, PARENT);
+  const base = { childId: CHILD, date: "2026-03-03", mood: 3 };
+  await assertSucceeds(setDoc(doc(db, "reflections", "r_child_only"), { ...base, content: "child wrote" }));
+  await assertSucceeds(setDoc(doc(db, "reflections", "r_parent_only"), { ...base, content: "", parentNote: "parent wrote" }));
+  await assertSucceeds(setDoc(doc(db, "reflections", "r_parent_only_nokey"), { ...base, parentNote: "parent wrote" }));
+  await assertSucceeds(setDoc(doc(db, "reflections", "r_both"), { ...base, content: "child", parentNote: "parent" }));
+  await assertFails(setDoc(doc(db, "reflections", "r_empty"), { ...base, content: "", parentNote: "" }));
+  await assertFails(setDoc(doc(db, "reflections", "r_empty2"), { ...base, content: "" }));
+  await assertFails(setDoc(doc(db, "reflections", "r_nokeys"), base));
+  await assertFails(setDoc(doc(db, "reflections", "r_badtype"), { ...base, content: 123 }));
+  await assertFails(setDoc(doc(db, "reflections", "r_badtype2"), { ...base, content: "ok", parentNote: ["x"] }));
+  // update: clearing one note is fine, clearing both is not
+  await assertSucceeds(updateDoc(doc(db, "reflections", "r_both"), { parentNote: "" }));
+  await assertSucceeds(updateDoc(doc(db, "reflections", "r_both"), { content: "", parentNote: "only parent now" }));
+  await assertFails(updateDoc(doc(db, "reflections", "r_both"), { content: "", parentNote: "" }));
+  // teacher still gets nothing
+  await assertFails(setDoc(doc(asUser(env, TEACHER), "reflections", "t_r"), { ...base, content: "x" }));
+  await assertFails(getDoc(doc(asUser(env, TEACHER), "reflections", "r_parent_only")));
+});
+
 // ---- coachNotes -----------------------------------------------------------
 test("coachNotes: teacher creates/deletes own; parent reads & deletes; others denied", async () => {
   await assertSucceeds(setDoc(doc(asUser(env, TEACHER), "coachNotes", "n_new"), { childId: CHILD, teacherId: TEACHER, teacherName: "T", content: "hi" }));
