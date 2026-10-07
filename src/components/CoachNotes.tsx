@@ -33,9 +33,10 @@ export default function CoachNotes({
 
   // Firestore-оос бодит цагт уншина
   useEffect(() => {
-    const unsub = subscribeCoachNotes(childId, setNotes);
+    setError(null);
+    const unsub = subscribeCoachNotes(childId, setNotes, () => setError(t("status.errorLoading")));
     return () => unsub();
-  }, [childId]);
+  }, [childId, t]);
 
   // Холбогдсон багшийн нэр: users/{uid}-ийг өөр хэрэглэгч уншиж чадахгүй (rules),
   // тиймээс нэрийг тухайн багшийн бичсэн тэмдэглэлээс авна.

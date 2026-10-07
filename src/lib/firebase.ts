@@ -413,16 +413,21 @@ export async function deletePracticeLog(id: string) {
 
 export function subscribePracticeLogs(
   childId: string,
-  cb: (items: PracticeLog[]) => void
+  cb: (items: PracticeLog[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(collection(db, "practiceLogs"), where("childId", "==", childId));
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(
+    q,
+    (snap) => {
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() } as PracticeLog))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     cb(items);
-  });
+    },
+    (err) => { console.error("[champstep] practiceLogs error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -449,16 +454,21 @@ export async function deleteReflection(id: string) {
 
 export function subscribeReflections(
   childId: string,
-  cb: (items: Reflection[]) => void
+  cb: (items: Reflection[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(collection(db, "reflections"), where("childId", "==", childId));
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(
+    q,
+    (snap) => {
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() } as Reflection))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     cb(items);
-  });
+    },
+    (err) => { console.error("[champstep] reflections error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -498,17 +508,22 @@ export async function deleteCoachNote(id: string) {
 
 export function subscribeCoachNotes(
   childId: string,
-  cb: (items: CoachNote[]) => void
+  cb: (items: CoachNote[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(
     collection(db, "coachNotes"),
     where("childId", "==", childId),
   );
-  return onSnapshot(q, (snap) => {
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
-    cb(items);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
+      cb(items);
+    },
+    (err) => { console.error("[champstep] coachNotes error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------

@@ -114,9 +114,9 @@ function Dashboard() {
 
   const { achievements, loading: loadingAch, error: achError, addLocal } =
     useAchievements(child?.childId ?? "", seedAchievements);
-  const { logs: practiceLogs, addLocal: addLocalLog, removeLocal: removeLocalLog } =
+  const { logs: practiceLogs, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
     usePracticeLogs(child?.childId ?? "");
-  const { reflections, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
+  const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher");
 
   useEffect(() => {
@@ -162,8 +162,8 @@ function Dashboard() {
   }, [activeSection]);
 
   useEffect(() => {
-    if (achError) setToast({ kind: "error", message: t("status.errorLoading") });
-  }, [achError, t]);
+    if (achError || logsError || reflectionsError) setToast({ kind: "error", message: t("status.errorLoading") });
+  }, [achError, logsError, reflectionsError, t]);
 
   useEffect(() => {
     if (!showUserMenu) return;

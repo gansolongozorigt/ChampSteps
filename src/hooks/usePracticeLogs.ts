@@ -24,6 +24,7 @@ export function usePracticeLogs(childId: string) {
     isFirebaseConfigured ? [] : loadLocal(childId)
   );
   const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
@@ -33,10 +34,12 @@ export function usePracticeLogs(childId: string) {
       return;
     }
     setLoading(true);
-    const unsub = subscribePracticeLogs(childId, (items) => {
-      setLogs(items);
-      setLoading(false);
-    });
+    setError(null);
+    const unsub = subscribePracticeLogs(
+      childId,
+      (items) => { setLogs(items); setLoading(false); setError(null); },
+      (err) => { setError(err instanceof Error ? err.message : "Failed to load practice logs"); setLoading(false); }
+    );
     return unsub;
   }, [childId]);
 
@@ -56,5 +59,5 @@ export function usePracticeLogs(childId: string) {
     });
   }
 
-  return { logs, loading, addLocal, removeLocal };
+  return { logs, loading, error, addLocal, removeLocal };
 }
