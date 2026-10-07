@@ -248,7 +248,10 @@ function Dashboard() {
       bio: "",
       avatarUrl: undefined,
     };
-    if (isFirebaseConfigured) await createChild(newChild);
+    if (isFirebaseConfigured) {
+      try { await createChild(newChild); }
+      catch { setToast({ kind: "error", message: t("status.errorSaving") }); return; }
+    }
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
@@ -412,7 +415,7 @@ function Dashboard() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-stone-100 font-sans">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh bg-stone-100 font-sans">
 
       {/* TOP BAR — мобайл + desktop header */}
       <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header">
@@ -528,7 +531,7 @@ function Dashboard() {
               ))}
               {canAddChild && (
                 <button onClick={() => setShowAddChild(true)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-stone-600 border border-dashed border-stone-800 hover:border-stone-600 hover:text-stone-400 transition-colors text-[11px]">
-                  + {t("children.addChild")}
+                  {t("children.addChild")}
                 </button>
               )}
             </div>
@@ -585,7 +588,7 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
               🏫 {t("status.teacherMode")}
@@ -757,14 +760,14 @@ function Dashboard() {
       {/* MODALS */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl cs-panel-in">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
             <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} />
           </div>
         </div>
       )}
       {editingAchievement && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl cs-panel-in">
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
             <AddAchievementForm
               childId={child.childId}
               childName={child.name}
@@ -860,7 +863,7 @@ const LANGS = [
 ];
 
 function LanguageChip() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = (i18n.resolvedLanguage ?? i18n.language ?? "mn").slice(0, 2);
@@ -881,7 +884,7 @@ function LanguageChip() {
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 text-[11px] font-medium pl-1.5 pr-2 py-1 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
-        aria-label="Language"
+        aria-label={t("app.language")}
       >
         <span className="w-[18px] h-[12px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
           <CurFlag />
