@@ -132,7 +132,7 @@ export default function AddAchievementForm({
                 />
               </Field>
             </div>
-            <Field label={t("form.fields.category")}>
+            <Field label={t("form.fields.category")} group>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((c) => {
                   const selected = draft.category === c;
@@ -153,7 +153,7 @@ export default function AddAchievementForm({
 
         {step === 2 && (
           <section className="space-y-4">
-            <Field label={t("form.fields.award")}>
+            <Field label={t("form.fields.award")} group>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {AWARDS.map((a) => {
                   const selected = draft.awardType === a;
@@ -295,13 +295,14 @@ function Header({ step, childName, isEditing }: { step: Step; childName?: string
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, error, children, group = false }: { label: string; error?: string; children: ReactNode; /** true for button groups: renders a <div>, so the first button does not inherit the label text as its accessible name */ group?: boolean }) {
+  const Tag = group ? "div" : "label";
   return (
-    <label className="block">
+    <Tag className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
       {children}
       {error && <span className="mt-1 block text-xs text-rose-600">{error}</span>}
-    </label>
+    </Tag>
   );
 }
 

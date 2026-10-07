@@ -4,7 +4,8 @@
     "achievementsTitle": "{{name}}'s achievements",
     "addAchievement": "Add achievement",
     "editProfile": "Edit profile",
-    "language": "Language"
+    "language": "Language",
+    "dismiss": "Dismiss"
   },
   "summary": {
     "total": "Total",
@@ -423,7 +424,8 @@
     "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit",
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",
-    "close": "Close"
+    "close": "Close",
+    "processing": "Processing…"
   },
   "promo": {
     "label": "Promo code",

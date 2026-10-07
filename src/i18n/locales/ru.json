@@ -1,5 +1,6 @@
 {
   "app": {
+    "dismiss": "Закрыть",
     "journal": "Журнал",
     "achievementsTitle": "Достижения {{name}}",
     "addAchievement": "Добавить достижение",
@@ -313,6 +314,7 @@
     "defaultName": "Преподаватель"
   },
   "sub": {
+    "processing": "Обработка…",
     "title": "Планы ChampStep",
     "subtitle": "Перейдите на платный план, чтобы открыть PDF-портфолио, нескольких детей и AI-аналитику.",
     "tierNames": { "free": "Бесплатный", "family": "Семейный", "master": "Мастер", "coach": "Тренер" },

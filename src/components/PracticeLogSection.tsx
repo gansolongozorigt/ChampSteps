@@ -210,6 +210,8 @@ export default function PracticeLogSection({
                     <button
                       type="button"
                       onClick={() => setDeleteId(log.id)}
+                      aria-label={t("practice.actions.delete")}
+                      title={t("practice.actions.delete")}
                       className="rounded-lg p-1.5 text-stone-300 hover:bg-rose-50 hover:text-rose-500"
                     >
                       🗑️
