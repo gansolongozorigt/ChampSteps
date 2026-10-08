@@ -14,3 +14,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+/** Build-time flag (vite.config.ts define): VITE_AVATAR_DEV=1 → true. Avatar prototype only. */
+declare const __AVATAR_DEV__: boolean;

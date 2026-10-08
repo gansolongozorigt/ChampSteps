@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
     "test:plans": "node --test tests/plans.test.mjs",
+    "test:avatar": "node --test tests/avatar-state-machine.test.mjs",
     "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "autoprefixer": "^10.4.19",
     "firebase-tools": "^15.31.0",
     "postcss": "^8.4.39",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",
     "vite": "^5.3.4",

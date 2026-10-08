@@ -21,6 +21,10 @@ import PdfPreviewModal from "./components/PdfPreviewModal";
 import TimelineDashboard from "./components/TimelineDashboard";
 import Toast, { type ToastKind } from "./components/Toast";
 import { useAchievements } from "./hooks/useAchievements";
+// Avatar prototype (branch avatar-prototype): every use is behind __AVATAR_DEV__,
+// a build-time literal → dead code, this import and the lazy chunk vanish when the flag is off.
+import { emitAvatarEvent } from "./avatar/bus";
+import { useAvatarPrototype } from "./avatar/prototypeHook";
 import { usePracticeLogs } from "./hooks/usePracticeLogs";
 import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
@@ -171,6 +175,11 @@ function Dashboard() {
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [activeSection]);
 
+  // Avatar prototype: __AVATAR_DEV__ is a build-time literal, so this conditional hook
+  // call is constant for the whole build (hook order never changes at runtime) and the
+  // statement vanishes entirely when the flag is off. See src/avatar/prototypeHook.ts.
+  if (__AVATAR_DEV__) useAvatarPrototype({ childId: child?.childId, childName: child?.name, practiceLogs, section: activeSection, ready: !(loadingAch && isFirebaseConfigured) });
+
   useEffect(() => {
     if (achError || logsError || reflectionsError) setToast({ kind: "error", message: t("status.errorLoading") });
   }, [achError, logsError, reflectionsError, t]);
@@ -198,6 +207,7 @@ function Dashboard() {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        if (__AVATAR_DEV__) emitAvatarEvent("achievement:added");
         celebrate({ mega: draft.awardType === "Gold" });
         // setChampMood("excited");
         // setTimeout(() => setChampMood("idle"), 3000);
@@ -219,6 +229,7 @@ function Dashboard() {
       createdAt: new Date().toISOString(),
     };
     addLocal(newItem);
+    if (__AVATAR_DEV__) emitAvatarEvent("achievement:added");
     setShowForm(false);
     setToast({ kind: "success", message: t("status.saved") });
     celebrate({ mega: draft.awardType === "Gold" });
@@ -298,9 +309,11 @@ function Dashboard() {
     if (isFirebaseConfigured) {
       try { await createPracticeLog(child.childId, log); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
+      if (__AVATAR_DEV__) emitAvatarEvent("practice:added");
       return;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
+    if (__AVATAR_DEV__) emitAvatarEvent("practice:added");
   }
 
   async function handleAddReflection(r: { date: string; mood: 1|2|3|4|5; content: string; parentNote?: string }) {

@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  // src/avatar/** is excluded: the avatar prototype (branch avatar-prototype) uses plain
+  // CSS, and scanning it would add utilities such as .grow / .table (its state names)
+  // to the production stylesheet even when the feature flag is off.
+  content: ["./index.html", "./src/**/*.{ts,tsx}", "!./src/avatar/**"],
   theme: {
     extend: {
       fontFamily: {

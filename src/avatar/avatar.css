@@ -1,0 +1,81 @@
+/* src/avatar/avatar.css — plain CSS on purpose (no Tailwind utilities): Tailwind scans
+   src/** and would add any new utility to the PRODUCTION stylesheet even when the
+   flag is off. This file is only emitted when Avatar.tsx is bundled (flag on). */
+.av-card {
+  --av-green: #2F7D5B;
+  --av-graphite: #18251D;
+  --av-white: #ffffff;
+  --av-dur: 250ms;
+  --av-breathe: 3000ms;
+  --av-blink-period: 5000ms;
+  --av-blink: 120ms;
+  --av-spark: 900ms;
+  position: relative;
+  box-sizing: border-box;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(47, 125, 91, 0.28) 0%, rgba(47, 125, 91, 0) 60%),
+    var(--av-graphite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 30px rgba(24, 37, 29, 0.35);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.av-card[data-reduced="true"] {
+  --av-dur: 0ms; --av-breathe: 0ms; --av-blink-period: 0ms; --av-blink: 0ms; --av-spark: 0ms;
+}
+.av-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.av-ring circle { fill: none; stroke-linecap: round; }
+.av-ring .av-ring-track { stroke: rgba(255, 255, 255, 0.08); }
+.av-ring .av-ring-value { stroke: var(--av-green); transition: stroke-dashoffset var(--av-dur) ease; }
+.av-ground {
+  position: absolute; left: 50%; width: 46%; height: 6%; border-radius: 50%;
+  transform: translate(-50%, -40%);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(47, 125, 91, 0.55), rgba(47, 125, 91, 0));
+}
+.av-figure { position: absolute; inset: 3% 3% 5%; }
+.av-wrap { position: absolute; inset: 0; transform-origin: 50% 100%; }
+.av-card[data-state="idle"] .av-wrap { animation: av-breathe var(--av-breathe) ease-in-out infinite; }
+.av-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.av-img-in  { animation: av-fade-in  var(--av-dur) ease both; }
+.av-img-out { animation: av-fade-out var(--av-dur) ease both; }
+.av-blink {
+  position: absolute; border-radius: 999px; background: var(--av-graphite); opacity: 0;
+  animation: av-blink var(--av-blink-period) linear infinite;
+  animation-delay: 1200ms;
+}
+.av-zzz { position: absolute; right: 10%; top: 10%; width: 22%; height: 22%; font: 700 1em/1 ui-sans-serif, system-ui, sans-serif; color: var(--av-white); pointer-events: none; }
+.av-zzz span { position: absolute; left: 0; bottom: 0; opacity: 0; animation: av-zzz 2400ms ease-in-out infinite; }
+.av-zzz span:nth-child(2) { animation-delay: 800ms; font-size: 1.25em; }
+.av-zzz span:nth-child(3) { animation-delay: 1600ms; font-size: 1.5em; }
+.av-sparks { position: absolute; inset: 0; pointer-events: none; }
+.av-spark {
+  position: absolute; left: 50%; top: 42%; width: 4%; height: 4%; border-radius: 50%;
+  background: var(--av-white); opacity: 0; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9));
+  animation: av-spark var(--av-spark) cubic-bezier(0.2, 0.8, 0.25, 1) 1 both;
+}
+.av-energy-label {
+  position: absolute; right: 7%; bottom: 6%; font: 600 0.72em/1 ui-sans-serif, system-ui, sans-serif;
+  color: rgba(255, 255, 255, 0.85); letter-spacing: 0.02em;
+}
+.av-energy-label b { color: var(--av-green); font-weight: 700; }
+
+@keyframes av-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes av-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes av-breathe  { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.015); } }
+@keyframes av-blink    { 0%, 97.6% { opacity: 0; } 97.7%, 100% { opacity: 1; } }
+@keyframes av-zzz      { 0% { opacity: 0; transform: translate(0, 0) scale(0.8); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(40%, -140%) scale(1.15); } }
+@keyframes av-spark    { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); } }
+
+/* Belt and braces: the OS preference also wins when the data attribute is missing. */
+@media (prefers-reduced-motion: reduce) {
+  .av-card { --av-dur: 0ms; --av-breathe: 0ms; --av-blink-period: 0ms; --av-blink: 0ms; --av-spark: 0ms; }
+  .av-wrap, .av-blink, .av-zzz span, .av-spark, .av-img-in, .av-img-out { animation: none !important; }
+}
+.av-card[data-reduced="true"] .av-wrap,
+.av-card[data-reduced="true"] .av-blink,
+.av-card[data-reduced="true"] .av-zzz span,
+.av-card[data-reduced="true"] .av-spark,
+.av-card[data-reduced="true"] .av-img-in,
+.av-card[data-reduced="true"] .av-img-out { animation: none !important; }
+.av-card[data-reduced="true"] .av-img-out { display: none; }
