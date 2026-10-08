@@ -1,13 +1,17 @@
 // =============================================================================
-// App v3 — Slate + Gold design system, mobile-first
-// ⚠️  Logic/Firebase/auth бүгд хэвээр — зөвхөн UI шинэчлэгдсэн
+// App v4 — forest green / graphite / white (docs/BRAND.md), mobile-first
+// Logic / Firebase / auth unchanged — only the shell markup and classes.
 // =============================================================================
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, LogOut,
+  Pencil, Plus, ScrollText, Settings, Star, Trophy, X, type LucideIcon,
+} from "lucide-react";
+import Logo, { LogoMark } from "./components/Logo";
 
 import AddAchievementForm from "./components/AddAchievementForm";
-// import ChampMascot from "./components/ChampMascot";
 import AboutPage from "./components/AboutPage";
 import AdminPage from "./components/AdminPage";
 import CoachNotes from "./components/CoachNotes";
@@ -352,20 +356,20 @@ function Dashboard() {
     if (user?.role === "teacher") {
       // A teacher with no linked students yet: show the invite panel instead of a dead end.
       return (
-        <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-stone-100 font-sans">
-          <header className="flex items-center justify-between bg-stone-950 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-white">
-            <span className="font-semibold">Champ<span className="text-amber-400">Step</span></span>
-            <div className="flex items-center gap-2">
+        <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-bg font-sans">
+          <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+            <Logo size={22} />
+            <div className="flex items-center gap-1">
               <LanguageChip />
-              <button type="button" onClick={handleSignOut} className="rounded-lg border border-stone-700 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-800">
+              <button type="button" onClick={handleSignOut} className="cs-btn cs-btn-outline cs-btn-sm">
                 {t("auth.signOut")}
               </button>
             </div>
           </header>
-          <div className="bg-emerald-50 px-4 py-2 text-center text-sm text-emerald-800">🏫 {t("status.teacherMode")}</div>
+          <TeacherBanner label={t("status.teacherMode")} />
           <main className="mx-auto max-w-2xl px-4 py-8">
-            <h1 className="text-xl font-semibold text-stone-900">{t("invite.teacher.noStudentsTitle")}</h1>
-            <p className="mt-2 text-sm text-stone-600">{t("invite.teacher.noStudentsHint")}</p>
+            <h1 className="t-h1">{t("invite.teacher.noStudentsTitle")}</h1>
+            <p className="mt-2 t-body text-ink-2">{t("invite.teacher.noStudentsHint")}</p>
             <div className="mt-6">
               <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
             </div>
@@ -375,8 +379,8 @@ function Dashboard() {
       );
     }
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-stone-500">{t("status.childNotFound")}</p>
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <p className="t-body text-ink-3">{t("status.childNotFound")}</p>
       </div>
     );
   }
@@ -399,196 +403,133 @@ function Dashboard() {
     setUpgradeBarDismissed(true);
   }
 
-  const navItems: { id: NavSection; label: string; icon: React.ReactNode }[] = [
-    {
-      id: "achievements",
-      label: t("nav.achievements"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
-        </svg>
-      ),
-    },
-    {
-      id: "practice",
-      label: t("nav.practice"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      id: "reflection",
-      label: t("nav.reflection"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-        </svg>
-      ),
-    },
-    {
-      id: "coach",
-      label: t("nav.coach"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
-        </svg>
-      ),
-    },
-    {
-      id: "pdf",
-      label: t("nav.pdf"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      ),
-    },
-    {
-      id: "about" as NavSection,
-      label: t("nav.about"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round"
-            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-        </svg>
-      ),
-    },
-    {
-      id: "terms" as NavSection,
-      label: t("nav.terms"),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round"
-            d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25h.75" />
-        </svg>
-      ),
-    },
+  const navItems: { id: NavSection; label: string; Icon: LucideIcon }[] = [
+    { id: "achievements", label: t("nav.achievements"), Icon: Trophy },
+    { id: "practice", label: t("nav.practice"), Icon: Clock },
+    { id: "reflection", label: t("nav.reflection"), Icon: Heart },
+    { id: "coach", label: t("nav.coach"), Icon: GraduationCap },
+    { id: "pdf", label: t("nav.pdf"), Icon: FileText },
+    { id: "about", label: t("nav.about"), Icon: Info },
+    { id: "terms", label: t("nav.terms"), Icon: ScrollText },
   ];
 
+  const tierLabel =
+    subscription === "family" ? t("sub.tierNames.family") :
+    subscription === "master" ? t("sub.tierNames.master") :
+    subscription === "coach" ? t("sub.tierNames.coach") : t("sub.tierNames.free");
+
   return (
-    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh bg-stone-100 font-sans">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh bg-bg font-sans text-ink">
 
       {/* TOP BAR — мобайл + desktop header */}
-      <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
-        <div className="px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* Gradient лого */}
-            <svg width="22" height="22" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <defs>
-                <linearGradient id="hg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" stopOpacity="0.25"/><stop offset="100%" stopColor="#d97706" stopOpacity="0.12"/></linearGradient>
-                <linearGradient id="hg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" stopOpacity="0.65"/><stop offset="100%" stopColor="#b45309" stopOpacity="0.5"/></linearGradient>
-                <linearGradient id="hg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbbf24"/><stop offset="100%" stopColor="#92400e"/></linearGradient>
-              </defs>
-              <rect x="4" y="32" width="10" height="12" rx="2.5" fill="url(#hg1)"/>
-              <rect x="17" y="22" width="10" height="22" rx="2.5" fill="url(#hg2)"/>
-              <rect x="30" y="10" width="10" height="34" rx="2.5" fill="url(#hg3)"/>
-              <circle cx="35" cy="7" r="5.5" fill="white" fillOpacity="0.1"/>
-              <path d="M35 4.2L36.1 6.7H38.7L36.6 8.2L37.4 10.8L35 9.3L32.6 10.8L33.4 8.2L31.3 6.7H33.9Z" fill="#fbbf24"/>
-            </svg>
-            <span className="text-[15px] font-bold tracking-tight leading-none">
-              <span className="text-white">Champ</span>
-              <span style={{ background:"linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>Step</span>
-            </span>
-            {/* <ChampMascot size={32} mood={champMood} animate={true} /> */}
-            <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${
-              subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
-              subscription === "master" ? "bg-violet-950 text-violet-300 border-violet-700" :
-              subscription === "coach"  ? "bg-amber-950 text-amber-400 border-amber-700" :
-              "bg-stone-800 text-stone-500 border-stone-700"
-            }`}>
-              {subscription === "family" ? t("sub.tierNames.family").toUpperCase() :
-               subscription === "master" ? t("sub.tierNames.master").toUpperCase() :
-               subscription === "coach"  ? `★ ${t("sub.tierNames.coach").toUpperCase()}` : t("sub.tierNames.free").toUpperCase()}
+      <header className="sticky top-0 z-40 bg-surface border-b border-line print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
+        <div className="px-4 h-14 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Logo size={22} />
+            <span className={`cs-badge-tier ${isPremium ? "cs-badge-tier-paid" : "cs-badge-tier-free"}`}>
+              {tierLabel.toUpperCase()}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <LanguageChip />
-            <button onClick={() => setShowSubscription(true)} className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-amber-400 border border-amber-800/50 hover:bg-stone-700 active:scale-95 transition-all" title={t("nav.subscription")}>★</button>
+            <button
+              type="button"
+              onClick={() => setShowSubscription(true)}
+              className="cs-icon-btn cs-icon-btn-sm bg-primary-soft text-primary-soft-ink hover:bg-primary-soft"
+              title={t("nav.subscription")}
+              aria-label={t("nav.subscription")}
+            >
+              <Star size={18} strokeWidth={2.2} fill="currentColor" />
+            </button>
             <div ref={userMenuRef} className="relative">
-              <button onClick={() => setShowUserMenu(!showUserMenu)} className="relative w-7 h-7 rounded-full overflow-visible border-2 border-stone-700 hover:border-amber-500 transition-colors shrink-0">
-                <div className="w-full h-full rounded-full overflow-hidden">
-                  {child.avatarUrl ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-amber-600 flex items-center justify-center text-[11px] font-bold text-white">{child.name.slice(0,1).toUpperCase()}</div>}
-                </div>
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="ml-1 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
+              >
+                {child.avatarUrl
+                  ? <img src={child.avatarUrl} alt={child.name} className="w-full h-full object-cover" />
+                  : <span className="w-full h-full bg-primary-soft text-primary-soft-ink flex items-center justify-center text-[13px] font-extrabold">{child.name.slice(0, 1).toUpperCase()}</span>}
               </button>
               {showUserMenu && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl bg-stone-900 border border-stone-800 shadow-xl z-50 overflow-hidden">
+                <div role="menu" className="absolute right-0 top-full mt-2 w-56 cs-card shadow-float z-50 overflow-hidden py-1 cs-menu-in">
                   {user?.email && (
-                    <div className="px-3 py-2.5 border-b border-stone-800">
-                      <p className="text-[10px] text-stone-500 truncate">{user.email}</p>
+                    <div className="px-3 py-2 border-b border-line">
+                      <p className="t-caption truncate">{user.email}</p>
                     </div>
                   )}
                   {!isTeacher && (
-                    <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                      {t("profile.edit")}
-                    </button>
+                    <MenuItem onClick={() => { setShowUserMenu(false); setShowProfile(true); }} Icon={Pencil} label={t("profile.edit")} />
                   )}
-                  <button onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                    {t("nav.about")}
-                  </button>
-                  <button onClick={() => { setShowUserMenu(false); setActiveSection("subscription"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                    {t("nav.subscriptionPage")}
-                  </button>
-                  <button onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                    {t("nav.terms")}
-                  </button>
+                  <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} Icon={Info} label={t("nav.about")} />
+                  <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("subscription"); }} Icon={Star} label={t("nav.subscriptionPage")} />
+                  <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} Icon={ScrollText} label={t("nav.terms")} />
                   {user?.email === "gansolongozorigt7@gmail.com" && (
-                    <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
-                      ⚙ {t("nav.admin")}
-                    </button>
+                    <MenuItem onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} Icon={Settings} label={t("nav.admin")} />
                   )}
-                  <button onClick={() => { setShowUserMenu(false); handleSignOut(); }} className="w-full text-left px-3 py-2.5 text-[12px] text-red-400 hover:bg-stone-800 transition-colors border-t border-stone-800">
-                    {t("auth.signOut")}
-                  </button>
+                  <div className="border-t border-line mt-1 pt-1">
+                    <MenuItem onClick={() => { setShowUserMenu(false); handleSignOut(); }} Icon={LogOut} label={t("auth.signOut")} tone="danger" />
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Child tabs — мобайлд харагдана, desktop-д sidebar-д байна */}
-        <div className="md:hidden bg-stone-900 px-2 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-b border-stone-800">
-          {children.map((c, i) => (
-            <button key={c.childId} onClick={() => setActiveChildIdx(i)}
-              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
-              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover shrink-0"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center shrink-0">{c.name.slice(0,1).toUpperCase()}</span>}
-              <span className="max-w-[48px] truncate">{c.name.length > 6 ? c.name.slice(0, 6) + "…" : c.name}</span>
-            </button>
-          ))}
+        {/* Child switcher — мобайлд харагдана, desktop-д sidebar-д байна */}
+        <div className="md:hidden px-4 pb-3 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <ChildSwitcher children={children} activeIdx={activeChildIdx} onSelect={setActiveChildIdx} />
           {canAddChild && (
-            <button onClick={() => setShowAddChild(true)} className="flex items-center justify-center text-[13px] w-7 h-7 rounded-md shrink-0 text-stone-400 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors" title={t("children.addChild")}>
-              +
+            <button
+              type="button"
+              onClick={() => setShowAddChild(true)}
+              className="cs-icon-btn cs-icon-btn-sm border border-dashed border-line-strong text-ink-3 shrink-0"
+              title={t("children.addChild")}
+              aria-label={t("children.addChild")}
+            >
+              <Plus size={18} />
             </button>
           )}
         </div>
       </header>
 
       {!isFirebaseConfigured && (
-        <div className="bg-amber-100 px-4 py-2 text-center text-[11px] text-amber-800 print:hidden">⚠️ {t("status.offlineBanner")}</div>
+        <div className="bg-warn-soft px-4 py-2 text-center t-caption text-warn print:hidden">{t("status.offlineBanner")}</div>
       )}
 
       {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto cs-app-sidebar">
+        <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-line shrink-0 overflow-y-auto cs-app-sidebar">
 
           {/* Хүүхдийн жагсаалт */}
-          <div className="px-3 pt-4 pb-3 border-b border-stone-800">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">{t("children.title")}</p>
+          <div className="px-3 pt-5 pb-3 border-b border-line">
+            <p className="t-label mb-2 px-2">{t("children.title")}</p>
             <div className="space-y-1">
-              {children.map((c, i) => (
-                <button key={c.childId} onClick={() => setActiveChildIdx(i)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "text-stone-400 hover:bg-stone-800 hover:text-stone-200"}`}>
-                  {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-6 h-6 rounded-full object-cover shrink-0"/> : <span className="w-6 h-6 rounded-full bg-stone-700 text-[9px] font-bold text-stone-300 flex items-center justify-center shrink-0">{c.name.slice(0,1).toUpperCase()}</span>}
-                  <span className="text-[12px] font-medium truncate">{c.name}</span>
-                </button>
-              ))}
+              {children.map((c, i) => {
+                const active = i === activeChildIdx;
+                return (
+                  <button
+                    key={c.childId}
+                    type="button"
+                    onClick={() => setActiveChildIdx(i)}
+                    aria-pressed={active}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-input text-left transition-colors min-h-[44px] ${active ? "bg-primary-soft text-primary-soft-ink" : "text-ink-2 hover:bg-surface-muted"}`}
+                  >
+                    <ChildDot child={c} size={28} />
+                    <span className="text-[14px] font-bold truncate">{c.name}</span>
+                  </button>
+                );
+              })}
               {canAddChild && (
-                <button onClick={() => setShowAddChild(true)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-stone-600 border border-dashed border-stone-800 hover:border-stone-600 hover:text-stone-400 transition-colors text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddChild(true)}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-input text-[13px] font-bold text-ink-3 border border-dashed border-line-strong hover:border-primary hover:text-primary transition-colors min-h-[44px]"
+                >
                   {t("children.addChild")}
                 </button>
               )}
@@ -597,47 +538,40 @@ function Dashboard() {
 
           {/* Nav items */}
           <nav className="px-3 py-3 flex-1">
-            {navItems.map((item) => {
-              const active = activeSection === item.id;
-              const colors: Record<string, string> = {
-                achievements: "bg-amber-600/15 text-amber-400 border-l-2 border-amber-500",
-                practice:     "bg-blue-600/15 text-blue-400 border-l-2 border-blue-500",
-                reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
-                coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
-                pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
-                about:        "bg-teal-600/15 text-teal-400 border-l-2 border-teal-500",
-                terms:        "bg-slate-600/15 text-slate-400 border-l-2 border-slate-500",
-              };
+            {navItems.map(({ id, label, Icon }) => {
+              const active = activeSection === id;
               return (
-                <button key={item.id} onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300 hover:translate-x-1"}`}>
-                  <span className="w-5 h-5 flex items-center justify-center shrink-0">{item.icon}</span>
-                  <span className="text-[12px] font-medium">{item.label}</span>
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveSection(id)}
+                  aria-current={active ? "page" : undefined}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-input mb-0.5 text-left transition-colors min-h-[44px] ${active ? "bg-primary-soft text-primary-soft-ink" : "text-ink-2 hover:bg-surface-muted hover:text-ink"}`}
+                >
+                  <Icon size={20} strokeWidth={2} className="shrink-0" />
+                  <span className="text-[14px] font-bold">{label}</span>
                 </button>
               );
             })}
           </nav>
 
           {/* Sidebar доод хэсэг — subscription */}
-          <div className="px-3 pb-4 border-t border-stone-800 pt-3 mt-3">
+          <div className="px-3 pb-4 pt-3 border-t border-line">
             {isPremium ? (
-              <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
-                <p className="text-[10px] font-semibold text-amber-400 mb-1">
-                  {subscription === "family" ? `★ ${t("sub.tierNames.family")}` : subscription === "master" ? `★ ${t("sub.tierNames.master")}` : `★ ${t("sub.tierNames.coach")}`}
-                </p>
-                <p className="text-[10px] text-stone-500">{t("sub.premiumFeatures")}</p>
+              <div className="cs-card-soft px-3 py-3">
+                <p className="t-label text-primary-soft-ink mb-1">{tierLabel}</p>
+                <p className="t-caption">{t("sub.premiumFeatures")}</p>
               </div>
             ) : (
-              <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-stone-400 font-medium">{t("sub.tierNames.free").toUpperCase()} · {achCount}/{maxAch}</span>
+              <div className="cs-card-soft px-3 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="t-label">{t("sub.tierNames.free")} · <span className="tabular-nums">{achCount}/{maxAch}</span></span>
                 </div>
-                <div className="h-1 bg-stone-800 rounded-full overflow-hidden mb-2">
-                  <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-gradient-to-r from-amber-500 to-red-500" : "bg-stone-600"}`}
-                    style={{ width: `${Math.min(100, (achCount / maxAch) * 100)}%` }}/>
+                <div className="h-1.5 bg-surface-muted rounded-full overflow-hidden mb-3">
+                  <div className={`h-full rounded-full transition-all ${showLimitWarning ? "bg-warn" : "bg-primary"}`}
+                    style={{ width: `${Math.min(100, (achCount / maxAch) * 100)}%` }} />
                 </div>
-                <button onClick={() => setShowSubscription(true)}
-                  className="w-full text-[11px] font-bold py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 transition-colors">
+                <button type="button" onClick={() => setShowSubscription(true)} className="cs-btn cs-btn-primary cs-btn-sm w-full">
                   {t("sub.upgrade")}
                 </button>
               </div>
@@ -646,13 +580,9 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
           <ExpiryBanner onRenew={openSubscription} />
-          {user?.role === "teacher" && (
-            <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
-              🏫 {t("status.teacherMode")}
-            </div>
-          )}
+          {user?.role === "teacher" && <TeacherBanner label={t("status.teacherMode")} />}
           <div key={activeSection} className="cs-section-in">
           {activeSection === "achievements" && (
             <TimelineDashboard
@@ -679,7 +609,7 @@ function Dashboard() {
               {user?.role === "parent" ? (
                 <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
               ) : (
-                <div className="text-center py-12 text-stone-400 text-sm">{t("reflection.parentOnly")}</div>
+                <div className="cs-card-soft text-center py-12 t-body text-ink-3">{t("reflection.parentOnly")}</div>
               )}
             </div>
           )}
@@ -721,11 +651,11 @@ function Dashboard() {
           {activeSection === "pdf" && (
             <div className="px-4 py-6 max-w-xl mx-auto">
               <SectionHeader title="PDF" subtitle={child.name} />
-              <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-stone-100">
-                  <p className="text-[11px] text-stone-500">{t("pdf.downloadSubtitle", { name: child.name })}</p>
+              <div className="cs-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-line">
+                  <p className="t-caption">{t("pdf.downloadSubtitle", { name: child.name })}</p>
                 </div>
-                <div className="divide-y divide-stone-100">
+                <div className="divide-y divide-line">
                   {([
                     { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
                     { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
@@ -734,41 +664,38 @@ function Dashboard() {
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}
+                      type="button"
                       onClick={() => openPdfPreview(tmpl.id)}
                       disabled={pdfBusy || !tierLimits.hasPdf}
-                      className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-bg-soft active:bg-surface-muted disabled:opacity-40 min-h-[56px]"
                     >
-                      <div>
-                        <span className="text-[13px] font-medium text-stone-800">{tmpl.label}</span>
-                        <p className="text-[11px] text-stone-400 mt-0.5">{tmpl.desc}</p>
+                      <div className="min-w-0">
+                        <span className="t-body-strong text-ink">{tmpl.label}</span>
+                        <p className="t-caption mt-0.5">{tmpl.desc}</p>
                       </div>
-                      {pdfTemplate === tmpl.id && pdfBusy ? (
-                        <svg className="w-4 h-4 animate-spin text-stone-400 shrink-0" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-stone-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
-                      )}
+                      {pdfTemplate === tmpl.id && pdfBusy
+                        ? <Loader2 size={20} className="animate-spin text-ink-3 shrink-0" />
+                        : <span className="cs-badge cs-badge-primary"><Download size={18} /></span>}
                     </button>
                   ))}
                 </div>
-                <div className="px-4 py-3 border-t border-stone-100">
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div
+                <div className="px-4 py-3 border-t border-line">
+                  <label className="flex items-center gap-3 cursor-pointer select-none min-h-[44px]">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={includeImages}
                       onClick={() => setIncludeImages(!includeImages)}
-                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 cursor-pointer ${includeImages ? "bg-amber-500 border-amber-500" : "bg-white border-stone-300"}`}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors shrink-0 ${includeImages ? "bg-primary border-primary text-white" : "bg-surface border-line-strong"}`}
                     >
-                      {includeImages && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
-                    </div>
-                    <span className="text-[12px] text-stone-600">{t("pdf.includeImages")}</span>
+                      {includeImages && <Check size={14} strokeWidth={3} />}
+                    </button>
+                    <span className="t-body text-ink-2">{t("pdf.includeImages")}</span>
                   </label>
                 </div>
                 {!tierLimits.hasPdf && (
-                  <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
-                    <button onClick={() => setShowSubscription(true)} className="text-[12px] text-amber-600 font-medium">
+                  <div className="px-4 py-3 bg-bg-soft border-t border-line">
+                    <button type="button" onClick={() => setShowSubscription(true)} className="t-body-strong text-primary">
                       {t("pdf.premiumMessage")}
                     </button>
                   </div>
@@ -781,35 +708,37 @@ function Dashboard() {
       </div>
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {showUpgradeBar && (
-          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
-            <span className="text-[10px] text-stone-400">
+          <div className="bg-bg-soft border-b border-line px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
+            <span className="t-caption text-ink-2 min-w-0 truncate">
               {achNear || showLimitWarning
-                ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                ? <span className="text-warn font-bold">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
                 : childNear
-                ? <span className="text-amber-400 font-medium">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
-                : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
+                ? <span className="text-warn font-bold">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
+                : <><span className="font-bold text-ink">{t("sub.tierNames.free").toUpperCase()}</span> · <span className="tabular-nums">{achCount}/{maxAch}</span> {t("summary.entries")}</>}
             </span>
             {!nearLimit && (
-              <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="ml-auto rounded px-1.5 py-1 text-xs text-stone-500 hover:text-stone-200">✕</button>
+              <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="cs-icon-btn cs-icon-btn-sm ml-auto text-ink-3"><X size={16} /></button>
             )}
-            <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
+            <button type="button" onClick={() => setShowSubscription(true)} className="cs-btn cs-btn-primary cs-btn-xs shrink-0">
               {t("sub.upgrade")}
             </button>
           </div>
         )}
         <div className="flex items-stretch">
-          {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map((item) => {
-            const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500", about:"text-teal-500", terms:"text-slate-400" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500", about:"bg-teal-500", terms:"bg-slate-400" };
+          {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map(({ id, label, Icon }) => {
+            const active = activeSection === id;
             return (
-              <button key={item.id} onClick={() => setActiveSection(item.id)}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
-                <span className={`transition-transform ${active ? "scale-110" : ""}`}>{item.icon}</span>
-                <span className={`text-[9px] font-medium leading-none ${active ? colors[item.id] : "text-stone-400"}`}>{item.label}</span>
-                {active && <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full ${lines[item.id]}`}/>}
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveSection(id)}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors ${active ? "text-primary" : "text-ink-3 hover:text-ink-2"}`}
+              >
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} />
+                <span className="text-[10px] font-bold leading-none">{label}</span>
               </button>
             );
           })}
@@ -818,27 +747,32 @@ function Dashboard() {
 
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
       {activeSection === "achievements" && !isTeacher && (
-        <button type="button" onClick={() => setShowForm(true)} aria-label={t("app.addAchievement")}
-          className="group fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 hover:scale-105 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}>
-          <svg className="w-6 h-6 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          aria-label={t("app.addAchievement")}
+          className="cs-fab fixed z-30 print:hidden md:bottom-6 md:right-6"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16 }}
+        >
+          <Plus size={22} strokeWidth={2.5} />
+          <span>{t("app.addAchievement")}</span>
         </button>
       )}
 
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
+        <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={() => setShowForm(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-2xl">
+            <div className="cs-handle" />
             <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
           </div>
         </div>
       )}
       {editingAchievement && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
+        <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={() => setEditingAchievement(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-2xl">
+            <div className="cs-handle" />
             <AddAchievementForm
               childId={child.childId}
               childName={child.name}
@@ -884,8 +818,73 @@ function Dashboard() {
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5">
-      {subtitle && <p className="text-[10px] font-medium uppercase tracking-widest text-stone-400 mb-1">{subtitle}</p>}
-      <h2 className="text-xl font-semibold text-stone-900">{title}</h2>
+      {subtitle && <p className="t-label mb-1">{subtitle}</p>}
+      <h2 className="t-h1">{title}</h2>
+    </div>
+  );
+}
+
+function TeacherBanner({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 bg-bg-soft border-b border-line px-4 py-2 t-caption text-primary-soft-ink print:hidden">
+      <GraduationCap size={16} strokeWidth={2.2} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function MenuItem({ onClick, Icon, label, tone }: { onClick: () => void; Icon: LucideIcon; label: string; tone?: "danger" }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 text-left px-3 py-2.5 min-h-[44px] text-[14px] font-bold transition-colors hover:bg-surface-muted ${tone === "danger" ? "text-error" : "text-ink"}`}
+    >
+      <Icon size={18} strokeWidth={2} className={tone === "danger" ? "text-error" : "text-ink-2"} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+/** Round child avatar (image or initial) — header, switcher, sidebar. */
+function ChildDot({ child, size = 24 }: { child: Child; size?: number }) {
+  return child.avatarUrl ? (
+    <img src={child.avatarUrl} alt={child.name} style={{ width: size, height: size }} className="rounded-full object-cover shrink-0" />
+  ) : (
+    <span style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }} className="rounded-full bg-primary-soft text-primary-soft-ink font-extrabold flex items-center justify-center shrink-0">
+      {child.name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+/** ≤3 children: segmented control; 4+: scrollable pills. */
+function ChildSwitcher({ children, activeIdx, onSelect }: { children: Child[]; activeIdx: number; onSelect: (i: number) => void }) {
+  const segmented = children.length <= 3;
+  if (segmented) {
+    return (
+      <div className="cs-segment" role="group">
+        {children.map((c, i) => (
+          <button key={c.childId} type="button" onClick={() => onSelect(i)} aria-pressed={i === activeIdx} className="cs-segment-item">
+            <ChildDot child={c} size={22} />
+            <span className="max-w-[88px] truncate">{c.name}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2" role="group">
+      {children.map((c, i) => {
+        const active = i === activeIdx;
+        return (
+          <button key={c.childId} type="button" onClick={() => onSelect(i)} aria-pressed={active}
+            className={`cs-chip ${active ? "" : "cs-chip-outline"} h-9 pl-1.5 pr-3 shrink-0`}>
+            <ChildDot child={c} size={24} />
+            <span className="max-w-[88px] truncate">{c.name}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -934,13 +933,12 @@ const LANGS = [
   { code: "ru", name: "Русский", Flag: FlagRU },
 ];
 
+/** Icon-only language picker (36px) with a flag list. */
 function LanguageChip() {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = (i18n.resolvedLanguage ?? i18n.language ?? "mn").slice(0, 2);
-  const cur = LANGS.find((l) => l.code === current) ?? LANGS[0];
-  const CurFlag = cur.Flag;
 
   useEffect(() => {
     if (!open) return;
@@ -954,38 +952,34 @@ function LanguageChip() {
   return (
     <div ref={ref} className="relative">
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-[11px] font-medium pl-1.5 pr-2 py-1 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
+        className="cs-icon-btn cs-icon-btn-sm"
         aria-label={t("app.language")}
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        <span className="w-[18px] h-[12px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
-          <CurFlag />
-        </span>
-        <span>{cur.code.toUpperCase()}</span>
-        <svg className={`w-3 h-3 text-stone-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <Globe size={20} strokeWidth={2} />
       </button>
       {open && (
-        <div className="absolute right-0 mt-1.5 w-36 rounded-lg bg-stone-800 border border-stone-700 shadow-xl shadow-black/30 overflow-hidden cs-menu-in origin-top-right z-50">
+        <div role="menu" className="absolute right-0 mt-2 w-44 cs-card shadow-float overflow-hidden cs-menu-in origin-top-right z-50 py-1">
           {LANGS.map((l) => {
             const active = l.code === current;
             const Flag = l.Flag;
             return (
               <button
                 key={l.code}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
                 onClick={() => { i18n.changeLanguage(l.code); setOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-left transition-colors ${active ? "bg-amber-600/20 text-amber-300" : "text-stone-300 hover:bg-stone-700"}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-[14px] font-bold text-left transition-colors ${active ? "bg-primary-soft text-primary-soft-ink" : "text-ink hover:bg-surface-muted"}`}
               >
-                <span className="w-[21px] h-[14px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
+                <span className="w-[22px] h-[15px] rounded-[3px] overflow-hidden ring-1 ring-line-strong shrink-0">
                   <Flag />
                 </span>
                 <span className="flex-1">{l.name}</span>
-                {active && (
-                  <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
+                {active && <Check size={16} strokeWidth={3} />}
               </button>
             );
           })}
@@ -1005,28 +999,27 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
     try { await onAdd(name.trim()); } finally { setSubmitting(false); }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] cs-backdrop-in" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl cs-panel-in">
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">{t("children.addChild")}</h2>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
-          placeholder={t("children.namePlaceholder")}
-          className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
-          autoFocus
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-[13px] text-stone-500 hover:bg-stone-100 rounded-lg transition-colors">
-            {t("form.actions.cancel")}
-          </button>
-          <button
-            onClick={() => void submit()}
-            disabled={!name.trim() || submitting}
-            className="px-4 py-2 text-[13px] font-medium bg-stone-950 text-white rounded-lg hover:bg-stone-800 disabled:opacity-40 active:scale-95 transition-all"
-          >
-            {t("children.addChild")}
-          </button>
+    <div className="cs-modal-backdrop cs-backdrop-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-sm">
+        <div className="cs-handle" />
+        <div className="p-5 sm:p-6">
+          <h2 className="t-h1 mb-4">{t("children.addChild")}</h2>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+            placeholder={t("children.namePlaceholder")}
+            className="cs-input"
+            autoFocus
+          />
+          <div className="mt-5 flex justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
+            <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">
+              {t("form.actions.cancel")}
+            </button>
+            <button type="button" onClick={() => void submit()} disabled={!name.trim() || submitting} className="cs-btn cs-btn-primary">
+              {t("children.addChild")}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1035,13 +1028,13 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
 
 function FullScreenLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50">
-      <div className="flex items-center gap-3 text-[13px] text-stone-500">
-        <svg className="w-4 h-4 animate-spin text-amber-600" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        ChampStep…
+    <div className="flex min-h-screen items-center justify-center bg-bg">
+      <div className="flex flex-col items-center gap-3">
+        <LogoMark size={36} />
+        <div className="flex items-center gap-2 t-caption">
+          <Loader2 size={16} className="animate-spin text-primary" />
+          ChampStep…
+        </div>
       </div>
     </div>
   );
