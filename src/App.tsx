@@ -664,6 +664,7 @@ function Dashboard() {
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
+              onToast={(kind, message) => setToast({ kind, message })}
             />
           )}
           {activeSection === "practice" && (

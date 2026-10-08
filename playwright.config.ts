@@ -5,7 +5,10 @@ import { defineConfig, devices } from "@playwright/test";
 // /api/* is proxied to production so promo/qpay endpoints answer.
 // Uses the installed Google Chrome (channel: "chrome") — no Chromium download needed.
 const PORT = 5174;
+const AI_PORT = 5175;
 export const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+/** Local mock of /api/ai-insight (real handler, AI_INSIGHT_MOCK=1) — see tests/e2e/helpers/api-server.mjs. */
+export const AI_API_URL = `http://127.0.0.1:${AI_PORT}`;
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -27,10 +30,18 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1280, height: 800 } }, testIgnore: /mobile\.spec/ },
     { name: "mobile", use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, testMatch: /mobile\.spec/ },
   ],
-  webServer: process.env.E2E_BASE_URL ? undefined : {
-    command: `E2E_API_PROXY=https://www.champstep.mn npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
-    url: BASE_URL,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: process.env.E2E_BASE_URL ? undefined : [
+    {
+      command: `E2E_AI_PORT=${AI_PORT} node tests/e2e/helpers/api-server.mjs`,
+      url: `${AI_API_URL}/health`,
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      command: `E2E_API_PROXY=https://www.champstep.mn E2E_AI_PROXY=${AI_API_URL} npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+      url: BASE_URL,
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+  ],
 });

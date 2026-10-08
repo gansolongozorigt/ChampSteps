@@ -4,8 +4,17 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   // E2E only: proxy /api/* to a deployed backend (Vite dev has no serverless functions).
+  // E2E_AI_PROXY (optional) routes /api/ai-insight to the local mock server
+  // (tests/e2e/helpers/api-server.mjs); keys are matched in order, so it goes first.
   server: process.env.E2E_API_PROXY
-    ? { proxy: { '/api': { target: process.env.E2E_API_PROXY, changeOrigin: true } } }
+    ? {
+        proxy: {
+          ...(process.env.E2E_AI_PROXY
+            ? { '/api/ai-insight': { target: process.env.E2E_AI_PROXY, changeOrigin: true } }
+            : {}),
+          '/api': { target: process.env.E2E_API_PROXY, changeOrigin: true },
+        },
+      }
     : undefined,
   plugins: [
     react(),

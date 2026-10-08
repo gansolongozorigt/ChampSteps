@@ -175,6 +175,23 @@ test("inviteCodes: teacher creates own; parent looks up and redeems; listing den
   await assertFails(updateDoc(doc(asUser(env, OTHER), "inviteCodes", "ABC123"), { used: true, childId: STRANGER_CHILD, usedAt: "2026-01-03" }));
 });
 
+// ---- aiInsights: server cache; parent + teacher read, nobody writes -------
+test("aiInsights: parent and teacher read own child's cache; stranger denied; no client writes; no list", async () => {
+  await assertSucceeds(getDoc(doc(asUser(env, PARENT), "aiInsights", CHILD)));
+  await assertSucceeds(getDoc(doc(asUser(env, TEACHER), "aiInsights", CHILD)));
+  await assertFails(getDoc(doc(asUser(env, OTHER), "aiInsights", CHILD)));
+  await assertFails(getDoc(doc(asUser(env, PARENT), "aiInsights", STRANGER_CHILD)));
+  await assertFails(getDoc(doc(asAnon(env), "aiInsights", CHILD)));
+  // a cache entry for a child that does not exist is unreadable (get() of children/ fails → deny)
+  await assertFails(getDoc(doc(asUser(env, PARENT), "aiInsights", "no_such_child")));
+  await assertFails(getDocs(collection(asUser(env, PARENT), "aiInsights")));
+  await assertFails(getDocs(query(collection(asUser(env, PARENT), "aiInsights"), where("childId", "==", CHILD))));
+  await assertFails(updateDoc(doc(asUser(env, PARENT), "aiInsights", CHILD), { text: "forged" }));
+  await assertFails(setDoc(doc(asUser(env, PARENT), "aiInsights", "c_new"), { childId: CHILD, text: "forged" }));
+  await assertFails(deleteDoc(doc(asUser(env, PARENT), "aiInsights", CHILD)));
+  await assertFails(updateDoc(doc(asUser(env, TEACHER), "aiInsights", CHILD), { text: "forged" }));
+});
+
 // ---- promoCodes -----------------------------------------------------------
 test("promoCodes: no client access", async () => {
   await assertFails(getDoc(doc(asUser(env, PARENT), "promoCodes", "CHAMP3")));

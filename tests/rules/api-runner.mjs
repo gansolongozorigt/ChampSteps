@@ -119,6 +119,11 @@ const firestoreCases = [
   fs("promoCodes: get denied", "DENY", PARENT, "get", "promoCodes/CHAMP3", { existing: { code: "CHAMP3", usedBy: [] } }),
   fs("promoCodes: update denied", "DENY", PARENT, "update", "promoCodes/CHAMP3", { existing: { code: "CHAMP3", usedBy: [] }, next: { code: "CHAMP3", usedBy: [PARENT] } }),
   fs("unknown collection denied", "DENY", PARENT, "create", "misc/x", { next: { a: 1 } }),
+  fs("aiInsights: parent get", "ALLOW", PARENT, "get", `aiInsights/${CHILD}`, { existing: { childId: CHILD, text: "t" } }),
+  fs("aiInsights: teacher get", "ALLOW", TEACHER, "get", `aiInsights/${CHILD}`, { existing: { childId: CHILD, text: "t" } }),
+  fs("aiInsights: stranger get denied", "DENY", OTHER, "get", `aiInsights/${CHILD}`, { existing: { childId: CHILD, text: "t" } }),
+  fs("aiInsights: parent update denied", "DENY", PARENT, "update", `aiInsights/${CHILD}`, { existing: { childId: CHILD, text: "t" }, next: { childId: CHILD, text: "forged" } }),
+  fs("aiInsights: parent create denied", "DENY", PARENT, "create", `aiInsights/${CHILD}`, { next: { childId: CHILD, text: "forged" } }),
   // legacy: children without teacherIds
   fs("legacy child: parent get", "ALLOW", PARENT, "get", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),
   fs("legacy child: teacher get denied", "DENY", TEACHER, "get", `children/${LEGACY_CHILD}`, { existing: LEGACY_DOC }),

@@ -12,6 +12,7 @@
 //     teacher (uid in children.teacherIds) can read and may only write
 //     coachNotes. reflections are parent-only. Children docs without a
 //     teacherIds field are treated as having no teachers (see isTeacherOf).
+//   • aiInsights/{childId}: server-written AI cache; parent + teacher read.
 //   • promoCodes: no client access at all (server only).
 // =============================================================================
 rules_version = '2';
@@ -179,6 +180,14 @@ service cloud.firestore {
         && isChildOwner(request.resource.data.childId);
 
       allow delete: if signedIn() && resource.data.teacherId == uid();
+    }
+
+    // ---- aiInsights: server-written cache, parent/teacher read ----------
+    // Written only by /api/ai-insight (Admin SDK). Doc id == childId.
+    match /aiInsights/{childId} {
+      allow get: if canViewChild(childId);
+      allow list: if false;
+      allow create, update, delete: if false;
     }
 
     // ---- promoCodes: server only ----------------------------------------

@@ -49,6 +49,8 @@ export async function seed(env) {
     await setDoc(doc(db, "coachNotes", "note1"), { childId: CHILD, teacherId: TEACHER, teacherName: "T", content: "note" });
     await setDoc(doc(db, "inviteCodes", "ABC123"), { code: "ABC123", teacherId: TEACHER, teacherName: "T", used: false, expiresAt: "2099-01-01", createdAt: "2026-01-01" });
     await setDoc(doc(db, "promoCodes", "CHAMP3"), { code: "CHAMP3", discountMonths: 3, usedBy: [], maxUses: 10, active: true });
+    await setDoc(doc(db, "aiInsights", CHILD), { childId: CHILD, text: "cached insight", model: "mock", language: "mn", dataHash: "abc", createdAt: "2026-01-01" });
+    await setDoc(doc(db, "aiInsights", STRANGER_CHILD), { childId: STRANGER_CHILD, text: "other insight", model: "mock", language: "mn", dataHash: "def", createdAt: "2026-01-01" });
     await setDoc(doc(db, "payments", "CS-1-parent"), { uid: PARENT, plan: "family", amount: 9900, status: "pending", provider: "qpay" });
   });
 }

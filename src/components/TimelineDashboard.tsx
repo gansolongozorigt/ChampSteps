@@ -15,6 +15,7 @@ import {
 } from "../utils/format";
 import EmptyState from "./EmptyState";
 import AIInsightCard from "./AIInsightCard";
+import type { ToastKind } from "./Toast";
 import AchievementSummary from "./AchievementSummary";
 import ChampMascot from "./ChampMascot";
 
@@ -32,6 +33,8 @@ export interface TimelineDashboardProps {
   readOnly?: boolean;
   champMood?: "idle" | "happy" | "excited" | "streak" | "sleeping";
   loading?: boolean;
+  /** AI картын мэдэгдэл (жишээ: "Шинэ өгөгдөл байхгүй") */
+  onToast?: (kind: ToastKind, message: string) => void;
 }
 
 // Тоог 0-оос зорилтот утга хүртэл гулсуулж тоолох жижиг компонент
@@ -73,6 +76,7 @@ export default function TimelineDashboard({
   readOnly = false,
   champMood = "idle",
   loading = false,
+  onToast,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -165,7 +169,7 @@ export default function TimelineDashboard({
 
         {/* ── AI Insight ─────────────────────────────────────────────── */}
         {achievements.length > 0 && (
-          <AIInsightCard child={child} achievements={achievements} />
+          <AIInsightCard key={child.childId} child={child} achievements={achievements} onToast={onToast} />
         )}
 
         {/* ── Search & sort ──────────────────────────────────────────── */}

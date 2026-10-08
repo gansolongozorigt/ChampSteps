@@ -51,6 +51,10 @@ export function useAchievements(
       setError(null);
       return;
     }
+    // Clear the previous child's list right away so a child switch never shows
+    // (or sends) child A's achievements under child B's name while the new
+    // snapshot is loading.
+    setAchievements([]);
     setLoading(true);
     const unsubscribe = subscribeAchievements(
       childId,
