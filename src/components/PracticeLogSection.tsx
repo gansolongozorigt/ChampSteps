@@ -1,9 +1,11 @@
 // =============================================================================
 // PracticeLogSection — Өдөр бүрийн бэлтгэлийн тэмдэглэл
+// Brand: docs/BRAND.md (cards 1px line, pill chips, surface-muted inputs).
 // =============================================================================
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Clock, Trash2 } from "lucide-react";
 import type { PracticeLog } from "../types";
 
 export interface PracticeLogSectionProps {
@@ -66,20 +68,20 @@ export default function PracticeLogSection({
   const locale = i18n.language === "mn" ? "mn-MN" : "en-US";
 
   return (
-    <div className="mt-10">
+    <div className="mt-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-serif text-xl text-stone-900">{t("practice.heading")}</h2>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h2 className="t-h2">{t("practice.heading")}</h2>
           {logs.length > 0 && (
-            <p className="text-xs text-stone-500 mt-0.5">{totalText()}</p>
+            <p className="t-caption mt-0.5">{totalText()}</p>
           )}
         </div>
         {!readOnly && (
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}
-            className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
+            className="cs-btn cs-btn-primary cs-btn-sm shrink-0"
           >
             {t("practice.addButton")}
           </button>
@@ -88,10 +90,10 @@ export default function PracticeLogSection({
 
       {/* Add form */}
       {showForm && (
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 mb-3">
+        <div className="mb-4 cs-card p-4 sm:p-5 cs-item-in">
+          <div className="flex flex-col gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="cs-field-label">
                 {t("practice.fields.date")}
               </label>
               <div className="relative">
@@ -101,13 +103,13 @@ export default function PracticeLogSection({
                   onChange={(e) => setDate(e.target.value)}
                   className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                 />
-                <div className="w-full rounded-lg bg-stone-100 px-3 py-1 text-sm text-center text-stone-600 pointer-events-none">
+                <div className="cs-input flex items-center justify-center text-center pointer-events-none">
                   {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="cs-field-label">
                 {t("practice.fields.duration")}
               </label>
               <div className="flex items-center gap-2 flex-wrap">
@@ -116,11 +118,8 @@ export default function PracticeLogSection({
                     key={m}
                     type="button"
                     onClick={() => setDuration(m)}
-                    className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
-                      duration === m
-                        ? "bg-stone-900 text-white"
-                        : "border border-stone-200 text-stone-600 hover:bg-stone-50"
-                    }`}
+                    aria-pressed={duration === m}
+                    className="cs-chip cs-chip-outline h-11 px-4 text-[13px] tabular-nums"
                   >
                     {m < 60 ? `${m}m` : `${m / 60}h`}
                   </button>
@@ -129,8 +128,8 @@ export default function PracticeLogSection({
             </div>
           </div>
 
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-stone-600 mb-1">
+          <div className="mb-4">
+            <label className="cs-field-label">
               {t("practice.fields.notes")}
             </label>
             <textarea
@@ -138,7 +137,7 @@ export default function PracticeLogSection({
               onChange={(e) => setContent(e.target.value)}
               rows={3}
               placeholder={t("practice.fields.notesPlaceholder")}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-200"
+              className="cs-textarea"
             />
           </div>
 
@@ -146,7 +145,7 @@ export default function PracticeLogSection({
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="rounded-lg px-3 py-1.5 text-sm text-stone-500 hover:bg-stone-100"
+              className="cs-btn cs-btn-ghost"
             >
               {t("practice.actions.cancel")}
             </button>
@@ -154,7 +153,7 @@ export default function PracticeLogSection({
               type="button"
               onClick={handleAdd}
               disabled={saving || !content.trim()}
-              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="cs-btn cs-btn-primary"
             >
               {saving ? t("practice.actions.saving") : t("practice.actions.save")}
             </button>
@@ -164,29 +163,35 @@ export default function PracticeLogSection({
 
       {/* Log list */}
       {logs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-200 bg-white p-8 text-center">
-          <p className="text-3xl mb-2">🏋️</p>
-          <p className="text-sm font-medium text-stone-700">{t("practice.empty.title")}</p>
-          <p className="text-xs text-stone-500 mt-1">{t("practice.empty.subtitle")}</p>
+        <div className="cs-card border-dashed p-8 text-center">
+          <Clock size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
+          <p className="t-body-strong text-ink mt-3">{t("practice.empty.title")}</p>
+          <p className="t-caption mt-1">{t("practice.empty.subtitle")}</p>
+          {!readOnly && !showForm && (
+            <button type="button" onClick={() => setShowForm(true)} className="cs-btn cs-btn-primary mt-5">
+              {t("practice.addButton")}
+            </button>
+          )}
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="cs-timeline space-y-3">
           {logs.map((log) => (
-            <li key={log.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <li key={log.id} className="relative cs-card p-4 cs-item-in">
+              <span className="cs-timeline-dot" aria-hidden="true" />
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-col items-center justify-center rounded-xl bg-stone-100 text-center">
-                    <span className="text-xs font-bold text-stone-700 leading-none">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-input bg-primary-soft text-primary-soft-ink">
+                    <span className="text-[13px] font-extrabold leading-none tabular-nums">
                       {log.duration >= 60 ? `${log.duration / 60}h` : `${log.duration}m`}
                     </span>
                   </div>
-                  <div>
-                    <p className="text-xs text-stone-500">
+                  <div className="min-w-0">
+                    <p className="t-caption">
                       {new Date(log.date).toLocaleDateString(locale, {
                         year: "numeric", month: "long", day: "numeric"
                       })}
                     </p>
-                    <p className="text-sm text-stone-800 mt-0.5 leading-relaxed">{log.content}</p>
+                    <p className="t-body text-ink mt-0.5">{log.content}</p>
                   </div>
                 </div>
 
@@ -196,14 +201,14 @@ export default function PracticeLogSection({
                       <button
                         type="button"
                         onClick={() => handleDelete(log.id)}
-                        className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700"
+                        className="cs-btn cs-btn-danger cs-btn-xs"
                       >
                         {t("practice.actions.confirmDelete")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteId(null)}
-                        className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-600"
+                        className="cs-btn cs-btn-outline cs-btn-xs"
                       >
                         {t("practice.actions.cancelDelete")}
                       </button>
@@ -214,9 +219,9 @@ export default function PracticeLogSection({
                       onClick={() => setDeleteId(log.id)}
                       aria-label={t("practice.actions.delete")}
                       title={t("practice.actions.delete")}
-                      className="rounded-lg p-1.5 text-stone-300 hover:bg-rose-50 hover:text-rose-500"
+                      className="cs-icon-btn text-ink-3 hover:text-error"
                     >
-                      🗑️
+                      <Trash2 size={18} />
                     </button>
                   )}
                 </div>

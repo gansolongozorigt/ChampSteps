@@ -1,10 +1,12 @@
 // =============================================================================
 // ReflectionSection — Нууц сэтгэлзүйн тэмдэглэл
 // Зөвхөн эцэг эх харна. Багш хандах эрхгүй.
+// Brand: docs/BRAND.md — child note marked primary (left bar), parent note ink-3.
 // =============================================================================
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Annoyed, Frown, Heart, Laugh, Lock, Meh, Smile, Trash2, type LucideIcon } from "lucide-react";
 import type { Reflection } from "../types";
 
 export interface ReflectionSectionProps {
@@ -15,8 +17,9 @@ export interface ReflectionSectionProps {
 }
 
 const MOOD_VALUES = [1, 2, 3, 4, 5] as const;
-const MOOD_EMOJIS: Record<number, string> = {
-  1: "😞", 2: "😔", 3: "😐", 4: "😊", 5: "😄",
+/** 1 = маш муу … 5 = маш сайн (lucide faces instead of emoji). */
+const MOOD_ICONS: Record<number, LucideIcon> = {
+  1: Frown, 2: Annoyed, 3: Meh, 4: Smile, 5: Laugh,
 };
 
 export default function ReflectionSection({
@@ -65,16 +68,17 @@ export default function ReflectionSection({
   return (
     <div className="mt-8 mb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-serif text-xl text-stone-900">{t("reflection.heading")}</h2>
-            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700 uppercase tracking-wide">
-              🔒 {t("reflection.private")}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="t-h2">{t("reflection.heading")}</h2>
+            <span className="cs-chip cs-chip-muted h-6 px-2 text-[10px] uppercase tracking-wide">
+              <Lock size={12} strokeWidth={2.5} aria-hidden="true" />
+              {t("reflection.private")}
             </span>
           </div>
           {avgMood && (
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="t-caption mt-0.5">
               {t("reflection.avgMood", { avg: avgMood, count: reflections.length })}
             </p>
           )}
@@ -82,7 +86,7 @@ export default function ReflectionSection({
         <button
           type="button"
           onClick={() => setShowForm(!showForm)}
-          className="rounded-full bg-purple-700 px-4 py-1.5 text-xs font-medium text-white hover:bg-purple-800"
+          className="cs-btn cs-btn-primary cs-btn-sm shrink-0"
         >
           {t("reflection.addButton")}
         </button>
@@ -90,10 +94,10 @@ export default function ReflectionSection({
 
       {/* Add form */}
       {showForm && (
-        <div className="mb-4 rounded-2xl border border-purple-100 bg-purple-50/50 p-4 shadow-sm">
-          <div className="flex flex-col gap-3 mb-3">
+        <div className="mb-4 cs-card p-4 sm:p-5 cs-item-in">
+          <div className="flex flex-col gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="cs-field-label">
                 {t("reflection.fields.date")}
               </label>
               <div className="relative">
@@ -103,37 +107,44 @@ export default function ReflectionSection({
                   onChange={(e) => setDate(e.target.value)}
                   className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                 />
-                <div className="w-full rounded-lg bg-stone-100 px-3 py-1 text-sm text-center text-stone-600 pointer-events-none">
+                <div className="cs-input flex items-center justify-center text-center pointer-events-none">
                   {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">
+              <label className="cs-field-label">
                 {t("reflection.fields.mood")}
               </label>
               <div className="flex gap-2 flex-wrap">
-                {MOOD_VALUES.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setMood(v)}
-                    title={t(`reflection.moods.${v}`)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${
-                      mood === v
-                        ? "bg-purple-700 ring-2 ring-purple-300 scale-110"
-                        : "bg-white border border-stone-200 hover:bg-purple-50"
-                    }`}
-                  >
-                    {MOOD_EMOJIS[v]}
-                  </button>
-                ))}
+                {MOOD_VALUES.map((v) => {
+                  const Icon = MOOD_ICONS[v];
+                  const active = mood === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setMood(v)}
+                      title={t(`reflection.moods.${v}`)}
+                      aria-label={t(`reflection.moods.${v}`)}
+                      aria-pressed={active}
+                      className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${
+                        active
+                          ? "bg-primary-soft border-primary text-primary-soft-ink"
+                          : "bg-surface border-line text-ink-3 hover:bg-bg-soft"
+                      }`}
+                    >
+                      <Icon size={22} strokeWidth={active ? 2.4 : 2} aria-hidden="true" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-stone-600 mb-1">
+          {/* child note — primary left bar */}
+          <div className="mb-4 border-l-[3px] border-primary pl-3">
+            <label className="cs-field-label">
               {t("reflection.fields.childNote")}
             </label>
             <textarea
@@ -141,21 +152,22 @@ export default function ReflectionSection({
               onChange={(e) => setContent(e.target.value)}
               rows={3}
               placeholder={t("reflection.fields.childNotePlaceholder")}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-200"
+              className="cs-textarea"
             />
           </div>
 
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-stone-600 mb-1">
+          {/* parent note — ink-3 left bar */}
+          <div className="mb-4 border-l-[3px] border-ink-3 pl-3">
+            <label className="cs-field-label">
               {t("reflection.fields.parentNote")}{" "}
-              <span className="text-stone-400">{t("reflection.fields.parentNoteOptional")}</span>
+              <span className="text-ink-3 font-semibold">{t("reflection.fields.parentNoteOptional")}</span>
             </label>
             <textarea
               value={parentNote}
               onChange={(e) => setParentNote(e.target.value)}
               rows={2}
               placeholder={t("reflection.fields.parentNotePlaceholder")}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-200"
+              className="cs-textarea min-h-[72px]"
             />
           </div>
 
@@ -163,7 +175,7 @@ export default function ReflectionSection({
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="rounded-lg px-3 py-1.5 text-sm text-stone-500 hover:bg-stone-100"
+              className="cs-btn cs-btn-ghost"
             >
               {t("reflection.actions.cancel")}
             </button>
@@ -171,7 +183,7 @@ export default function ReflectionSection({
               type="button"
               onClick={handleAdd}
               disabled={saving || (!content.trim() && !parentNote.trim())}
-              className="rounded-lg bg-purple-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-purple-800 disabled:opacity-50"
+              className="cs-btn cs-btn-primary"
             >
               {saving ? t("reflection.actions.saving") : t("reflection.actions.save")}
             </button>
@@ -181,48 +193,59 @@ export default function ReflectionSection({
 
       {/* List */}
       {reflections.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-8 text-center">
-          <p className="text-3xl mb-2">💜</p>
-          <p className="text-sm font-medium text-stone-700">{t("reflection.empty.title")}</p>
-          <p className="text-xs text-stone-500 mt-1">{t("reflection.empty.subtitle")}</p>
+        <div className="cs-card border-dashed p-8 text-center">
+          <Heart size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
+          <p className="t-body-strong text-ink mt-3">{t("reflection.empty.title")}</p>
+          <p className="t-caption mt-1">{t("reflection.empty.subtitle")}</p>
+          {!showForm && (
+            <button type="button" onClick={() => setShowForm(true)} className="cs-btn cs-btn-primary mt-5">
+              {t("reflection.addButton")}
+            </button>
+          )}
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="cs-timeline space-y-3">
           {reflections.map((r) => {
             const moodLabel = t(`reflection.moods.${r.mood}`);
             const isExpanded = expandedId === r.id;
+            const MoodIcon = MOOD_ICONS[r.mood];
             return (
-              <li key={r.id} className="rounded-2xl border border-purple-100 bg-white shadow-sm overflow-hidden">
+              <li key={r.id} className="relative cs-card overflow-hidden cs-item-in">
+                <span className="cs-timeline-dot" aria-hidden="true" />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex h-10 w-10 flex-col items-center justify-center rounded-xl bg-purple-50 text-xl shrink-0">
-                        {MOOD_EMOJIS[r.mood]}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="cs-badge cs-badge-primary h-11 w-11" title={moodLabel}>
+                        <MoodIcon size={22} strokeWidth={2.2} aria-hidden="true" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-stone-500">
+                      <div className="min-w-0 flex-1">
+                        <p className="t-caption">
                           {new Date(r.date).toLocaleDateString(locale, {
                             year: "numeric", month: "long", day: "numeric"
                           })} · {moodLabel}
                         </p>
-                        <p className={`text-sm text-stone-800 mt-0.5 leading-relaxed ${!isExpanded ? "line-clamp-2" : ""}`}>
-                          {r.content}
-                        </p>
+                        {r.content && (
+                          <div className="mt-1.5 border-l-[3px] border-primary pl-3">
+                            <p className={`t-body text-ink ${!isExpanded ? "line-clamp-2" : ""}`}>
+                              {r.content}
+                            </p>
+                          </div>
+                        )}
                         {r.content.length > 100 && (
                           <button
                             type="button"
                             onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                            className="text-xs text-purple-600 mt-1 hover:underline"
+                            className="cs-btn cs-btn-ghost cs-btn-xs -ml-3 mt-1 text-primary"
                           >
                             {isExpanded ? t("reflection.actions.collapse") : t("reflection.actions.expand")}
                           </button>
                         )}
                         {(isExpanded || !r.content) && r.parentNote && (
-                          <div className="mt-2 rounded-lg bg-stone-50 px-3 py-2">
-                            <p className="text-xs text-stone-500 font-medium mb-0.5">
+                          <div className="mt-2 border-l-[3px] border-ink-3 pl-3">
+                            <p className="t-label mb-0.5">
                               {t("reflection.parentNoteLabel")}
                             </p>
-                            <p className="text-xs text-stone-700">{r.parentNote}</p>
+                            <p className="t-body text-ink-2">{r.parentNote}</p>
                           </div>
                         )}
                       </div>
@@ -234,14 +257,14 @@ export default function ReflectionSection({
                           <button
                             type="button"
                             onClick={() => { onDelete(r.id); setDeleteId(null); }}
-                            className="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700"
+                            className="cs-btn cs-btn-danger cs-btn-xs"
                           >
                             {t("reflection.actions.delete")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeleteId(null)}
-                            className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-600"
+                            className="cs-btn cs-btn-outline cs-btn-xs"
                           >
                             {t("reflection.actions.cancelDelete")}
                           </button>
@@ -250,9 +273,11 @@ export default function ReflectionSection({
                         <button
                           type="button"
                           onClick={() => setDeleteId(r.id)}
-                          className="rounded-lg p-1.5 text-stone-300 hover:bg-rose-50 hover:text-rose-500"
+                          aria-label={t("reflection.actions.delete")}
+                          title={t("reflection.actions.delete")}
+                          className="cs-icon-btn text-ink-3 hover:text-error"
                         >
-                          🗑️
+                          <Trash2 size={18} />
                         </button>
                       )}
                     </div>
