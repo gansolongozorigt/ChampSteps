@@ -121,7 +121,7 @@ export default function TimelineDashboard({
             )}
             <div className="min-w-0">
               <p className="t-label">{t("app.journal")}</p>
-              <h1 className="t-display truncate">
+              <h1 className="t-display">
                 {t("app.achievementsTitle", { name: child.name })}
               </h1>
               {child.bio && (
@@ -158,9 +158,9 @@ export default function TimelineDashboard({
                 className="cs-input pl-11"
               />
             </div>
-            <div className="flex items-center justify-between gap-2">
-              {/* Category chips */}
-              <div className="flex gap-1.5 flex-wrap flex-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              {/* Category chips — one scrollable row on phones */}
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:flex-1">
                 {(["All", "Sports", "Arts", "Academic"] as CategoryFilter[]).map((c) => {
                   const Icon = c === "All" ? null : CATEGORY_ICON[c];
                   return (
@@ -169,7 +169,7 @@ export default function TimelineDashboard({
                       type="button"
                       onClick={() => setFilter(c)}
                       aria-pressed={filter === c}
-                      className="cs-chip cs-chip-outline h-9 px-3"
+                      className="cs-chip cs-chip-outline h-9 px-3 shrink-0"
                     >
                       {Icon && <Icon size={14} strokeWidth={2.2} aria-hidden />}
                       {t(`categories.${c}`)}
@@ -181,7 +181,7 @@ export default function TimelineDashboard({
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortOrder)}
-                className="cs-select w-auto min-h-[36px] py-1.5 text-[13px] font-bold shrink-0"
+                className="cs-select w-full sm:w-auto min-h-[40px] py-1.5 text-[13px] font-bold shrink-0"
               >
                 <option value="newest">{t("search.newestFirst")}</option>
                 <option value="oldest">{t("search.oldestFirst")}</option>

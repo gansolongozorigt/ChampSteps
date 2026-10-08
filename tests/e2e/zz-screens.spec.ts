@@ -12,7 +12,7 @@ const LABEL = process.env.SCREENS_LABEL ?? "after";
 const DIR = `scratch/design-refresh/${LABEL}`;
 test.skip(!ON, "set SCREENS=1 to capture");
 test.describe.configure({ mode: "serial" });
-test.setTimeout(240_000);
+test.setTimeout(900_000);
 
 const acc = { email: testEmail("screens"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
 test.afterAll(async () => { if (ON) await cleanupTestUser(acc.email); });
@@ -22,15 +22,19 @@ const SIZES = [{ w: 390, h: 844 }, { w: 1280, h: 800 }];
 test("capture every screen at phone and desktop width", async ({ browser }) => {
   mkdirSync(DIR, { recursive: true });
   // 1) data via a desktop context
+  for (const { w, h } of SIZES) {
+    const c = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 768, hasTouch: w < 768 });
+    const p = await newPage(c);
+    await p.goto("/");
+    await p.waitForTimeout(600);
+    await p.screenshot({ path: `${DIR}/login-${w}.png` });
+    await p.getByRole("button", { name: tr("auth.toggleToSignup") }).click();
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: `${DIR}/signup-${w}.png` });
+    await c.close();
+  }
   const setup = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const p0 = await newPage(setup);
-  await p0.goto("/");
-  await p0.screenshot({ path: `${DIR}/login-1280.png` });
-  await p0.setViewportSize({ width: 390, height: 844 });
-  await p0.screenshot({ path: `${DIR}/login-390.png` });
-  await p0.getByRole("button", { name: tr("auth.toggleToSignup") }).click();
-  await p0.screenshot({ path: `${DIR}/signup-390.png` });
-  await p0.setViewportSize({ width: 1280, height: 800 });
   await p0.goto("/");
   await signUp(p0, acc);
   await waitForDashboard(p0);
@@ -57,12 +61,13 @@ test("capture every screen at phone and desktop width", async ({ browser }) => {
   for (const { w, h } of SIZES) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 768, hasTouch: w < 768 });
     const page = await newPage(ctx);
+    page.setDefaultTimeout(10_000);
     const shot = (name: string) => page.screenshot({ path: `${DIR}/${name}-${w}.png` });
     const step = async (name: string, fn: () => Promise<void>) => {
       try { await fn(); await page.waitForTimeout(400); await shot(name); }
       catch (e) { failures.push(`${name}-${w}: ${String(e).split("\n")[0].slice(0, 120)}`); }
     };
-    const closeOverlay = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.mouse.click(5, 300).catch(() => {}); await page.waitForTimeout(300); };
+    const closeOverlay = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.mouse.click(8, 40).catch(() => {}); await page.waitForTimeout(300); await page.mouse.click(8, 40).catch(() => {}); await page.waitForTimeout(200); };
     const avatarButton = () => page.locator("header").first().locator("button[aria-haspopup='menu']:not([aria-label]), button.rounded-full").last();
     const openMenu = async () => {
       await avatarButton().click();
