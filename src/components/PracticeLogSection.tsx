@@ -167,11 +167,6 @@ export default function PracticeLogSection({
           <Clock size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
           <p className="t-body-strong text-ink mt-3">{t("practice.empty.title")}</p>
           <p className="t-caption mt-1">{t("practice.empty.subtitle")}</p>
-          {!readOnly && !showForm && (
-            <button type="button" onClick={() => setShowForm(true)} className="cs-btn cs-btn-primary mt-5">
-              {t("practice.addButton")}
-            </button>
-          )}
         </div>
       ) : (
         <ul className="cs-timeline space-y-3">

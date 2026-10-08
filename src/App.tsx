@@ -446,7 +446,6 @@ function Dashboard() {
                 type="button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="ml-1 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
-                aria-haspopup="menu"
                 aria-expanded={showUserMenu}
               >
                 {child.avatarUrl
@@ -454,7 +453,7 @@ function Dashboard() {
                   : <span className="w-full h-full bg-primary-soft text-primary-soft-ink flex items-center justify-center text-[13px] font-extrabold">{child.name.slice(0, 1).toUpperCase()}</span>}
               </button>
               {showUserMenu && (
-                <div role="menu" className="absolute right-0 top-full mt-2 w-56 cs-card shadow-float z-50 overflow-hidden py-1 cs-menu-in">
+                <div className="absolute right-0 top-full mt-2 w-56 cs-card shadow-float z-50 overflow-hidden py-1 cs-menu-in">
                   {user?.email && (
                     <div className="px-3 py-2 border-b border-line">
                       <p className="t-caption truncate">{user.email}</p>
@@ -837,7 +836,6 @@ function MenuItem({ onClick, Icon, label, tone }: { onClick: () => void; Icon: L
   return (
     <button
       type="button"
-      role="menuitem"
       onClick={onClick}
       className={`w-full flex items-center gap-3 text-left px-3 py-2.5 min-h-[44px] text-[14px] font-bold transition-colors hover:bg-surface-muted ${tone === "danger" ? "text-error" : "text-ink"}`}
     >
@@ -956,13 +954,12 @@ function LanguageChip() {
         onClick={() => setOpen((o) => !o)}
         className="cs-icon-btn cs-icon-btn-sm"
         aria-label={t("app.language")}
-        aria-haspopup="menu"
         aria-expanded={open}
       >
         <Globe size={20} strokeWidth={2} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 mt-2 w-44 cs-card shadow-float overflow-hidden cs-menu-in origin-top-right z-50 py-1">
+        <div className="absolute right-0 mt-2 w-44 cs-card shadow-float overflow-hidden cs-menu-in origin-top-right z-50 py-1">
           {LANGS.map((l) => {
             const active = l.code === current;
             const Flag = l.Flag;
@@ -970,8 +967,7 @@ function LanguageChip() {
               <button
                 key={l.code}
                 type="button"
-                role="menuitemradio"
-                aria-checked={active}
+                aria-pressed={active}
                 onClick={() => { i18n.changeLanguage(l.code); setOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-[14px] font-bold text-left transition-colors ${active ? "bg-primary-soft text-primary-soft-ink" : "text-ink hover:bg-surface-muted"}`}
               >

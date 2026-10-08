@@ -41,8 +41,8 @@ export default function EmptyState({ variant = "journal", onPrimary }: EmptyStat
       <p className="t-body text-ink-2 mx-auto mt-1 max-w-sm">{t("empty.subtitle")}</p>
       {onPrimary && (
         <button type="button" onClick={onPrimary} className="cs-btn cs-btn-primary mt-6">
-          <Plus size={18} strokeWidth={2.5} />
-          {t("empty.cta")}
+          <Plus size={18} strokeWidth={2.5} aria-hidden />
+          <span>+ {t("empty.cta")}</span>
         </button>
       )}
     </div>

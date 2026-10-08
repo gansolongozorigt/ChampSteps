@@ -197,11 +197,6 @@ export default function ReflectionSection({
           <Heart size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
           <p className="t-body-strong text-ink mt-3">{t("reflection.empty.title")}</p>
           <p className="t-caption mt-1">{t("reflection.empty.subtitle")}</p>
-          {!showForm && (
-            <button type="button" onClick={() => setShowForm(true)} className="cs-btn cs-btn-primary mt-5">
-              {t("reflection.addButton")}
-            </button>
-          )}
         </div>
       ) : (
         <ul className="cs-timeline space-y-3">
