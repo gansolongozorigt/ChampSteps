@@ -2,10 +2,12 @@
 // InviteCode — Багш шавиа нэмэх систем
 // TeacherInvitePanel: багш код үүсгэнэ
 // ParentLinkPanel: эцэг эх код оруулна
+// Харагдац: docs/BRAND.md (invite card = --bg-soft, код = .t-stat, lucide icon)
 // =============================================================================
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Check, CircleCheck, Copy, GraduationCap, Link } from "lucide-react";
 import { InviteCodeError } from "../lib/firebase";
 
 // -----------------------------------------------------------------------------
@@ -44,12 +46,12 @@ export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: Tea
   }
 
   return (
-    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">🏫</span>
-        <div>
-          <h3 className="font-semibold text-stone-900 text-sm">{t("invite.teacher.heading")}</h3>
-          <p className="text-xs text-stone-500">{t("invite.teacher.subtitle")}</p>
+    <div className="cs-card-soft p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="cs-badge cs-badge-primary"><GraduationCap size={18} strokeWidth={2} /></span>
+        <div className="min-w-0">
+          <h3 className="t-h2">{t("invite.teacher.heading")}</h3>
+          <p className="t-caption mt-0.5">{t("invite.teacher.subtitle")}</p>
         </div>
       </div>
 
@@ -58,32 +60,29 @@ export function TeacherInvitePanel({ teacherId, teacherName, onCreateCode }: Tea
           type="button"
           onClick={handleCreate}
           disabled={loading}
-          className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="cs-btn cs-btn-primary w-full"
         >
           {loading ? t("invite.teacher.creating") : t("invite.teacher.createButton")}
         </button>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-xl bg-white border border-blue-200 p-4 text-center">
-            <p className="text-xs text-stone-500 mb-1">{t("invite.teacher.codeLabel")}</p>
-            <p className="font-mono text-3xl font-bold tracking-widest text-blue-700">{code}</p>
-            <p className="text-xs text-stone-400 mt-1">{t("invite.teacher.codeExpiry")}</p>
+          <div className="cs-card p-4 text-center">
+            <p className="t-label">{t("invite.teacher.codeLabel")}</p>
+            <p className="t-stat text-primary tracking-[0.2em] mt-2" style={{ fontSize: 32 }}>{code}</p>
+            <p className="t-caption mt-2">{t("invite.teacher.codeExpiry")}</p>
           </div>
           <button
             type="button"
             onClick={handleCopy}
-            className={`w-full rounded-xl py-2.5 text-sm font-medium transition ${
-              copied
-                ? "bg-emerald-600 text-white"
-                : "bg-white border border-blue-200 text-blue-700 hover:bg-blue-50"
-            }`}
+            className={`cs-btn w-full ${copied ? "cs-btn-primary" : "cs-btn-outline"}`}
           >
+            {copied ? <Check size={18} strokeWidth={2.5} /> : <Copy size={18} strokeWidth={2} />}
             {copied ? t("invite.teacher.copied") : t("invite.teacher.copyButton")}
           </button>
           <button
             type="button"
             onClick={() => setCode(null)}
-            className="w-full text-xs text-stone-400 hover:text-stone-600"
+            className="cs-btn cs-btn-ghost cs-btn-sm w-full"
           >
             {t("invite.teacher.newCode")}
           </button>
@@ -133,29 +132,29 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
   }
 
   return (
-    <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">🔗</span>
-        <div>
-          <h3 className="font-semibold text-stone-900 text-sm">{t("invite.parent.heading")}</h3>
-          <p className="text-xs text-stone-500">{t("invite.parent.subtitle", { name: childName })}</p>
+    <div className="cs-card-soft p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="cs-badge cs-badge-primary"><Link size={18} strokeWidth={2} /></span>
+        <div className="min-w-0">
+          <h3 className="t-h2">{t("invite.parent.heading")}</h3>
+          <p className="t-caption mt-0.5">{t("invite.parent.subtitle", { name: childName })}</p>
         </div>
       </div>
 
       {success ? (
-        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center">
-          <p className="text-2xl mb-1">✅</p>
-          <p className="text-sm font-medium text-emerald-700">{success}</p>
+        <div className="cs-card p-4 text-center">
+          <span className="cs-badge cs-badge-primary mx-auto mb-2"><CircleCheck size={20} strokeWidth={2.2} /></span>
+          <p className="t-body-strong text-primary-soft-ink">{success}</p>
           <button
             type="button"
             onClick={() => setSuccess(null)}
-            className="mt-2 text-xs text-stone-400 hover:text-stone-600"
+            className="cs-btn cs-btn-ghost cs-btn-sm mt-2"
           >
             {t("invite.parent.reconnect")}
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <input
             value={code}
             onChange={(e) => {
@@ -164,14 +163,15 @@ export function ParentLinkPanel({ childId, childName, onUseCode }: ParentLinkPan
             }}
             placeholder={t("invite.parent.placeholder")}
             maxLength={6}
-            className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-widest text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-amber-300"
+            aria-invalid={error ? "true" : undefined}
+            className="cs-input text-center text-[20px] font-extrabold tracking-[0.2em] uppercase tabular-nums"
           />
-          {error && <p className="text-xs text-rose-600 text-center">{error}</p>}
+          {error && <p className="t-caption text-error text-center" role="alert">{error}</p>}
           <button
             type="button"
             onClick={handleLink}
             disabled={loading || code.trim().length !== 6}
-            className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            className="cs-btn cs-btn-primary w-full"
           >
             {loading ? t("invite.parent.connecting") : t("invite.parent.connectButton")}
           </button>
