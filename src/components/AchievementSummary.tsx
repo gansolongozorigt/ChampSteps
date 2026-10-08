@@ -1,7 +1,9 @@
-// ChampStep — Achievement summary (зэрэглэлийн медаль + нийт тоо)
-// Зөвхөн харагдац. achievements-ээс зэрэглэл тус бүрийн тоог тоолж emoji медаль харуулна.
+// ChampStep — Achievement summary (медалийн тоо + нийт)
+// Зөвхөн харагдац. 4 хүрээтэй stat карт: медалийн өнгөт дугуй badge + lucide icon,
+// .t-stat тоо, медалийн өнгөт label (docs/BRAND.md).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Award, Medal, type LucideIcon } from "lucide-react";
 import type { Achievement } from "../types";
 
 /** 0 → end рүү easeOutCubic-аар тоолно. reduced-motion үед шууд утга өгнө. */
@@ -28,12 +30,12 @@ function useCountUp(end: number, duration = 1100): number {
   return val;
 }
 
-const MEDALS = [
-  { key: "Gold", emoji: "🥇" },
-  { key: "Silver", emoji: "🥈" },
-  { key: "Bronze", emoji: "🥉" },
-  { key: "Participant", emoji: "🏅" },
-] as const;
+const MEDALS: ReadonlyArray<{ key: "Gold" | "Silver" | "Bronze" | "Participant"; Icon: LucideIcon; badge: string; label: string }> = [
+  { key: "Gold", Icon: Medal, badge: "cs-badge-gold", label: "text-gold" },
+  { key: "Silver", Icon: Medal, badge: "cs-badge-silver", label: "text-silver" },
+  { key: "Bronze", Icon: Medal, badge: "cs-badge-bronze", label: "text-bronze" },
+  { key: "Participant", Icon: Award, badge: "cs-badge-participant", label: "text-ink-3" },
+];
 
 export default function AchievementSummary({
   achievements,
@@ -53,15 +55,17 @@ export default function AchievementSummary({
   const total = useCountUp(achievements.length);
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-5 mb-5 shadow-sm">
-      <p className="text-center text-[13px] text-stone-500 mb-4">
+    <section className="mb-5">
+      <p className="t-caption text-center mb-3">
         {t("summary.totalAchievements", { n: total })}
       </p>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {MEDALS.map((m, i) => (
           <MedalItem
             key={m.key}
-            emoji={m.emoji}
+            Icon={m.Icon}
+            badge={m.badge}
+            labelClass={m.label}
             label={t(`awards.${m.key}`)}
             value={counts[m.key] ?? 0}
             index={i}
@@ -73,27 +77,31 @@ export default function AchievementSummary({
 }
 
 function MedalItem({
-  emoji,
+  Icon,
+  badge,
+  labelClass,
   label,
   value,
   index,
 }: {
-  emoji: string;
+  Icon: LucideIcon;
+  badge: string;
+  labelClass: string;
   label: string;
   value: number;
   index: number;
 }) {
   const n = useCountUp(value);
   return (
-    <div className="flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl py-2 sm:py-2.5">
-      <span
-        className="text-[26px] sm:text-[38px] leading-none animate-pop"
-        style={{ animationDelay: `${index * 0.09}s` }}
-      >
-        {emoji}
+    <div
+      className="cs-card flex flex-col items-center gap-1.5 px-1 py-3 sm:py-4 animate-fade-up"
+      style={{ animationDelay: `${index * 0.04}s` }}
+    >
+      <span className={`cs-badge ${badge}`} aria-hidden>
+        <Icon size={20} strokeWidth={2} />
       </span>
-      <span className="text-[16px] sm:text-[20px] font-bold text-stone-900 leading-tight">{n}</span>
-      <span className="text-[10px] sm:text-[12px] font-medium text-stone-500 text-center leading-tight">{label}</span>
+      <span className="t-stat">{n}</span>
+      <span className={`t-label text-center ${labelClass}`}>{label}</span>
     </div>
   );
 }

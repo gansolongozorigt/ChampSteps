@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Loader2, Sparkles, Zap } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { Achievement, Child, TIER_LIMITS } from "../types";
 import { useAuth } from "../lib/auth";
@@ -129,41 +130,44 @@ export default function AIInsightCard({ child, achievements, onToast }: Props) {
   const sections = insight ? splitSections(insight) : [];
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 mt-4" data-testid="ai-insight-card">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🤖</span>
-          <h3 className="font-semibold text-stone-800">{t("ai.heading")}</h3>
+    <div className="cs-card-soft p-5 mt-4" data-testid="ai-insight-card">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="cs-badge cs-badge-primary" aria-hidden><Sparkles size={18} strokeWidth={2} /></span>
+          <h3 className="t-h2 truncate">{t("ai.heading")}</h3>
         </div>
         <button
+          type="button"
           onClick={getInsight}
           disabled={loading}
-          className="cs-shine text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 disabled:opacity-50 active:scale-95 transition-all"
+          className="cs-btn cs-btn-primary cs-btn-sm shrink-0"
         >
+          {loading && <Loader2 size={16} className="animate-spin" aria-hidden />}
           {loading ? t("ai.loading") : insight ? t("ai.refresh") : t("ai.fetch")}
         </button>
       </div>
 
       {insight && (
         <div>
-          <div className="text-stone-700 text-sm leading-relaxed space-y-3" data-testid="ai-insight-text">
+          <div className="t-body text-ink-2 space-y-3" data-testid="ai-insight-text">
             {sections.map((s, i) => (
               <div key={i}>
-                {s.heading && <p className="font-semibold text-stone-800 mb-0.5">{s.heading}</p>}
+                {s.heading && <p className="t-body-strong text-ink mb-0.5">{s.heading}</p>}
                 {s.body && <p className="whitespace-pre-line">{s.body}</p>}
               </div>
             ))}
           </div>
-          <p className="text-xs text-stone-400 mt-3 border-t pt-2">
-            ⚡ {t("ai.footer", { name: child.name })}
+          <p className="t-caption mt-3 pt-3 border-t border-line inline-flex items-center gap-1.5">
+            <Zap size={12} strokeWidth={2.2} aria-hidden />
+            {t("ai.footer", { name: child.name })}
           </p>
         </div>
       )}
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="t-caption text-error">{error}</p>}
 
       {!insight && !loading && !error && (
-        <p className="text-stone-400 text-sm">{t("ai.empty")}</p>
+        <p className="t-body text-ink-3">{t("ai.empty")}</p>
       )}
     </div>
   );
