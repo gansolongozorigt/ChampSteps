@@ -6,8 +6,8 @@ type Tab = "terms" | "refund" | "privacy";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h3 className="text-[13px] font-semibold text-stone-800 mb-1.5">{title}</h3>
-      <div className="text-[13px] text-stone-600 leading-relaxed">{children}</div>
+      <h3 className="t-h2 mb-1.5">{title}</h3>
+      <div className="t-body text-ink-2">{children}</div>
     </div>
   );
 }
@@ -26,22 +26,22 @@ export default function TermsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="mb-2">
-        <h2 className="text-xl font-semibold text-stone-900">
+        <h2 className="t-h1">
           {t("terms.title")}
         </h2>
       </div>
 
       {/* Tab bar */}
-      <div className="bg-stone-100 rounded-xl p-1 flex gap-1">
+      <div className="cs-segment w-full" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-pressed={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 text-[11px] font-medium px-2 py-2 rounded-lg transition-all ${
-              tab === t.id
-                ? "bg-white shadow-sm text-stone-900"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
+            className="cs-segment-item flex-1 justify-center min-h-[40px] px-2 text-[12px]"
           >
             {t.label}
           </button>
@@ -50,8 +50,8 @@ export default function TermsPage() {
 
       {/* Tab 1 — Terms of Service */}
       {tab === "terms" && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+        <div className="cs-card p-5">
+          <p className="t-caption mb-4">{t("terms.lastUpdated")}</p>
           <Section title={t("terms.s1Title")}>{t("terms.s1")}</Section>
           <Section title={t("terms.s2Title")}>{t("terms.s2")}</Section>
           <Section title={t("terms.s3Title")}>{t("terms.s3")}</Section>
@@ -62,8 +62,8 @@ export default function TermsPage() {
 
       {/* Tab 2 — Refund Policy */}
       {tab === "refund" && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+        <div className="cs-card p-5">
+          <p className="t-caption mb-4">{t("terms.lastUpdated")}</p>
           <Section title={t("terms.r1Title")}>{t("terms.r1")}</Section>
           <Section title={t("terms.r2Title")}>{t("terms.r2")}</Section>
           <Section title={t("terms.r3Title")}>
@@ -76,10 +76,10 @@ export default function TermsPage() {
           </Section>
           <Section title={t("terms.r4Title")}>{t("terms.r4")}</Section>
 
-          <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mt-2">
-            <p className="text-[12px] text-amber-800 mb-2">{t("terms.refundCta")}</p>
+          <div className="border-l-2 border-primary bg-bg-soft rounded-r-input pl-4 pr-4 py-3 mt-2">
+            <p className="t-body text-ink-2 mb-1">{t("terms.refundCta")}</p>
             <a href="mailto:info@champstep.mn"
-              className="text-[13px] font-semibold text-amber-700 hover:underline">
+              className="inline-flex min-h-[44px] items-center text-[14px] font-bold text-primary hover:underline underline-offset-2">
               info@champstep.mn
             </a>
           </div>
@@ -88,8 +88,8 @@ export default function TermsPage() {
 
       {/* Tab 3 — Privacy Policy */}
       {tab === "privacy" && (
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-          <p className="text-[10px] text-stone-400 mb-4">{t("terms.lastUpdated")}</p>
+        <div className="cs-card p-5">
+          <p className="t-caption mb-4">{t("terms.lastUpdated")}</p>
           <Section title={t("terms.p1Title")}>{t("terms.p1")}</Section>
           <Section title={t("terms.p2Title")}>{t("terms.p2")}</Section>
           <Section title={t("terms.p3Title")}>{t("terms.p3")}</Section>
@@ -99,7 +99,7 @@ export default function TermsPage() {
       )}
 
       {/* Footer */}
-      <p className="text-center text-[11px] text-stone-400 py-2">
+      <p className="text-center t-caption py-2">
         {t("terms.footer")}
       </p>
     </div>
