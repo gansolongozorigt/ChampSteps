@@ -26,6 +26,22 @@ export default {
           ai: "#4f46e5",
         },
       },
+      // ── Анимэйшний суурь (ChampStep "амь оруулах") ──
+      keyframes: {
+        "fade-up": {
+          "0%":   { opacity: "0", transform: "translateY(16px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        pop: {
+          "0%":   { opacity: "0", transform: "scale(0.8)" },
+          "60%":  { opacity: "1", transform: "scale(1.05)" },
+          "100%": { transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "fade-up": "fade-up 0.55s cubic-bezier(0.2,0.8,0.25,1) both",
+        pop:       "pop 0.4s cubic-bezier(0.2,0.8,0.25,1) both",
+      },
     },
   },
   plugins: [],

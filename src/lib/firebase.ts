@@ -22,6 +22,7 @@ import {
   updateProfile,
   type Auth,
   type User as FirebaseUser,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   addDoc,
@@ -41,6 +42,9 @@ import {
   type DocumentData,
   type Firestore,
   type QueryDocumentSnapshot,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
 } from "firebase/firestore";
 import {
   getDownloadURL,
@@ -48,6 +52,7 @@ import {
   ref,
   uploadBytes,
   type FirebaseStorage,
+  deleteObject,
 } from "firebase/storage";
 
 import type {
@@ -61,6 +66,7 @@ import type {
   UserRole,
 } from "../types";
 import { compressImage } from "../utils/image";
+import { infoFromDoc, toDate, type SubscriptionInfo } from "./subscription";
 
 // -----------------------------------------------------------------------------
 // Init
@@ -86,7 +92,13 @@ let _auth: Auth | null = null;
 
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig);
-  _db = getFirestore(app);
+  // Offline-first: IndexedDB cache shared across tabs (cold start offline still shows data).
+    try {
+      _db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+    } catch (e) {
+      console.warn("[champstep] persistent cache unavailable, falling back:", e);
+      _db = getFirestore(app);
+    }
   _storage = getStorage(app);
   _auth = getAuth(app);
 }
@@ -181,15 +193,37 @@ export async function getSubscriptionStatus(uid: string): Promise<SubscriptionTi
   return getSubscriptionTier(uid);
 }
 
-export async function activatePremium(uid: string, tier: SubscriptionTier = "family") {
+/** Tier + expiry + expired-from, straight from users/{uid}. */
+export async function getSubscriptionInfo(uid: string): Promise<SubscriptionInfo> {
+  return infoFromDoc(await getUserDoc(uid));
+}
+
+export interface PaymentRecord {
+  orderId: string;
+  plan: "family" | "master" | "coach";
+  amount: number;
+  status: "pending" | "paid";
+  createdAt: Date | null;
+  paidAt: Date | null;
+}
+
+/** payments where uid == me (rules: owner read). Sorted newest first on the client (no composite index). */
+export async function getPaymentsForUser(uid: string): Promise<PaymentRecord[]> {
   const db = requireDb();
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
-  await updateDoc(doc(db, "users", uid), {
-    subscriptionTier: tier,
-    subscriptionActivatedAt: serverTimestamp(),
-    subscriptionExpiresAt: Timestamp.fromDate(expiresAt),
-  });
+  const snap = await getDocs(query(collection(db, "payments"), where("uid", "==", uid)));
+  return snap.docs
+    .map((d) => {
+      const x = d.data();
+      return { orderId: d.id, plan: x.plan, amount: Number(x.amount ?? 0), status: x.status === "paid" ? "paid" : "pending", createdAt: toDate(x.createdAt), paidAt: toDate(x.paidAt) } as PaymentRecord;
+    })
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+}
+
+/** Password reset e-mail in the UI language. Callers must NOT reveal whether the account exists. */
+export async function sendPasswordReset(email: string, lang: string) {
+  const a = requireAuth();
+  a.languageCode = lang.slice(0, 2);
+  await sendPasswordResetEmail(a, email);
 }
 
 // -----------------------------------------------------------------------------
@@ -224,7 +258,7 @@ export async function updateChild(next: Child, avatarFile?: File) {
   }
   await updateDoc(childRef, {
     name: next.name,
-    birthDate: next.birthDate,
+    birthDate: next.birthDate ?? "",
     bio: next.bio ?? "",
     avatarUrl: avatarUrl ?? null,
     updatedAt: serverTimestamp(),
@@ -248,17 +282,22 @@ export async function getChildrenForTeacher(teacherId: string): Promise<Child[]>
 
 export function subscribeChildrenForTeacher(
   teacherId: string,
-  cb: (children: Child[]) => void
+  cb: (children: Child[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(
     collection(db, "children"),
     where("teacherIds", "array-contains", teacherId)
   );
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id } as Child));
-    cb(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ ...d.data(), childId: d.id } as Child));
+      cb(list);
+    },
+    (err) => { console.error("[champstep] children (teacher) error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -283,21 +322,30 @@ export async function createInviteCode(teacherId: string, teacherName: string): 
   return code;
 }
 
+export type InviteCodeErrorCode = "not_found" | "used" | "expired" | "child_not_found";
+/** Thrown by useInviteCode(); UI maps `code` to a translated message (never match on text). */
+export class InviteCodeError extends Error {
+  constructor(public code: InviteCodeErrorCode) {
+    super(`invite_code_${code}`);
+    this.name = "InviteCodeError";
+  }
+}
+
 export async function useInviteCode(code: string, childId: string): Promise<InviteCode | null> {
   const db = requireDb();
   const ref = doc(db, "inviteCodes", code.toUpperCase());
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) return null;
+  if (!snap.exists()) throw new InviteCodeError("not_found");
 
   const data = snap.data() as InviteCode;
 
-  if (data.used) throw new Error("Энэ код аль хэдийн ашиглагдсан байна.");
-  if (new Date(data.expiresAt) < new Date()) throw new Error("Кодын хугацаа дууссан байна.");
+  if (data.used) throw new InviteCodeError("used");
+  if (new Date(data.expiresAt) < new Date()) throw new InviteCodeError("expired");
 
   const childRef = doc(db, "children", childId);
   const childSnap = await getDoc(childRef);
-  if (!childSnap.exists()) throw new Error("Хүүхэд олдсонгүй.");
+  if (!childSnap.exists()) throw new InviteCodeError("child_not_found");
 
   const childData = childSnap.data() as Child;
   const teacherIds = childData.teacherIds ?? [];
@@ -314,18 +362,42 @@ export async function useInviteCode(code: string, childId: string): Promise<Invi
 // Achievements
 // -----------------------------------------------------------------------------
 
-export async function createAchievement(childId: string, draft: AchievementDraft) {
-  const db = requireDb();
+/**
+ * Upload achievement photos. All-or-nothing: if any upload fails, the ones that
+ * already succeeded are deleted again (no orphaned Storage objects) and the
+ * error is rethrown.
+ */
+export async function uploadAchievementImages(childId: string, files: File[]): Promise<string[]> {
   const storage = requireStorage();
-
-  const imageURLs: string[] = await Promise.all(
-    (draft.images ?? []).map(async (rawFile) => {
+  const results = await Promise.allSettled(
+    files.map(async (rawFile, i) => {
       const file = await compressImage(rawFile, { maxDimension: 1600, quality: 0.8 });
-      const path = `achievements/${childId}/${Date.now()}_${safeName(file.name)}`;
+      const path = `achievements/${childId}/${Date.now()}_${i}_${safeName(file.name)}`;
       const snapshot = await uploadBytes(ref(storage, path), file);
-      return getDownloadURL(snapshot.ref);
+      return { path, url: await getDownloadURL(snapshot.ref) };
     })
   );
+  const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (failed) {
+    await Promise.allSettled(
+      results
+        .filter((r): r is PromiseFulfilledResult<{ path: string; url: string }> => r.status === "fulfilled")
+        .map((r) => deleteObject(ref(storage, r.value.path)))
+    );
+    throw failed.reason;
+  }
+  return (results as PromiseFulfilledResult<{ path: string; url: string }>[]).map((r) => r.value.url);
+}
+
+/** Best-effort removal of a Storage object by its download URL (edit: photo removed). */
+async function deleteImageByUrl(url: string) {
+  try { await deleteObject(ref(requireStorage(), url)); }
+  catch (e) { console.warn("[champstep] could not delete old image:", e); }
+}
+
+export async function createAchievement(childId: string, draft: AchievementDraft) {
+  const db = requireDb();
+  const imageURLs = await uploadAchievementImages(childId, draft.images ?? []);
 
   const docRef = await addDoc(collection(db, "achievements"), {
     childId,
@@ -343,10 +415,41 @@ export async function createAchievement(childId: string, draft: AchievementDraft
   return docRef.id;
 }
 
+/** Firestore rejects `undefined` values — drop them before writing. */
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+}
+
+/**
+ * Edit: text fields + photos. New files are uploaded first (all-or-nothing);
+ * imageURLs becomes keptImageURLs + new ones; removed photos are deleted
+ * from Storage best-effort after the document update succeeded.
+ */
+export async function updateAchievementWithImages(
+  id: string,
+  childId: string,
+  draft: AchievementDraft,
+  previousImageURLs: string[]
+) {
+  const kept = draft.keptImageURLs ?? previousImageURLs;
+  const added = await uploadAchievementImages(childId, draft.images ?? []);
+  await updateAchievement(id, {
+    title: draft.title.trim(),
+    date: draft.date,
+    location: draft.location.trim(),
+    category: draft.category,
+    description: draft.description.trim(),
+    awardType: draft.awardType,
+    imageURLs: [...kept, ...added],
+  });
+  const removed = previousImageURLs.filter((u) => !kept.includes(u));
+  await Promise.allSettled(removed.map(deleteImageByUrl));
+}
+
 export async function updateAchievement(id: string, data: Partial<Achievement>) {
   const db = requireDb();
   await updateDoc(doc(db, "achievements", id), {
-    ...data,
+    ...omitUndefined(data as Record<string, unknown>),
     updatedAt: serverTimestamp(),
   });
 }
@@ -401,7 +504,7 @@ export async function createPracticeLog(childId: string, log: Omit<PracticeLog, 
   const db = requireDb();
   const docRef = await addDoc(collection(db, "practiceLogs"), {
     childId,
-    ...log,
+    ...omitUndefined(log as Record<string, unknown>),
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -414,16 +517,21 @@ export async function deletePracticeLog(id: string) {
 
 export function subscribePracticeLogs(
   childId: string,
-  cb: (items: PracticeLog[]) => void
+  cb: (items: PracticeLog[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(collection(db, "practiceLogs"), where("childId", "==", childId));
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(
+    q,
+    (snap) => {
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() } as PracticeLog))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     cb(items);
-  });
+    },
+    (err) => { console.error("[champstep] practiceLogs error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -437,7 +545,7 @@ export async function createReflection(
   const db = requireDb();
   const docRef = await addDoc(collection(db, "reflections"), {
     childId,
-    ...reflection,
+    ...omitUndefined(reflection as Record<string, unknown>),
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -450,16 +558,21 @@ export async function deleteReflection(id: string) {
 
 export function subscribeReflections(
   childId: string,
-  cb: (items: Reflection[]) => void
+  cb: (items: Reflection[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(collection(db, "reflections"), where("childId", "==", childId));
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(
+    q,
+    (snap) => {
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() } as Reflection))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     cb(items);
-  });
+    },
+    (err) => { console.error("[champstep] reflections error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -499,17 +612,22 @@ export async function deleteCoachNote(id: string) {
 
 export function subscribeCoachNotes(
   childId: string,
-  cb: (items: CoachNote[]) => void
+  cb: (items: CoachNote[]) => void,
+  onError?: (err: unknown) => void
 ) {
   const db = requireDb();
   const q = query(
     collection(db, "coachNotes"),
     where("childId", "==", childId),
   );
-  return onSnapshot(q, (snap) => {
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
-    cb(items);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CoachNote));
+      cb(items);
+    },
+    (err) => { console.error("[champstep] coachNotes error:", err); onError?.(err); }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -569,55 +687,4 @@ export async function removeStudentFromTeacher(
   await updateDoc(childRef, {
     teacherIds: teacherIds.filter((id) => id !== teacherId),
   });
-}
-// -----------------------------------------------------------------------------
-// Promo codes
-// -----------------------------------------------------------------------------
-export interface PromoCode {
-  code: string;
-  discountMonths: number;
-  usedBy: string[];
-  maxUses: number;
-  expiresAt: Date;
-  active: boolean;
-}
-
-export async function createPromoCode(data: Omit<PromoCode, "usedBy">) {
-  const db = requireDb();
-  await setDoc(doc(db, "promoCodes", data.code.toUpperCase()), {
-    ...data,
-    code: data.code.toUpperCase(),
-    usedBy: [],
-  });
-}
-
-export async function listPromoCodes(): Promise<PromoCode[]> {
-  const db = requireDb();
-  const snap = await getDocs(collection(db, "promoCodes"));
-  return snap.docs.map((d) => ({ ...(d.data() as PromoCode) }));
-}
-
-export async function seedPromoCodes() {
-  const db = requireDb();
-  const codes = [
-    { code: "CHAMP3", discountMonths: 3, maxUses: 100, active: true, expiresAt: new Date("2027-01-01") },
-    { code: "CHAMP6", discountMonths: 6, maxUses: 50, active: true, expiresAt: new Date("2027-01-01") },
-  ];
-  for (const c of codes) {
-    await setDoc(doc(db, "promoCodes", c.code), { ...c, usedBy: [] });
-  }
-}
-
-export async function redeemPromoCode(code: string, userId: string): Promise<{ months: number }> {
-  const db = requireDb();
-  const ref = doc(db, "promoCodes", code.toUpperCase());
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("not_found");
-  const data = snap.data() as PromoCode;
-  if (!data.active) throw new Error("inactive");
-  if (data.usedBy.includes(userId)) throw new Error("already_used");
-  if (data.usedBy.length >= data.maxUses) throw new Error("max_uses");
-  if (new Date() > new Date(data.expiresAt)) throw new Error("expired");
-  await updateDoc(ref, { usedBy: [...data.usedBy, userId] });
-  return { months: data.discountMonths };
 }

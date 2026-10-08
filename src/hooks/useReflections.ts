@@ -19,26 +19,38 @@ function saveLocal(childId: string, items: Reflection[]) {
   localStorage.setItem(`${KEY}.${childId}`, JSON.stringify(items));
 }
 
-export function useReflections(childId: string) {
+/**
+ * @param enabled  false → Firestore-д subscribe хийхгүй (багшийн горим:
+ *                 reflections нь эцэг эхэд л зориулагдсан, rules хориглоно).
+ */
+export function useReflections(childId: string, enabled = true) {
   const [reflections, setReflections] = useState<Reflection[]>(() =>
     isFirebaseConfigured ? [] : loadLocal(childId)
   );
   const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
+    if (!enabled) {
+      setReflections([]);
+      setLoading(false);
+      return;
+    }
     if (!isFirebaseConfigured) {
       setReflections(loadLocal(childId));
       setLoading(false);
       return;
     }
     setLoading(true);
-    const unsub = subscribeReflections(childId, (items) => {
-      setReflections(items);
-      setLoading(false);
-    });
+    setError(null);
+    const unsub = subscribeReflections(
+      childId,
+      (items) => { setReflections(items); setLoading(false); setError(null); },
+      (err) => { setError(err instanceof Error ? err.message : "Failed to load reflections"); setLoading(false); }
+    );
     return unsub;
-  }, [childId]);
+  }, [childId, enabled]);
 
   function addLocal(r: Reflection) {
     setReflections((prev) => {
@@ -56,5 +68,5 @@ export function useReflections(childId: string) {
     });
   }
 
-  return { reflections, loading, addLocal, removeLocal };
+  return { reflections, loading, error, addLocal, removeLocal };
 }

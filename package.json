@@ -7,11 +7,19 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b",
+    "lint:api": "tsc -p tsconfig.api.json --noEmit",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs tests/rules/legacy-user.test.mjs\"",
+    "test:rules:api": "node tests/rules/api-runner.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
+    "test:plans": "node --test tests/plans.test.mjs",
+    "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
     "firebase": "^10.13.0",
+    "firebase-admin": "^13.10.0",
     "i18next": "^23.15.1",
     "i18next-browser-languagedetector": "^8.0.0",
     "jspdf": "^2.5.1",
@@ -20,11 +28,14 @@
     "react-i18next": "^15.0.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vercel/node": "^5.7.15",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "firebase-tools": "^15.31.0",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
     "typescript": "^5.5.3",

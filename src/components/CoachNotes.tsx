@@ -4,7 +4,6 @@ import {
   createCoachNote,
   deleteCoachNote,
   subscribeCoachNotes,
-  getUserDoc,
   type CoachNote,
 } from "../lib/firebase";
 
@@ -29,45 +28,45 @@ export default function CoachNotes({
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [connectedTeachers, setConnectedTeachers] = useState<{ uid: string; name: string }[]>([]);
 
   // Firestore-оос бодит цагт уншина
   useEffect(() => {
-    const unsub = subscribeCoachNotes(childId, setNotes);
+    setError(null);
+    const unsub = subscribeCoachNotes(childId, setNotes, () => setError(t("status.errorLoading")));
     return () => unsub();
-  }, [childId]);
+  }, [childId, t]);
 
-  // Хүүхдэд холбогдсон багшийн нэрийг татах
+  // Холбогдсон багшийн нэр: users/{uid}-ийг өөр хэрэглэгч уншиж чадахгүй (rules),
+  // тиймээс нэрийг тухайн багшийн бичсэн тэмдэглэлээс авна.
   useEffect(() => {
     if (isTeacher || teacherIds.length === 0) return;
-    async function loadTeachers() {
-      const results: { uid: string; name: string }[] = [];
-      for (const uid of teacherIds) {
-        try {
-          const doc = await getUserDoc(uid);
-          if (doc) results.push({ uid, name: doc.displayName ?? "Багш" });
-        } catch {
-          // ignore
-        }
-      }
-      setConnectedTeachers(results);
-    }
-    loadTeachers();
-  }, [teacherIds, isTeacher]);
+    const names = new Map<string, string>();
+    for (const n of notes) if (n.teacherId && n.teacherName) names.set(n.teacherId, n.teacherName);
+    setConnectedTeachers(
+      teacherIds.map((uid) => ({ uid, name: names.get(uid) ?? t("coach.defaultName") }))
+    );
+  }, [teacherIds, isTeacher, notes, t]);
 
   async function handleAdd() {
     if (!text.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       await createCoachNote(childId, teacherId, teacherName, text.trim());
       setText("");
+    } catch (e) {
+      console.error("[champstep] coach note save failed:", e);
+      setError(t("status.errorSaving")); // text stays in the box
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    await deleteCoachNote(id);
+    try { await deleteCoachNote(id); }
+    catch (e) { console.error("[champstep] coach note delete failed:", e); setError(t("status.errorSaving")); }
   }
 
   function formatDate(createdAt: string | unknown) {
@@ -113,6 +112,7 @@ export default function CoachNotes({
           >
             {saving ? t("coach.saving") : t("coach.addButton")}
           </button>
+          {error && <p className="mt-2 text-xs text-rose-600" role="alert">{error}</p>}
         </div>
       )}
 
@@ -150,7 +150,7 @@ export default function CoachNotes({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                    {n.teacherName?.slice(0, 1).toUpperCase() ?? "Б"}
+                    {n.teacherName?.slice(0, 1).toUpperCase() ?? t("coach.defaultName").slice(0, 1).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-stone-800">

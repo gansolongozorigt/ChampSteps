@@ -4,6 +4,20 @@
 // Run BEFORE uploading to Firebase Storage to keep bandwidth/cost low.
 // =============================================================================
 
+/** Accepted upload types (HEIC/HEIF from iPhones is NOT decodable by createImageBitmap in most browsers). */
+export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export type ImageRejectReason = "type" | "size";
+
+/** Returns why a file is not acceptable, or null when it is. */
+export function validateImageFile(file: File): ImageRejectReason | null {
+  const type = (file.type || "").toLowerCase();
+  const byExt = /\.(jpe?g|png|webp)$/i.test(file.name);
+  if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(type) && !(type === "" && byExt)) return "type";
+  if (file.size > MAX_IMAGE_BYTES) return "size";
+  return null;
+}
+
 export interface CompressOptions {
   /** Max width or height in px. Aspect ratio is preserved. */
   maxDimension?: number;

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Child } from "../types";
-import { compressImage } from "../utils/image";
+import { compressImage, validateImageFile } from "../utils/image";
 
 export interface ChildProfileEditorProps {
   child: Child;
@@ -18,9 +18,11 @@ export interface ChildProfileEditorProps {
    * download URL in your Firebase callback.
    */
   onSave: (next: Child, avatarFile?: File) => Promise<void> | void;
+  /** Rejected/undecodable avatar → parent shows a toast. */
+  onError?: (message: string) => void;
 }
 
-export default function ChildProfileEditor({ child, onClose, onSave }: ChildProfileEditorProps) {
+export default function ChildProfileEditor({ child, onClose, onSave, onError }: ChildProfileEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Child>(child);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
@@ -40,7 +42,19 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return;
-    const compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 });
+    const rejected = validateImageFile(file);
+    if (rejected) {
+      onError?.(t(rejected === "size" ? "form.validation.imageSize" : "form.validation.imageType"));
+      return;
+    }
+    let compressed: File;
+    try {
+      compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 });
+    } catch (e) {
+      console.warn("[champstep] avatar decode failed:", e);
+      onError?.(t("form.validation.imageType"));
+      return;
+    }
     setAvatarFile(compressed);
     const url = URL.createObjectURL(compressed);
     setAvatarPreview(url);
@@ -56,8 +70,10 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(draft, avatarFile);
+      await onSave({ ...draft, name: draft.name.trim() }, avatarFile);
       onClose();
+    } catch {
+      // parent already showed the error toast; keep the editor open with the draft
     } finally {
       setSaving(false);
     }
@@ -65,12 +81,12 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-xl"
+        className="w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-xl"
       >
         <header>
           <p className="text-xs uppercase tracking-widest text-stone-500">{t("app.journal")}</p>
@@ -92,9 +108,9 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
               {t("profile.fields.avatar")}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 hidden
-                onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+                onChange={(e) => void handleAvatarChange(e.target.files?.[0])}
               />
             </label>
             {avatarPreview && (

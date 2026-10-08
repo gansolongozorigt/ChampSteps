@@ -1,41 +1,203 @@
 // =============================================================================
-// ChampStep — Firestore security rules (DEMO ONLY).
-// Deploy with:  firebase deploy --only firestore:rules
+// ChampStep — Firestore security rules (PRODUCTION)
+// Deploy with:  npx firebase-tools deploy --only firestore:rules
+// Test with:    npm run test:rules   (Firebase emulator, needs Java)
+//
+// Principles
+//   • Not signed in → nothing.
+//   • users/{uid}: owner only. Subscription fields are written ONLY by the
+//     server (Admin SDK via /api/qpay/* and /api/promo/*).
+//   • payments: owner reads, nobody writes from the client.
+//   • Child data: parent (children.parentId) has full access. An invited
+//     teacher (uid in children.teacherIds) can read and may only write
+//     coachNotes. reflections are parent-only. Children docs without a
+//     teacherIds field are treated as having no teachers (see isTeacherOf).
+//   • aiInsights/{childId}: server-written AI cache; parent + teacher read.
+//   • promoCodes: no client access at all (server only).
 // =============================================================================
-//
-// ⚠️  These rules allow any client to read/write. They exist so the app works
-// before you've added Firebase Auth. BEFORE launching in production you must
-// tighten them — see the AUTH block below (commented-out) for the real version.
-//
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- DEMO rules: open access (use only while building) ---------------
-    match /children/{childId} {
-      allow read, write: if true;
+    // ---- helpers ---------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
     }
-    match /achievements/{docId} {
-      allow read, write: if true;
+    function uid() {
+      return request.auth.uid;
+    }
+    function childData(childId) {
+      return get(/databases/$(database)/documents/children/$(childId)).data;
+    }
+    function isChildOwner(childId) {
+      return signedIn() && childData(childId).parentId == uid();
+    }
+    // Legacy children docs may lack teacherIds: never let a missing/odd field
+    // make the rule error out (an error == deny for the parent too).
+    function isTeacherOf(d) {
+      return 'teacherIds' in d && d.teacherIds is list && uid() in d.teacherIds;
+    }
+    function isChildTeacher(childId) {
+      return signedIn() && isTeacherOf(childData(childId));
+    }
+    function canViewChild(childId) {
+      return signedIn()
+        && (childData(childId).parentId == uid()
+            || isTeacherOf(childData(childId)));
+    }
+    function affectedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    // Optional string field: absent or a string.
+    function optStr(d, k) {
+      return !(k in d) || d[k] is string;
+    }
+    // reflections: child note (content) and parent note (parentNote) are both
+    // optional strings, but at least one must be non-empty.
+    function reflectionNotesOk(d) {
+      return optStr(d, 'content') && optStr(d, 'parentNote')
+        && (('content' in d && d.content != '')
+            || ('parentNote' in d && d.parentNote != ''));
     }
 
-    // ---- PRODUCTION rules (uncomment once Firebase Auth is wired) --------
-    //
-    // match /children/{childId} {
-    //   allow read, write: if request.auth != null
-    //     && resource.data.parentId == request.auth.uid;
-    //   allow create: if request.auth != null
-    //     && request.resource.data.parentId == request.auth.uid;
-    // }
-    //
-    // match /achievements/{docId} {
-    //   allow read: if request.auth != null
-    //     && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid;
-    //   allow create: if request.auth != null
-    //     && get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.parentId == request.auth.uid;
-    //   allow update, delete: if request.auth != null
-    //     && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.parentId == request.auth.uid;
-    // }
+    // ---- users -----------------------------------------------------------
+    match /users/{userId} {
+      allow get: if signedIn() && uid() == userId;
+      allow list: if false;
+
+      // New account: role required, subscription starts free / absent.
+      allow create: if signedIn() && uid() == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role in ['parent', 'teacher']
+        && (!('subscriptionTier' in request.resource.data)
+            || request.resource.data.subscriptionTier == 'free')
+        && !('subscription' in request.resource.data)
+        && !('subscriptionActivatedAt' in request.resource.data)
+        && !('subscriptionExpiresAt' in request.resource.data);
+
+      // Profile edits only; subscription (incl. expiredFrom/expiredAt), role and uid are server-only.
+      allow update: if signedIn() && uid() == userId
+        && !affectedKeys().hasAny([
+             'subscriptionTier', 'subscriptionActivatedAt',
+             'subscriptionExpiresAt', 'subscription', 'expiredFrom', 'expiredAt',
+             'role', 'uid'
+           ]);
+
+      allow delete: if false;
+    }
+
+    // ---- payments (server-written) --------------------------------------
+    match /payments/{orderId} {
+      allow get, list: if signedIn() && resource.data.uid == uid();
+      allow create, update, delete: if false;
+    }
+
+    // ---- children --------------------------------------------------------
+    match /children/{childId} {
+      // get: a single doc may lack teacherIds → tolerant helper.
+      allow get: if signedIn()
+        && (resource.data.parentId == uid() || isTeacherOf(resource.data));
+      // list: evaluated against the query, not the doc. Only
+      // where('parentId','==',uid) or where('teacherIds','array-contains',uid)
+      // queries can pass, and the latter guarantees teacherIds is a list.
+      // ('teacherIds' in resource.data is NOT provable from a query.)
+      allow list: if signedIn()
+        && (resource.data.parentId == uid() || uid() in resource.data.teacherIds);
+
+      allow create: if signedIn()
+        && request.resource.data.parentId == uid()
+        && request.resource.data.childId == childId
+        && request.resource.data.teacherIds is list
+        && request.resource.data.teacherIds.size() == 0;
+
+      // Owner edits profile and manages teacherIds (invite link / unlink).
+      // teacherIds, when present, must stay a list.
+      allow update: if signedIn()
+        && resource.data.parentId == uid()
+        && request.resource.data.parentId == resource.data.parentId
+        && request.resource.data.childId == resource.data.childId
+        && (!('teacherIds' in request.resource.data)
+            || request.resource.data.teacherIds is list);
+
+      allow delete: if signedIn() && resource.data.parentId == uid();
+    }
+
+    // ---- achievements / practiceLogs: parent writes, teacher reads ------
+    match /achievements/{docId} {
+      allow get, list: if canViewChild(resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId);
+      allow update: if isChildOwner(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId;
+      allow delete: if isChildOwner(resource.data.childId);
+    }
+
+    match /practiceLogs/{docId} {
+      allow get, list: if canViewChild(resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId);
+      allow update: if isChildOwner(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId;
+      allow delete: if isChildOwner(resource.data.childId);
+    }
+
+    // ---- reflections: PRIVATE, parent only ------------------------------
+    match /reflections/{docId} {
+      allow get, list: if isChildOwner(resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId)
+        && reflectionNotesOk(request.resource.data);
+      allow update: if isChildOwner(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId
+        && reflectionNotesOk(request.resource.data);
+      allow delete: if isChildOwner(resource.data.childId);
+    }
+
+    // ---- coachNotes: teacher writes, both read --------------------------
+    match /coachNotes/{docId} {
+      allow get, list: if canViewChild(resource.data.childId);
+      allow create: if isChildTeacher(request.resource.data.childId)
+        && request.resource.data.teacherId == uid();
+      allow update: if false;
+      allow delete: if signedIn()
+        && (resource.data.teacherId == uid() || isChildOwner(resource.data.childId));
+    }
+
+    // ---- inviteCodes -----------------------------------------------------
+    match /inviteCodes/{code} {
+      // Anyone signed in may look up a code they were given; listing is not allowed.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.teacherId == uid()
+        && request.resource.data.code == code
+        && request.resource.data.used == false;
+
+      // Parent redeems: flips used → true, records childId/usedAt, nothing else.
+      allow update: if signedIn()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && affectedKeys().hasOnly(['used', 'childId', 'usedAt'])
+        && isChildOwner(request.resource.data.childId);
+
+      allow delete: if signedIn() && resource.data.teacherId == uid();
+    }
+
+    // ---- aiInsights: server-written cache, parent/teacher read ----------
+    // Written only by /api/ai-insight (Admin SDK). Doc id == childId.
+    match /aiInsights/{childId} {
+      allow get: if canViewChild(childId);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // ---- promoCodes: server only ----------------------------------------
+    match /promoCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // ---- everything else: deny -------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

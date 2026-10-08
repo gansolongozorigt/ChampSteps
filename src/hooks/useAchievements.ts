@@ -42,6 +42,19 @@ export function useAchievements(
       setLoading(false);
       return;
     }
+    // No child selected yet (children still loading): do not query Firestore.
+    // where("childId","==","") makes the rules' get(/children/"") fail →
+    // permission-denied → spurious "errorLoading" toast. Same guard as
+    // usePracticeLogs / useReflections.
+    if (!childId) {
+      setAchievements([]);
+      setError(null);
+      return;
+    }
+    // Clear the previous child's list right away so a child switch never shows
+    // (or sends) child A's achievements under child B's name while the new
+    // snapshot is loading.
+    setAchievements([]);
     setLoading(true);
     const unsubscribe = subscribeAchievements(
       childId,

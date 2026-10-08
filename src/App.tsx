@@ -7,9 +7,17 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AddAchievementForm from "./components/AddAchievementForm";
+// import ChampMascot from "./components/ChampMascot";
+import AboutPage from "./components/AboutPage";
+import AdminPage from "./components/AdminPage";
+import CoachNotes from "./components/CoachNotes";
+import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
+import SubscriptionPage from "./components/SubscriptionPage";
+import ExpiryBanner from "./components/ExpiryBanner";
+import PdfPreviewModal from "./components/PdfPreviewModal";
 import TimelineDashboard from "./components/TimelineDashboard";
 import Toast, { type ToastKind } from "./components/Toast";
 import { useAchievements } from "./hooks/useAchievements";
@@ -30,7 +38,7 @@ import {
   useInviteCode,
   deleteAchievement,
   getChildrenForParent,
-  getChildrenForTeacher,
+  subscribeChildrenForTeacher,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -39,13 +47,13 @@ import {
   saveLocalAchievements,
   saveLocalChild,
 } from "./lib/localStore";
-import { exportPortfolio } from "./lib/pdfExport";
+import { celebrate } from "./lib/celebrate";
 import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
 import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf";
+type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
 
 const makeInitialChild = (parentId: string): Child => ({
   childId: `child_${parentId.slice(0, 8)}_001`,
@@ -58,6 +66,9 @@ const makeInitialChild = (parentId: string): Child => ({
 });
 
 const seedAchievements: Achievement[] = [];
+/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
+const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
+const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -72,6 +83,8 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <LoginPage />;
+  // users/{uid}.role not read yet → keep loading; never render a parent dashboard by default
+  if (!user.role) return <FullScreenLoader />;
   return <Dashboard />;
 }
 
@@ -89,26 +102,42 @@ function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [upgradeBarDismissed, setUpgradeBarDismissed] = useState<boolean>(() => {
+    try { const at = Number(localStorage.getItem(UPGRADE_BAR_KEY) ?? 0); return Date.now() - at < UPGRADE_BAR_SNOOZE_MS; } catch { return false; }
+  });
+  const [modalTier, setModalTier] = useState<SubscriptionTier | undefined>(undefined);
+  const openSubscription = (tier?: SubscriptionTier) => { setModalTier(tier); setShowSubscription(true); };
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [includeImages, setIncludeImages] = useState(true);
   const [toast, setToast] = useState<ToastState>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
+  // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
   const child = children[activeChildIdx];
   const tierLimits = TIER_LIMITS[subscription as SubscriptionTier] ?? TIER_LIMITS.free;
 
   const { achievements, loading: loadingAch, error: achError, addLocal } =
     useAchievements(child?.childId ?? "", seedAchievements);
-  const { logs: practiceLogs, addLocal: addLocalLog, removeLocal: removeLocalLog } =
+  const { logs: practiceLogs, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
     usePracticeLogs(child?.childId ?? "");
-  const { reflections, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
-    useReflections(child?.childId ?? "");
+  const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
+    useReflections(child?.childId ?? "", user?.role !== "teacher");
 
   useEffect(() => {
+    if (user && isFirebaseConfigured && user.role === "teacher") {
+      // Teacher roster is live: a newly linked student appears without a reload.
+      return subscribeChildrenForTeacher(
+        user.uid,
+        (list) => { setChildren(list); setLoadingChildren(false); },
+        (e) => { console.error("[champstep] teacher children failed:", e); setLoadingChildren(false); setToast({ kind: "error", message: t("status.errorLoading") }); }
+      );
+    }
     async function load() {
       if (!user) return;
       if (!isFirebaseConfigured) {
@@ -119,10 +148,9 @@ function Dashboard() {
       }
       try {
         let list: Child[] = [];
-        if (user.role === "teacher") {
-          list = await getChildrenForTeacher(user.uid);
-        } else {
+        if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
+          // Only a PARENT ever gets an auto-created first child (never a teacher uid).
           if (list.length === 0) {
             const initial = makeInitialChild(user.uid);
             await createChild({ ...initial, parentId: user.uid });
@@ -144,8 +172,8 @@ function Dashboard() {
   }, [activeSection]);
 
   useEffect(() => {
-    if (achError) setToast({ kind: "error", message: t("status.errorLoading") });
-  }, [achError, t]);
+    if (achError || logsError || reflectionsError) setToast({ kind: "error", message: t("status.errorLoading") });
+  }, [achError, logsError, reflectionsError, t]);
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -170,6 +198,9 @@ function Dashboard() {
         await createAchievement(child.childId, draft);
         setShowForm(false);
         setToast({ kind: "success", message: t("status.saved") });
+        celebrate({ mega: draft.awardType === "Gold" });
+        // setChampMood("excited");
+        // setTimeout(() => setChampMood("idle"), 3000);
       } catch {
         setToast({ kind: "error", message: t("status.errorSaving") });
       }
@@ -190,6 +221,9 @@ function Dashboard() {
     addLocal(newItem);
     setShowForm(false);
     setToast({ kind: "success", message: t("status.saved") });
+    celebrate({ mega: draft.awardType === "Gold" });
+    // setChampMood("excited");
+    // setTimeout(() => setChampMood("idle"), 3000);
   }
 
   async function handleUpdateChild(next: Child, avatarFile?: File) {
@@ -198,8 +232,9 @@ function Dashboard() {
         const saved = await fbUpdateChild(next, avatarFile);
         setChildren((prev) => prev.map((c) => c.childId === saved.childId ? saved : c));
         setToast({ kind: "success", message: t("status.savedProfile") });
-      } catch {
+      } catch (e) {
         setToast({ kind: "error", message: t("status.errorSaving") });
+        throw e; // editor stays open with the draft
       }
       return;
     }
@@ -233,7 +268,10 @@ function Dashboard() {
       bio: "",
       avatarUrl: undefined,
     };
-    if (isFirebaseConfigured) await createChild(newChild);
+    if (isFirebaseConfigured) {
+      try { await createChild(newChild); }
+      catch { setToast({ kind: "error", message: t("status.errorSaving") }); return; }
+    }
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
     setShowAddChild(false);
@@ -259,7 +297,7 @@ function Dashboard() {
     if (!child) return;
     if (isFirebaseConfigured) {
       try { await createPracticeLog(child.childId, log); }
-      catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
@@ -269,7 +307,7 @@ function Dashboard() {
     if (!child) return;
     if (isFirebaseConfigured) {
       try { await createReflection(child.childId, r); }
-      catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
+      catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
     }
     addLocalReflection({ id: crypto.randomUUID(), childId: child.childId, ...r, createdAt: new Date().toISOString() });
@@ -293,23 +331,15 @@ function Dashboard() {
     removeLocalLog(id);
   }
 
-  async function handleDownloadPdf(template?: PdfTemplate) {
+  function openPdfPreview(template: PdfTemplate) {
     if (!child) return;
     if (!tierLimits.hasPdf) {
       setShowSubscription(true);
       setToast({ kind: "info", message: t("pdf.premiumRequired") });
       return;
     }
-    setPdfBusy(true);
-    try {
-      const lang = i18n.language?.startsWith("en") ? "en" : "mn";
-      await exportPortfolio(child, achievements, { t, template: template ?? pdfTemplate, language: lang, includeImages });
-      setToast({ kind: "success", message: t("pdf.success") });
-    } catch {
-      setToast({ kind: "error", message: t("pdf.error") });
-    } finally {
-      setPdfBusy(false);
-    }
+    setPdfTemplate(template);
+    setPreviewOpen(true);
   }
 
   async function handleSignOut() {
@@ -319,6 +349,31 @@ function Dashboard() {
 
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
+    if (user?.role === "teacher") {
+      // A teacher with no linked students yet: show the invite panel instead of a dead end.
+      return (
+        <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-stone-100 font-sans">
+          <header className="flex items-center justify-between bg-stone-950 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-white">
+            <span className="font-semibold">Champ<span className="text-amber-400">Step</span></span>
+            <div className="flex items-center gap-2">
+              <LanguageChip />
+              <button type="button" onClick={handleSignOut} className="rounded-lg border border-stone-700 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-800">
+                {t("auth.signOut")}
+              </button>
+            </div>
+          </header>
+          <div className="bg-emerald-50 px-4 py-2 text-center text-sm text-emerald-800">🏫 {t("status.teacherMode")}</div>
+          <main className="mx-auto max-w-2xl px-4 py-8">
+            <h1 className="text-xl font-semibold text-stone-900">{t("invite.teacher.noStudentsTitle")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("invite.teacher.noStudentsHint")}</p>
+            <div className="mt-6">
+              <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
+            </div>
+          </main>
+          {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
         <p className="text-stone-500">{t("status.childNotFound")}</p>
@@ -327,15 +382,27 @@ function Dashboard() {
   }
 
   const canAddChild = user?.role === "parent" && children.length < tierLimits.maxChildren;
+  // Багш: хүүхдийн өгөгдлийг зөвхөн уншина (Firestore rules-тэй нийцнэ), coach notes л бичнэ
+  const isTeacher = user?.role === "teacher";
   const isPremium = subscription !== "free";
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
+  // ≥90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
+  // counts when it can actually be approached (free = 1 child would otherwise pin the bar forever).
+  const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
+  const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
+  const nearLimit = achNear || childNear;
+  const showUpgradeBar = !isPremium && (!upgradeBarDismissed || nearLimit);
+  function dismissUpgradeBar() {
+    try { localStorage.setItem(UPGRADE_BAR_KEY, String(Date.now())); } catch { /* private mode */ }
+    setUpgradeBarDismissed(true);
+  }
 
   const navItems: { id: NavSection; label: string; icon: React.ReactNode }[] = [
     {
       id: "achievements",
-      label: t("nav.achievements") || "Амжилт",
+      label: t("nav.achievements"),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
@@ -344,7 +411,7 @@ function Dashboard() {
     },
     {
       id: "practice",
-      label: t("nav.practice") || "Бэлтгэл",
+      label: t("nav.practice"),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -353,7 +420,7 @@ function Dashboard() {
     },
     {
       id: "reflection",
-      label: t("nav.reflection") || "Сэтгэл",
+      label: t("nav.reflection"),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -362,7 +429,7 @@ function Dashboard() {
     },
     {
       id: "coach",
-      label: t("nav.coach") || "Багш",
+      label: t("nav.coach"),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
@@ -371,20 +438,42 @@ function Dashboard() {
     },
     {
       id: "pdf",
-      label: t("nav.pdf") || "PDF",
+      label: t("nav.pdf"),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
         </svg>
       ),
     },
+    {
+      id: "about" as NavSection,
+      label: t("nav.about"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+      ),
+    },
+    {
+      id: "terms" as NavSection,
+      label: t("nav.terms"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25h.75" />
+        </svg>
+      ),
+    },
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-stone-100 font-sans">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-dvh bg-stone-100 font-sans">
 
       {/* TOP BAR — мобайл + desktop header */}
-      <header className="sticky top-0 z-40 bg-stone-950 print:hidden">
+      <header className="sticky top-0 z-40 bg-stone-950 print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {/* Gradient лого */}
@@ -404,6 +493,7 @@ function Dashboard() {
               <span className="text-white">Champ</span>
               <span style={{ background:"linear-gradient(135deg,#fbbf24 0%,#d97706 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>Step</span>
             </span>
+            {/* <ChampMascot size={32} mood={champMood} animate={true} /> */}
             <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${
               subscription === "family" ? "bg-blue-950 text-blue-300 border-blue-700" :
               subscription === "master" ? "bg-violet-950 text-violet-300 border-violet-700" :
@@ -431,9 +521,25 @@ function Dashboard() {
                       <p className="text-[10px] text-stone-500 truncate">{user.email}</p>
                     </div>
                   )}
-                  <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
-                    {t("profile.edit")}
+                  {!isTeacher && (
+                    <button onClick={() => { setShowUserMenu(false); setShowProfile(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                      {t("profile.edit")}
+                    </button>
+                  )}
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.about")}
                   </button>
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("subscription"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.subscriptionPage")}
+                  </button>
+                  <button onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} className="w-full text-left px-3 py-2.5 text-[12px] text-stone-300 hover:bg-stone-800 transition-colors">
+                    {t("nav.terms")}
+                  </button>
+                  {user?.email === "gansolongozorigt7@gmail.com" && (
+                    <button onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} className="w-full text-left px-3 py-2.5 text-[12px] text-amber-400 hover:bg-stone-800 transition-colors">
+                      ⚙ {t("nav.admin")}
+                    </button>
+                  )}
                   <button onClick={() => { setShowUserMenu(false); handleSignOut(); }} className="w-full text-left px-3 py-2.5 text-[12px] text-red-400 hover:bg-stone-800 transition-colors border-t border-stone-800">
                     {t("auth.signOut")}
                   </button>
@@ -444,17 +550,17 @@ function Dashboard() {
         </div>
 
         {/* Child tabs — мобайлд харагдана, desktop-д sidebar-д байна */}
-        <div className="md:hidden bg-stone-900 px-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide border-b border-stone-800">
+        <div className="md:hidden bg-stone-900 px-2 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-b border-stone-800">
           {children.map((c, i) => (
             <button key={c.childId} onClick={() => setActiveChildIdx(i)}
-              className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
-              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center">{c.name.slice(0,1).toUpperCase()}</span>}
-              {c.name}
+              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md whitespace-nowrap shrink-0 transition-all ${i === activeChildIdx ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200"}`}>
+              {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} className="w-4 h-4 rounded-full object-cover shrink-0"/> : <span className="w-4 h-4 rounded-full bg-stone-600 text-[8px] font-bold text-white flex items-center justify-center shrink-0">{c.name.slice(0,1).toUpperCase()}</span>}
+              <span className="max-w-[48px] truncate">{c.name.length > 6 ? c.name.slice(0, 6) + "…" : c.name}</span>
             </button>
           ))}
           {canAddChild && (
-            <button onClick={() => setShowAddChild(true)} className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 text-stone-500 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors">
-              + {t("children.addChild")}
+            <button onClick={() => setShowAddChild(true)} className="flex items-center justify-center text-[13px] w-7 h-7 rounded-md shrink-0 text-stone-400 border border-dashed border-stone-700 hover:border-stone-500 hover:text-stone-300 transition-colors" title={t("children.addChild")}>
+              +
             </button>
           )}
         </div>
@@ -468,11 +574,11 @@ function Dashboard() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ══ DESKTOP SIDEBAR ══ */}
-        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-56 bg-stone-950 border-r border-stone-800 shrink-0 overflow-y-auto cs-app-sidebar">
 
           {/* Хүүхдийн жагсаалт */}
           <div className="px-3 pt-4 pb-3 border-b border-stone-800">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">{t("children.title") || "Хүүхдүүд"}</p>
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-stone-600 mb-2">{t("children.title")}</p>
             <div className="space-y-1">
               {children.map((c, i) => (
                 <button key={c.childId} onClick={() => setActiveChildIdx(i)}
@@ -483,7 +589,7 @@ function Dashboard() {
               ))}
               {canAddChild && (
                 <button onClick={() => setShowAddChild(true)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-stone-600 border border-dashed border-stone-800 hover:border-stone-600 hover:text-stone-400 transition-colors text-[11px]">
-                  + {t("children.addChild")}
+                  {t("children.addChild")}
                 </button>
               )}
             </div>
@@ -499,10 +605,12 @@ function Dashboard() {
                 reflection:   "bg-rose-600/15 text-rose-400 border-l-2 border-rose-500",
                 coach:        "bg-emerald-600/15 text-emerald-400 border-l-2 border-emerald-500",
                 pdf:          "bg-violet-600/15 text-violet-400 border-l-2 border-violet-500",
+                about:        "bg-teal-600/15 text-teal-400 border-l-2 border-teal-500",
+                terms:        "bg-slate-600/15 text-slate-400 border-l-2 border-slate-500",
               };
               return (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300"}`}>
+                  className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg mb-0.5 text-left transition-all ${active ? colors[item.id] : "text-stone-500 hover:bg-stone-800 hover:text-stone-300 hover:translate-x-1"}`}>
                   <span className="w-5 h-5 flex items-center justify-center shrink-0">{item.icon}</span>
                   <span className="text-[12px] font-medium">{item.label}</span>
                 </button>
@@ -517,7 +625,7 @@ function Dashboard() {
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">
                   {subscription === "family" ? `★ ${t("sub.tierNames.family")}` : subscription === "master" ? `★ ${t("sub.tierNames.master")}` : `★ ${t("sub.tierNames.coach")}`}
                 </p>
-                <p className="text-[10px] text-stone-500">Хязгааргүй амжилт · PDF · AI</p>
+                <p className="text-[10px] text-stone-500">{t("sub.premiumFeatures")}</p>
               </div>
             ) : (
               <div className="rounded-lg bg-stone-900 border border-stone-800 px-3 py-2.5">
@@ -530,7 +638,7 @@ function Dashboard() {
                 </div>
                 <button onClick={() => setShowSubscription(true)}
                   className="w-full text-[11px] font-bold py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 transition-colors">
-                  ⬆ Upgrade
+                  {t("sub.upgrade")}
                 </button>
               </div>
             )}
@@ -538,31 +646,36 @@ function Dashboard() {
         </aside>
 
         {/* ══ MAIN CONTENT ══ */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-6 print:p-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
+          <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && (
             <div className="bg-stone-900 px-4 py-2 text-center text-[11px] text-amber-400 print:hidden">
               🏫 {t("status.teacherMode")}
             </div>
           )}
+          <div key={activeSection} className="cs-section-in">
           {activeSection === "achievements" && (
             <TimelineDashboard
               child={child}
               achievements={achievements}
+              loading={loadingAch && isFirebaseConfigured}
+              readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
+              onToast={(kind, message) => setToast({ kind, message })}
             />
           )}
           {activeSection === "practice" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("practice.title") || "Бэлтгэлийн тэмдэглэл"} subtitle={child.name} />
-              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} />
+              <SectionHeader title={t("practice.title")} subtitle={child.name} />
+              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} readOnly={isTeacher} />
             </div>
           )}
           {activeSection === "reflection" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("reflection.title") || "Хүүхдийн сэтгэлзүйн тэмдэглэл"} subtitle={child.name} />
+              <SectionHeader title={t("reflection.title")} subtitle={child.name} />
               {user?.role === "parent" ? (
                 <ReflectionSection childId={child.childId} reflections={reflections} onAdd={handleAddReflection} onDelete={handleDeleteReflection} />
               ) : (
@@ -572,11 +685,37 @@ function Dashboard() {
           )}
           {activeSection === "coach" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("invite.parent.heading") || "Багштай холбогдох"} subtitle={child.name} />
+              <SectionHeader title={t("invite.parent.heading")} subtitle={child.name} />
               <div className="grid gap-4">
                 {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
                 {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
+                {user && isFirebaseConfigured && (
+                  <CoachNotes
+                    childId={child.childId}
+                    childName={child.name}
+                    teacherId={user.uid}
+                    teacherName={user.displayName}
+                    isTeacher={isTeacher}
+                    teacherIds={child.teacherIds ?? []}
+                  />
+                )}
               </div>
+            </div>
+          )}
+          {activeSection === "about" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <AboutPage />
+            </div>
+          )}
+          {activeSection === "terms" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <TermsPage />
+            </div>
+          )}
+          {activeSection === "subscription" && (
+            <div className="px-4 py-6 max-w-2xl mx-auto">
+              <SectionHeader title={t("nav.subscriptionPage")} subtitle={user?.displayName} />
+              <SubscriptionPage onOpenModal={openSubscription} onToast={(kind, message) => setToast({ kind, message })} />
             </div>
           )}
           {activeSection === "pdf" && (
@@ -589,13 +728,13 @@ function Dashboard() {
                 <div className="divide-y divide-stone-100">
                   {([
                     { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
-                    { id: "kids"     as PdfTemplate, label: t("pdf.kids"),     desc: t("pdf.kidsDesc") },
                     { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
                     { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
+                    { id: "framed" as PdfTemplate, label: t("pdf.framed"), desc: t("pdf.framedDesc") },
                   ]).map((tmpl) => (
                     <button
                       key={tmpl.id}
-                      onClick={() => { setPdfTemplate(tmpl.id); handleDownloadPdf(tmpl.id); }}
+                      onClick={() => openPdfPreview(tmpl.id)}
                       disabled={pdfBusy || !tierLimits.hasPdf}
                       className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all hover:bg-stone-50 active:bg-stone-100 disabled:opacity-40"
                     >
@@ -637,28 +776,34 @@ function Dashboard() {
               </div>
             </div>
           )}
+          </div>
         </main>
       </div>
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-stone-200 print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {!isPremium && (
-          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2">
+        {showUpgradeBar && (
+          <div className="bg-stone-950 px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="text-[10px] text-stone-400">
-              {showLimitWarning
+              {achNear || showLimitWarning
                 ? <span className="text-amber-400 font-medium">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                : childNear
+                ? <span className="text-amber-400 font-medium">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
                 : <><span className="font-medium text-stone-300">{t("sub.tierNames.free").toUpperCase()}</span> · {achCount}/{maxAch} {t("summary.entries")}</>}
             </span>
+            {!nearLimit && (
+              <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="ml-auto rounded px-1.5 py-1 text-xs text-stone-500 hover:text-stone-200">✕</button>
+            )}
             <button onClick={() => setShowSubscription(true)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-md bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95 transition-all shrink-0">
               {t("sub.upgrade")}
             </button>
           </div>
         )}
         <div className="flex items-stretch">
-          {navItems.map((item) => {
+          {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map((item) => {
             const active = activeSection === item.id;
-            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500" };
-            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500" };
+            const colors: Record<string, string> = { achievements:"text-amber-500", practice:"text-blue-500", reflection:"text-rose-500", coach:"text-emerald-500", pdf:"text-violet-500", about:"text-teal-500", terms:"text-slate-400" };
+            const lines: Record<string, string>  = { achievements:"bg-amber-500", practice:"bg-blue-500", reflection:"bg-rose-500", coach:"bg-emerald-500", pdf:"bg-violet-500", about:"bg-teal-500", terms:"bg-slate-400" };
             return (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${active ? colors[item.id] : "text-stone-400 hover:text-stone-500"}`}>
@@ -672,45 +817,39 @@ function Dashboard() {
       </nav>
 
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
-      {activeSection === "achievements" && (
+      {activeSection === "achievements" && !isTeacher && (
         <button type="button" onClick={() => setShowForm(true)} aria-label={t("app.addAchievement")}
-          className="fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
+          className="group fixed z-30 bg-stone-950 text-white rounded-full shadow-lg shadow-stone-900/30 hover:bg-stone-800 hover:scale-105 active:scale-95 transition-all print:hidden flex items-center justify-center md:bottom-6 md:right-6"
           style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16, width: 52, height: 52 }}>
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-6 h-6 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         </button>
       )}
 
-      {loadingAch && isFirebaseConfigured && (
-        <div className="fixed top-28 inset-x-0 z-30 flex justify-center print:hidden">
-          <div className="rounded-full bg-white px-4 py-1.5 text-[11px] text-stone-600 shadow border border-stone-100">
-            {t("status.loading")}
-          </div>
-        </div>
-      )}
 
       {/* MODALS */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden" onClick={() => setShowForm(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
-            <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} />
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setShowForm(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
+            <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
           </div>
         </div>
       )}
       {editingAchievement && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 sm:items-center sm:p-4 print:hidden" onClick={() => setEditingAchievement(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4 print:hidden cs-backdrop-in" onClick={() => setEditingAchievement(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[calc(100dvh-1rem)] overflow-y-auto cs-panel-in">
             <AddAchievementForm
               childId={child.childId}
               childName={child.name}
               initialDraft={editingAchievement}
+              onError={(m) => setToast({ kind: "error", message: m })}
               onCancel={() => setEditingAchievement(null)}
               onSubmit={async (draft) => {
                 if (isFirebaseConfigured) {
                   try {
-                    const { updateAchievement } = await import("./lib/firebase");
-                    await updateAchievement(editingAchievement.id, { title: draft.title, date: draft.date, location: draft.location, category: draft.category, description: draft.description, awardType: draft.awardType });
+                    const { updateAchievementWithImages } = await import("./lib/firebase");
+                    await updateAchievementWithImages(editingAchievement.id, child.childId, draft, editingAchievement.imageURLs ?? []);
                     setEditingAchievement(null);
                     setToast({ kind: "success", message: t("status.entryUpdated") });
                   } catch {
@@ -725,9 +864,18 @@ function Dashboard() {
           </div>
         </div>
       )}
-      {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} />}
-      {showSubscription && <SubscriptionModal onClose={() => setShowSubscription(false)} />}
+      {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} onError={(m) => setToast({ kind: "error", message: m })} />}
+      {showSubscription && <SubscriptionModal initialTier={modalTier} onClose={() => { setShowSubscription(false); setModalTier(undefined); }} />}
+      <PdfPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        child={child}
+        achievements={achievements}
+        template={pdfTemplate}
+        includeImages={includeImages}
+      />
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
       {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );
@@ -742,30 +890,128 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-function LanguageChip() {
-  const { i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage ?? i18n.language;
+function FlagMN() {
   return (
-    <button
-      onClick={() => i18n.changeLanguage(lang === "mn" ? "en" : "mn")}
-      className="text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
-    >
-      {lang === "mn" ? "MN" : "EN"}
-    </button>
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#fff" />
+      <rect width="10" height="20" fill="#C4272E" />
+      <rect x="10" width="10" height="20" fill="#015197" />
+      <rect x="20" width="10" height="20" fill="#C4272E" />
+      <g fill="#F9CF02">
+        <circle cx="5" cy="4.2" r="1.05" />
+        <rect x="4.3" y="6" width="1.4" height="9.5" rx="0.35" />
+        <path d="M3.5 5.4 L5 8 L6.5 5.4 Z" />
+      </g>
+    </svg>
   );
 }
 
-function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void }) {
+function FlagEN() {
+  return (
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#012169" />
+      <path d="M0,0 L30,20 M30,0 L0,20" stroke="#fff" strokeWidth="4" />
+      <path d="M0,0 L30,20 M30,0 L0,20" stroke="#C8102E" strokeWidth="2" />
+      <path d="M15,0 V20 M0,10 H30" stroke="#fff" strokeWidth="6" />
+      <path d="M15,0 V20 M0,10 H30" stroke="#C8102E" strokeWidth="3.5" />
+    </svg>
+  );
+}
+
+function FlagRU() {
+  return (
+    <svg viewBox="0 0 30 20" className="w-full h-full block" preserveAspectRatio="xMidYMid slice">
+      <rect width="30" height="20" fill="#fff" />
+      <rect y="6.67" width="30" height="6.67" fill="#0039A6" />
+      <rect y="13.33" width="30" height="6.66" fill="#D52B1E" />
+    </svg>
+  );
+}
+
+const LANGS = [
+  { code: "mn", name: "Монгол", Flag: FlagMN },
+  { code: "en", name: "English", Flag: FlagEN },
+  { code: "ru", name: "Русский", Flag: FlagRU },
+];
+
+function LanguageChip() {
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = (i18n.resolvedLanguage ?? i18n.language ?? "mn").slice(0, 2);
+  const cur = LANGS.find((l) => l.code === current) ?? LANGS[0];
+  const CurFlag = cur.Flag;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-[11px] font-medium pl-1.5 pr-2 py-1 rounded-md bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700 active:scale-95 transition-all"
+        aria-label={t("app.language")}
+      >
+        <span className="w-[18px] h-[12px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
+          <CurFlag />
+        </span>
+        <span>{cur.code.toUpperCase()}</span>
+        <svg className={`w-3 h-3 text-stone-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1.5 w-36 rounded-lg bg-stone-800 border border-stone-700 shadow-xl shadow-black/30 overflow-hidden cs-menu-in origin-top-right z-50">
+          {LANGS.map((l) => {
+            const active = l.code === current;
+            const Flag = l.Flag;
+            return (
+              <button
+                key={l.code}
+                onClick={() => { i18n.changeLanguage(l.code); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-left transition-colors ${active ? "bg-amber-600/20 text-amber-300" : "text-stone-300 hover:bg-stone-700"}`}
+              >
+                <span className="w-[21px] h-[14px] rounded-[2px] overflow-hidden ring-1 ring-black/20 shrink-0">
+                  <Flag />
+                </span>
+                <span className="flex-1">{l.name}</span>
+                {active && (
+                  <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void | Promise<void> }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  async function submit() {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    try { await onAdd(name.trim()); } finally { setSubmitting(false); }
+  }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] cs-backdrop-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl cs-panel-in">
         <h2 className="text-lg font-semibold text-stone-900 mb-4">{t("children.addChild")}</h2>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && name.trim() && onAdd(name.trim())}
+          onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
           placeholder={t("children.namePlaceholder")}
           className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-[13px] text-stone-900 focus:outline-none focus:border-stone-400 transition-colors"
           autoFocus
@@ -775,8 +1021,8 @@ function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: 
             {t("form.actions.cancel")}
           </button>
           <button
-            onClick={() => name.trim() && onAdd(name.trim())}
-            disabled={!name.trim()}
+            onClick={() => void submit()}
+            disabled={!name.trim() || submitting}
             className="px-4 py-2 text-[13px] font-medium bg-stone-950 text-white rounded-lg hover:bg-stone-800 disabled:opacity-40 active:scale-95 transition-all"
           >
             {t("children.addChild")}

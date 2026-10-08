@@ -11,12 +11,15 @@ export interface PracticeLogSectionProps {
   logs: PracticeLog[];
   onAdd: (log: Omit<PracticeLog, "id" | "childId" | "createdAt">) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** Багшийн горим: нэмэх/устгах товч нуугдана */
+  readOnly?: boolean;
 }
 
 export default function PracticeLogSection({
   logs,
   onAdd,
   onDelete,
+  readOnly = false,
 }: PracticeLogSectionProps) {
   const { t, i18n } = useTranslation();
 
@@ -36,6 +39,8 @@ export default function PracticeLogSection({
       setDate(new Date().toISOString().slice(0, 10));
       setDuration(60);
       setShowForm(false);
+    } catch {
+      // parent already showed the error toast; keep the form open with the text
     } finally {
       setSaving(false);
     }
@@ -70,41 +75,48 @@ export default function PracticeLogSection({
             <p className="text-xs text-stone-500 mt-0.5">{totalText()}</p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
-        >
-          {t("practice.addButton")}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
+          >
+            {t("practice.addButton")}
+          </button>
+        )}
       </div>
 
       {/* Add form */}
       {showForm && (
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="flex flex-col gap-3 mb-3">
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.date")}
               </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+                <div className="w-full rounded-lg bg-stone-100 px-3 py-1 text-sm text-center text-stone-600 pointer-events-none">
+                  {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-stone-600 mb-1">
                 {t("practice.fields.duration")}
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {[30, 60, 90, 120].map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setDuration(m)}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                    className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
                       duration === m
                         ? "bg-stone-900 text-white"
                         : "border border-stone-200 text-stone-600 hover:bg-stone-50"
@@ -179,7 +191,7 @@ export default function PracticeLogSection({
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {deleteId === log.id ? (
+                  {readOnly ? null : deleteId === log.id ? (
                     <div className="flex gap-1">
                       <button
                         type="button"
@@ -200,6 +212,8 @@ export default function PracticeLogSection({
                     <button
                       type="button"
                       onClick={() => setDeleteId(log.id)}
+                      aria-label={t("practice.actions.delete")}
+                      title={t("practice.actions.delete")}
                       className="rounded-lg p-1.5 text-stone-300 hover:bg-rose-50 hover:text-rose-500"
                     >
                       🗑️

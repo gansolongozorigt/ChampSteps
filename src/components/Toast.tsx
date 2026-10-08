@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export type ToastKind = "success" | "error" | "info";
 
@@ -28,6 +29,7 @@ const ICONS: Record<ToastKind, string> = {
 };
 
 export default function Toast({ kind, message, durationMs = 4000, onClose }: ToastProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (durationMs <= 0) return;
     const id = window.setTimeout(onClose, durationMs);
@@ -38,10 +40,10 @@ export default function Toast({ kind, message, durationMs = 4000, onClose }: Toa
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 sm:bottom-8"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-[60] flex justify-center px-4 sm:bottom-8"
     >
       <div
-        className={`pointer-events-auto flex max-w-sm items-center gap-3 rounded-full px-4 py-2.5 text-sm shadow-lg shadow-stone-900/20 ${STYLES[kind]}`}
+        className={`cs-toast-in pointer-events-auto flex max-w-sm items-center gap-3 rounded-full px-4 py-2.5 text-sm shadow-lg shadow-stone-900/20 ${STYLES[kind]}`}
       >
         <span
           aria-hidden
@@ -54,7 +56,7 @@ export default function Toast({ kind, message, durationMs = 4000, onClose }: Toa
           type="button"
           onClick={onClose}
           className="-mr-1 rounded-full px-2 text-sm text-white/80 hover:text-white"
-          aria-label="Dismiss"
+          aria-label={t("app.dismiss")}
         >
           ×
         </button>

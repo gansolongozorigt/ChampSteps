@@ -1,3 +1,6 @@
+// Plan limits/prices live in shared/plans.js (shared with api/).
+import { PLANS, PLAN_IDS } from "../../shared/plans.js";
+
 // =============================================================================
 // ChampStep — Core Data Schema v2
 // Шинэчлэлт: role-based auth, multi-child, invite code, reflection нууцлал
@@ -42,12 +45,14 @@ export const TIER_LIMITS: Record<SubscriptionTier, {
   maxAchievements: number; // -1 = хязгааргүй
   hasPdf: boolean;
   hasAI: boolean;
-}> = {
-  free:   { maxChildren: 1,   maxAchievements: 30,  hasPdf: false, hasAI: false },
-  family: { maxChildren: 3,   maxAchievements: -1,  hasPdf: true,  hasAI: false },
-  master: { maxChildren: 10,  maxAchievements: -1,  hasPdf: true,  hasAI: true  },
-  coach:  { maxChildren: 3,   maxAchievements: -1,  hasPdf: true,  hasAI: true  },
-};
+}> = Object.fromEntries(
+  PLAN_IDS.map((id) => [id, {
+    maxChildren: PLANS[id].maxChildren,
+    maxAchievements: PLANS[id].maxAchievements,
+    hasPdf: PLANS[id].hasPdf,
+    hasAI: PLANS[id].hasAI,
+  }])
+) as Record<SubscriptionTier, { maxChildren: number; maxAchievements: number; hasPdf: boolean; hasAI: boolean }>;
 
 // -----------------------------------------------------------------------------
 // Хүүхэд
@@ -114,7 +119,10 @@ export type AchievementDraft = Omit<
   Achievement,
   "id" | "childId" | "imageURLs" | "createdAt" | "updatedAt"
 > & {
+  /** New photos to upload. */
   images: File[];
+  /** Edit mode: already-uploaded photos the user kept (others are removed). */
+  keptImageURLs?: string[];
 };
 
 // -----------------------------------------------------------------------------

@@ -5,7 +5,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { AchievementCategory, AchievementDraft, AwardType } from "../types";
-import { compressImages } from "../utils/image";
+import { compressImages, validateImageFile } from "../utils/image";
 import { awardStyles, categoryStyles, formatDate } from "../utils/format";
 
 const CATEGORIES: AchievementCategory[] = ["Sports", "Arts", "Academic"];
@@ -28,6 +28,8 @@ export interface AddAchievementFormProps {
   initialDraft?: Partial<AchievementDraft>;
   onSubmit: (draft: AchievementDraft) => Promise<void> | void;
   onCancel?: () => void;
+  /** Rejected/undecodable photo → parent shows a toast. */
+  onError?: (message: string) => void;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -38,6 +40,7 @@ export default function AddAchievementForm({
   initialDraft,
   onSubmit,
   onCancel,
+  onError,
 }: AddAchievementFormProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -49,6 +52,10 @@ export default function AddAchievementForm({
     ...initialDraft,
     images: [],
   });
+  // Edit mode: photos already uploaded; the user may remove some.
+  const [kept, setKept] = useState<string[]>(
+    () => (initialDraft as { imageURLs?: string[] } | undefined)?.imageURLs ?? []
+  );
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof AchievementDraft, string>>>({});
 
@@ -78,9 +85,20 @@ export default function AddAchievementForm({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const incoming = Array.from(files).slice(0, 8 - draft.images.length);
-    const compressed = await compressImages(incoming, { maxDimension: 1600, quality: 0.8 });
-    update("images", [...draft.images, ...compressed]);
+    const all = Array.from(files);
+    const rejected = all.map(validateImageFile).find((r) => r !== null);
+    if (rejected) {
+      onError?.(t(rejected === "size" ? "form.validation.imageSize" : "form.validation.imageType"));
+      return;
+    }
+    const incoming = all.slice(0, Math.max(0, 8 - kept.length - draft.images.length));
+    try {
+      const compressed = await compressImages(incoming, { maxDimension: 1600, quality: 0.8 });
+      update("images", [...draft.images, ...compressed]);
+    } catch (e) {
+      console.warn("[champstep] image decode failed:", e);
+      onError?.(t("form.validation.imageType")); // HEIC/corrupt: browser could not decode it
+    }
   }
 
   function removeImage(index: number) {
@@ -91,7 +109,7 @@ export default function AddAchievementForm({
     if (!validateStep(2)) { setStep(2); return; }
     setSubmitting(true);
     try {
-      await onSubmit(draft);
+      await onSubmit(isEditing ? { ...draft, keptImageURLs: kept } : draft);
       setDraft(EMPTY_DRAFT);
       setStep(1);
     } finally {
@@ -132,7 +150,7 @@ export default function AddAchievementForm({
                 />
               </Field>
             </div>
-            <Field label={t("form.fields.category")}>
+            <Field label={t("form.fields.category")} group>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((c) => {
                   const selected = draft.category === c;
@@ -153,7 +171,7 @@ export default function AddAchievementForm({
 
         {step === 2 && (
           <section className="space-y-4">
-            <Field label={t("form.fields.award")}>
+            <Field label={t("form.fields.award")} group>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {AWARDS.map((a) => {
                   const selected = draft.awardType === a;
@@ -190,9 +208,22 @@ export default function AddAchievementForm({
                 <span className="text-3xl" aria-hidden>📸</span>
                 <span className="text-sm font-medium">{t("form.fields.uploadCta")}</span>
                 <span className="text-xs text-stone-400">{t("form.fields.uploadHint")}</span>
-                <input type="file" accept="image/*" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { const fl = e.target.files; void handleFiles(fl); }} />
               </label>
             </Field>
+            {kept.length > 0 && (
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {kept.map((url, i) => (
+                  <li key={url + i} className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+                    <img src={url} alt="" className="h-24 w-full object-cover" />
+                    <button type="button" onClick={() => setKept((k) => k.filter((_, j) => j !== i))}
+                      className="absolute right-1 top-1 rounded-full bg-white/90 px-2 py-0.5 text-[11px] text-stone-700 shadow hover:bg-white">
+                      {t("form.actions.remove")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {previews.length > 0 && (
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {previews.map((p, i) => (
@@ -219,7 +250,7 @@ export default function AddAchievementForm({
             <ReviewRow label={t("form.review.labels.category")} value={t(`categories.${draft.category}`)} />
             <ReviewRow label={t("form.review.labels.award")} value={`${awardStyles[draft.awardType].emoji} ${t(`awards.${draft.awardType}`)}`} />
             <ReviewRow label={t("form.review.labels.description")} value={draft.description} />
-            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: draft.images.length })} />
+            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: kept.length + draft.images.length })} />
           </section>
         )}
       </div>
@@ -246,7 +277,7 @@ export default function AddAchievementForm({
             {submitting
               ? t("form.actions.saving")
               : isEditing
-              ? "Өөрчлөлт хадгалах"
+              ? t("form.actions.saveChanges")
               : childName
               ? t("form.actions.saveForChild", { name: childName })
               : t("form.actions.save")}
@@ -271,7 +302,7 @@ function Header({ step, childName, isEditing }: { step: Step; childName?: string
         {childName ? t("form.headerEyebrowWithName", { name: childName }) : t("form.headerEyebrow")}
       </p>
       <h2 className="mt-1 font-serif text-2xl text-stone-900">
-        {isEditing ? "Бичлэг засах" : t("form.heading")}
+        {isEditing ? t("form.editHeading") : t("form.heading")}
       </h2>
       <ol className="mt-5 flex items-center gap-2">
         {labels.map((label, i) => {
@@ -295,13 +326,14 @@ function Header({ step, childName, isEditing }: { step: Step; childName?: string
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, error, children, group = false }: { label: string; error?: string; children: ReactNode; /** true for button groups: renders a <div>, so the first button does not inherit the label text as its accessible name */ group?: boolean }) {
+  const Tag = group ? "div" : "label";
   return (
-    <label className="block">
+    <Tag className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
       {children}
       {error && <span className="mt-1 block text-xs text-rose-600">{error}</span>}
-    </label>
+    </Tag>
   );
 }
 

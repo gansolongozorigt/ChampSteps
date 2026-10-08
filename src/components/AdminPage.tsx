@@ -1,5 +1,5 @@
 // =============================================================================
-// AdminPage — promo code management (guarded by hardcoded admin email)
+// AdminPage — promo code management. UI gate: ADMIN_EMAIL; enforced server-side in /api/promo/admin.
 // =============================================================================
 
 import { useEffect, useState } from "react";
@@ -9,10 +9,11 @@ import {
   createPromoCode,
   listPromoCodes,
   seedPromoCodes,
+  togglePromoCode,
   type PromoCode,
-} from "../lib/firebase";
+} from "../lib/promoClient";
 
-const ADMIN_EMAIL = "admin@champsteps.app";
+const ADMIN_EMAIL = "gansolongozorigt7@gmail.com";
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -21,7 +22,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
   if (!user || user.email !== ADMIN_EMAIL) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         onClick={onClose}
       >
         <div
@@ -42,7 +43,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-2 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -77,11 +78,17 @@ function PromoSection() {
   const [createMsg, setCreateMsg] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [togglingCode, setTogglingCode] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     setLoadingCodes(true);
+    setLoadError(null);
     try {
       setCodes(await listPromoCodes());
+    } catch (e) {
+      console.error("[champstep] promo list failed:", e);
+      setLoadError(t("admin.error"));
     } finally {
       setLoadingCodes(false);
     }
@@ -99,14 +106,29 @@ function PromoSection() {
         code: code.trim().toUpperCase(),
         discountMonths: months,
         maxUses,
-        expiresAt: new Date(expiry),
-        active: true,
+        expiresAt: new Date(expiry).toISOString(),
       });
       setCreateMsg(t("admin.created"));
       setCode("");
       await load();
+    } catch (e) {
+      console.error("[champstep] promo create failed:", e);
+      setCreateMsg(t("admin.error"));
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleToggle(code: string, currentActive: boolean) {
+    setTogglingCode(code);
+    try {
+      await togglePromoCode(code, !currentActive);
+      await load();
+    } catch (e) {
+      console.error("[champstep] promo toggle failed:", e);
+      setLoadError(t("admin.error"));
+    } finally {
+      setTogglingCode(null);
     }
   }
 
@@ -117,6 +139,9 @@ function PromoSection() {
       await seedPromoCodes();
       setSeedMsg(t("admin.seeded"));
       await load();
+    } catch (e) {
+      console.error("[champstep] promo seed failed:", e);
+      setSeedMsg(t("admin.error"));
     } finally {
       setSeeding(false);
     }
@@ -196,6 +221,7 @@ function PromoSection() {
 
       {/* Code list */}
       <h4 className="text-xs font-semibold text-stone-500 mb-2">{t("admin.listHeading")}</h4>
+      {loadError && <p className="mb-2 text-xs text-red-600">{loadError}</p>}
       {loadingCodes ? (
         <p className="text-xs text-stone-400">{t("admin.loading")}</p>
       ) : codes.length === 0 ? (
@@ -207,9 +233,14 @@ function PromoSection() {
               <div>
                 <span className="font-mono font-bold text-stone-900">{c.code}</span>
                 <span className="ml-2 text-stone-500">{c.discountMonths}mo</span>
-                <span className={`ml-2 rounded px-1.5 py-0.5 ${c.active ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
-                  {c.active ? t("admin.active") : t("admin.inactive")}
-                </span>
+                <button
+                  type="button"
+                  disabled={togglingCode === c.code}
+                  onClick={() => handleToggle(c.code, c.active)}
+                  className="ml-2 rounded px-1.5 py-0.5 cursor-pointer hover:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  {c.active ? `🟢 ${t("admin.active")}` : `🔴 ${t("admin.inactive")}`}
+                </button>
               </div>
               <span className="text-stone-400 shrink-0">
                 {c.usedBy.length}/{c.maxUses} {t("admin.used")}
