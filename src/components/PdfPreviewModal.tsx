@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft, ArrowRight, Check, Expand, FileText, Maximize2, Shrink, X } from "lucide-react";
 import type { PdfTemplate, FrameStyle } from "../lib/pdfExport";
 
 const FRAME_STYLES: FrameStyle[] = ["classic", "corner", "minimal"];
@@ -138,45 +139,19 @@ export default function PdfPreviewModal({
     }
   }
 
-  const checkIcon = (
-    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
+  const checkIcon = <Check size={14} strokeWidth={3} className="text-white" />;
+  const fullscreenIcon = <Maximize2 size={18} strokeWidth={2} />;
+  const expandIcon = <Expand size={18} strokeWidth={2} />;
+  const collapseIcon = <Shrink size={18} strokeWidth={2} />;
+  const pdfIcon = <FileText size={26} strokeWidth={1.75} />;
 
-  const fullscreenIcon = (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
-    </svg>
-  );
-
-  const expandIcon = (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 4h5v5M20 4l-6 6M9 20H4v-5M4 20l6-6" />
-    </svg>
-  );
-
-  const collapseIcon = (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h5M14 10V5M14 10l6-6M10 14H5M10 14v5M10 14l-6 6" />
-    </svg>
-  );
-
-  const pdfIcon = (
-    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5M9 13h6M9 17h6" />
-    </svg>
-  );
-
-  const toolbarBtnClass =
-    "w-8 h-8 rounded-md flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-200/70 disabled:opacity-30 disabled:hover:bg-transparent transition-colors";
+  const toolbarBtnClass = "cs-icon-btn cs-icon-btn-sm disabled:opacity-30 disabled:hover:bg-transparent";
 
   const listContent = (
     <>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-stone-500">{t("pdfPreview.entries")}</span>
-        <button type="button" onClick={toggleAll} className="text-xs text-amber-600 hover:text-amber-700">
+      <div className="flex items-center justify-between mb-2 min-h-[36px]">
+        <span className="t-label">{t("pdfPreview.entries")}</span>
+        <button type="button" onClick={toggleAll} className="cs-btn cs-btn-ghost cs-btn-xs text-primary">
           {allSelected ? t("pdfPreview.deselectAll") : t("pdfPreview.selectAll")}
         </button>
       </div>
@@ -187,14 +162,15 @@ export default function PdfPreviewModal({
             key={a.id}
             type="button"
             onClick={() => toggle(a.id)}
-            className="w-full flex items-start gap-3 py-2.5 text-left border-t border-stone-100"
+            className="w-full flex items-start gap-3 py-3 text-left border-t border-line min-h-[44px]"
+            aria-pressed={on}
           >
-            <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${on ? "bg-stone-950 border-stone-950" : "bg-white border-stone-300"}`}>
+            <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${on ? "bg-primary border-primary" : "bg-surface border-line-strong"}`}>
               {on && checkIcon}
             </span>
             <span className={`min-w-0 ${on ? "" : "opacity-50"}`}>
-              <span className="block text-sm text-stone-800 leading-tight truncate">{a.title}</span>
-              <span className="block text-xs text-stone-400 mt-0.5">{a.date} · {t(`awards.${a.awardType}`)}</span>
+              <span className="block t-body-strong text-ink leading-tight truncate">{a.title}</span>
+              <span className="block t-caption mt-0.5">{a.date} · {t(`awards.${a.awardType}`)}</span>
             </span>
           </button>
         );
@@ -203,8 +179,8 @@ export default function PdfPreviewModal({
   );
 
   const previewToolbar = (
-    <div className="flex items-center justify-between mb-2">
-      <span className="text-xs font-medium text-stone-500">{t("pdfPreview.preview")}</span>
+    <div className="flex items-center justify-between mb-2 min-h-[36px]">
+      <span className="t-label">{t("pdfPreview.preview")}</span>
       <div className="flex items-center gap-1">
         {!isMobile && (
           <button
@@ -233,9 +209,9 @@ export default function PdfPreviewModal({
   );
 
   const generatingOverlay = generating && (
-    <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
-      <div className="flex items-center gap-2 text-sm text-stone-500">
-        <span className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+    <div className="absolute inset-0 flex items-center justify-center bg-surface/70 rounded-card">
+      <div className="flex items-center gap-2 t-caption text-ink-2">
+        <span className="w-4 h-4 border-2 border-line-strong border-t-primary rounded-full animate-spin" />
         {t("pdfPreview.generating")}
       </div>
     </div>
@@ -244,7 +220,7 @@ export default function PdfPreviewModal({
   const previewContent = (
     <div className="flex-1 min-h-0 flex flex-col">
       {selectedList.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-stone-400 text-center px-4">
+        <div className="flex-1 flex items-center justify-center t-body text-ink-3 text-center px-4">
           {t("pdfPreview.noneSelected")}
         </div>
       ) : isMobile ? (
@@ -254,13 +230,13 @@ export default function PdfPreviewModal({
             type="button"
             onClick={openFullscreen}
             disabled={!previewUrl || generating}
-            className="inline-flex items-center gap-3 px-5 py-3.5 rounded-xl bg-stone-950 text-white text-sm font-medium disabled:opacity-40 hover:bg-stone-800 transition-colors"
+            className="cs-btn cs-btn-ink"
           >
             {pdfIcon}
             {t("pdf.previewOnPhone")}
             {fullscreenIcon}
           </button>
-          <p className="text-xs text-stone-400 text-center">{t("pdf.previewOnPhoneHint")}</p>
+          <p className="t-caption text-center">{t("pdf.previewOnPhoneHint")}</p>
           {generatingOverlay}
         </div>
       ) : (
@@ -271,7 +247,7 @@ export default function PdfPreviewModal({
               <iframe
                 title={t("pdfPreview.preview")}
                 src={previewUrl}
-                className="w-full h-full rounded-lg border border-stone-200 bg-white"
+                className="w-full h-full rounded-card border border-line bg-surface"
               />
             )}
             {generatingOverlay}
@@ -283,11 +259,11 @@ export default function PdfPreviewModal({
 
   const stepIndicator = (
     <div className="flex items-center gap-2 mb-4">
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${step === "select" ? "bg-stone-950 text-white" : "bg-stone-200 text-stone-500"}`}>1</span>
-      <span className={`text-xs ${step === "select" ? "text-stone-900 font-medium" : "text-stone-400"}`}>{t("pdfPreview.stepSelect")}</span>
-      <span className="flex-1 h-px bg-stone-200" />
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${step === "preview" ? "bg-stone-950 text-white" : "bg-stone-200 text-stone-500"}`}>2</span>
-      <span className={`text-xs ${step === "preview" ? "text-stone-900 font-medium" : "text-stone-400"}`}>{t("pdfPreview.preview")}</span>
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold ${step === "select" ? "bg-primary text-white" : "bg-primary-soft text-primary-soft-ink"}`}>{step === "select" ? "1" : <Check size={13} strokeWidth={3} />}</span>
+      <span className={`t-caption ${step === "select" ? "text-ink" : ""}`}>{t("pdfPreview.stepSelect")}</span>
+      <span className="flex-1 h-px bg-line" />
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold ${step === "preview" ? "bg-primary text-white" : "bg-surface-muted text-ink-3"}`}>2</span>
+      <span className={`t-caption ${step === "preview" ? "text-ink" : ""}`}>{t("pdfPreview.preview")}</span>
     </div>
   );
 
@@ -296,7 +272,7 @@ export default function PdfPreviewModal({
       type="button"
       onClick={handleDownload}
       disabled={selectedList.length === 0 || generating}
-      className="px-4 py-2 rounded-lg text-sm bg-stone-950 text-white disabled:opacity-40 hover:bg-stone-800 transition-colors"
+      className="cs-btn cs-btn-primary cs-btn-sm"
     >
       {t("pdfPreview.downloadN", { n: selectedList.length })}
     </button>
@@ -305,42 +281,40 @@ export default function PdfPreviewModal({
   const isExpanded = expanded && !isMobile;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4 print:hidden cs-backdrop-in" onClick={onClose}>
+    <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={onClose}>
       <div
-        className={`bg-white w-full rounded-2xl shadow-xl overflow-hidden flex flex-col cs-panel-in ${
-          isExpanded ? "max-w-[95vw] h-[95vh]" : "max-w-3xl max-h-[90vh]"
+        className={`cs-modal cs-panel-in overflow-hidden flex flex-col ${
+          isExpanded ? "sm:max-w-[95vw] h-[95dvh]" : "sm:max-w-3xl h-[92dvh] sm:h-[85vh]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-stone-100">
+        <div className="cs-handle shrink-0" />
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 pt-3 pb-3 border-b border-line shrink-0">
           <div className="min-w-0">
-            <p className="text-base font-medium text-stone-900">{t("pdfPreview.title")}</p>
-            <p className="text-xs text-stone-500 mt-0.5 truncate">{t(`pdf.${template}`)} · {child.name}</p>
+            <p className="t-h1">{t("pdfPreview.title")}</p>
+            <p className="t-caption mt-0.5 truncate">{t(`pdf.${template}`)} · {child.name}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label={t("pdfPreview.close")} className="shrink-0 text-stone-400 hover:text-stone-600">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button type="button" onClick={onClose} aria-label={t("pdfPreview.close")} className="cs-icon-btn shrink-0 -mr-2">
+            <X size={22} />
           </button>
         </div>
 
         {template === "framed" && (
-          <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-stone-100 bg-stone-50/60">
-            <span className="text-xs text-stone-500 shrink-0">{t("pdfPreview.frame")}:</span>
-            {FRAME_STYLES.map((fs) => (
-              <button
-                key={fs}
-                type="button"
-                onClick={() => setFrameStyle(fs)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                  frameStyle === fs
-                    ? "bg-stone-900 text-white border-stone-900"
-                    : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
-                }`}
-              >
-                {t(`pdfPreview.frameStyle.${fs}`)}
-              </button>
-            ))}
+          <div className="flex items-center gap-3 px-4 sm:px-5 py-2.5 border-b border-line bg-bg-soft shrink-0 overflow-x-auto scrollbar-hide">
+            <span className="t-label shrink-0">{t("pdfPreview.frame")}</span>
+            <div className="cs-segment" role="group">
+              {FRAME_STYLES.map((fs) => (
+                <button
+                  key={fs}
+                  type="button"
+                  onClick={() => setFrameStyle(fs)}
+                  aria-pressed={frameStyle === fs}
+                  className="cs-segment-item"
+                >
+                  {t(`pdfPreview.frameStyle.${fs}`)}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -348,9 +322,9 @@ export default function PdfPreviewModal({
           {!isMobile ? (
             <div className={`grid h-full ${isExpanded ? "grid-cols-1" : "grid-cols-2"}`}>
               {!isExpanded && (
-                <div className="overflow-y-auto p-4 border-r border-stone-100">{listContent}</div>
+                <div className="overflow-y-auto p-4 border-r border-line">{listContent}</div>
               )}
-              <div className="bg-stone-50 p-4 flex flex-col min-h-0">{previewContent}</div>
+              <div className="bg-bg-soft p-4 flex flex-col min-h-0">{previewContent}</div>
             </div>
           ) : step === "select" ? (
             <div className="h-full overflow-y-auto p-4">
@@ -358,43 +332,39 @@ export default function PdfPreviewModal({
               {listContent}
             </div>
           ) : (
-            <div className="h-full bg-stone-50 p-4 flex flex-col">
+            <div className="h-full bg-bg-soft p-4 flex flex-col">
               {stepIndicator}
               {previewContent}
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5 border-t border-stone-100">
-          <span className="text-xs text-stone-400">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-line shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <span className="t-caption">
             {t("pdfPreview.selected", { n: selectedList.length, total: achievements.length })}
           </span>
           <div className="flex gap-2">
             {!isMobile ? (
               <>
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors">
+                <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost cs-btn-sm">
                   {t("pdfPreview.cancel")}
                 </button>
                 {downloadBtn}
               </>
             ) : step === "select" ? (
               <>
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors">
+                <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost cs-btn-sm">
                   {t("pdfPreview.cancel")}
                 </button>
-                <button type="button" onClick={() => setStep("preview")} disabled={selectedList.length === 0} className="px-4 py-2 rounded-lg text-sm bg-stone-950 text-white disabled:opacity-40 hover:bg-stone-800 transition-colors inline-flex items-center gap-1.5">
+                <button type="button" onClick={() => setStep("preview")} disabled={selectedList.length === 0} className="cs-btn cs-btn-primary cs-btn-sm">
                   {t("pdfPreview.continue")}
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h14" />
-                  </svg>
+                  <ArrowRight size={16} strokeWidth={2.5} />
                 </button>
               </>
             ) : (
               <>
-                <button type="button" onClick={() => setStep("select")} className="px-4 py-2 rounded-lg text-sm border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors inline-flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7M19 12H5" />
-                  </svg>
+                <button type="button" onClick={() => setStep("select")} className="cs-btn cs-btn-ghost cs-btn-sm">
+                  <ArrowLeft size={16} strokeWidth={2.5} />
                   {t("pdfPreview.back")}
                 </button>
                 {downloadBtn}

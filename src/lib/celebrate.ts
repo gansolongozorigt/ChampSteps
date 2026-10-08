@@ -1,16 +1,14 @@
 // Амжилт нэмэхэд баярын confetti цацрах эффект (сан ашиглахгүй)
-// mega=true (алтан медаль) → олон өнгийн том дэлбэрэлт; үгүй → дэгжин алтан
+// mega=true (алтан медаль) → брэндийн өнгө + медалийн алт, том дэлбэрэлт; үгүй → брэндийн ногоон/цагаан/graphite
 export function celebrate(opts: { mega?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
 
   const mega = !!opts.mega;
-  const goldPalette = ["#fbbf24", "#f59e0b", "#d97706", "#fde68a", "#ffffff"];
-  const festivePalette = [
-    "#fbbf24", "#f59e0b", "#fde68a", "#378ADD", "#1D9E75",
-    "#D85A30", "#D4537E", "#7F77DD", "#97C459", "#ffffff",
-  ];
-  const colors = mega ? festivePalette : goldPalette;
+  // Brand confetti (docs/BRAND.md): green / soft green / white / graphite; gold medal adds the medal gold.
+  const brandPalette = ["#2F7D5B", "#DDF3E6", "#FFFFFF", "#18251D"];
+  const goldMedalPalette = [...brandPalette, "#D4A24C", "#FFF1C9"];
+  const colors = mega ? goldMedalPalette : brandPalette;
   const count = mega ? 150 : 90;
   const spreadX = mega ? 36 : 24;
 
