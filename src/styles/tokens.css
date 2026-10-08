@@ -1,0 +1,50 @@
+/* src/styles/tokens.css — ChampStep design tokens (single source; docs/BRAND.md).
+   tailwind.config.js carries the SAME values so utilities like bg-primary/50 work. */
+:root {
+  /* ground */
+  --bg: #FFFFFF;
+  --bg-soft: #F4F7F2;
+  --surface: #FFFFFF;
+  --surface-muted: #EEF2EC;
+  /* text */
+  --ink: #18251D;
+  --ink-2: #3E4F46;
+  --ink-3: #6E7D74;
+  /* border */
+  --line: #DCE5DD;
+  --line-strong: #B9C7BC;
+  /* primary — forest green */
+  --primary: #2F7D5B;
+  --primary-hover: #23634A;
+  --primary-soft: #DDF3E6;
+  --primary-soft-ink: #1F5A42;
+  --on-primary: #FFFFFF;
+  /* dark stage (play tone) */
+  --stage: #18251D;
+  --stage-2: #2A3D32;
+  --stage-ink: #FFFFFF;
+  --stage-muted: #C9D6CE;
+  /* medals */
+  --gold: #D4A24C;        --gold-soft: #FFF1C9;
+  --silver: #9CA3AF;      --silver-soft: #EEF0F2;
+  --bronze: #B45309;      --bronze-soft: #FDE2C8;
+  --participant: var(--ink-3); --participant-soft: var(--surface-muted);
+  /* status */
+  --success: var(--primary);  --success-soft: var(--primary-soft);
+  --warn: #B45309;            --warn-soft: #FDE2C8;
+  --error: #B91C1C;           --error-soft: #FEE2E2;
+  --info: var(--ink-2);       --info-soft: var(--surface-muted);
+  /* shape */
+  --r-card: 16px;
+  --r-modal: 24px;
+  --r-pill: 999px;
+  --r-input: 12px;
+  --r-image: 10px;
+  /* elevation (FAB, modal only) */
+  --shadow-float: 0 8px 24px rgba(28, 25, 23, 0.12);
+  /* motion */
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.25, 1);
+  /* type */
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

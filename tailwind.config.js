@@ -1,46 +1,45 @@
 /** @type {import('tailwindcss').Config} */
+// Brand tokens — keep in sync with src/styles/tokens.css (docs/BRAND.md).
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui"],
-        serif: ["Source Serif Pro", "Georgia", "ui-serif", "serif"],
+        sans: ["Manrope", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
       },
       colors: {
-        // ChampSteps Slate+Gold design tokens
-        cs: {
-          slate: {
-            950: "#1c1917",
-            900: "#2c2825",
-            600: "#57534e",
-            400: "#a8a29e",
-            200: "#e7e5e4",
-             50: "#fafaf8",
-          },
-          gold: {
-            600: "#d97706",
-            400: "#fbbf24",
-             50: "#fffbeb",
-          },
-          ai: "#4f46e5",
-        },
+        bg: { DEFAULT: "#FFFFFF", soft: "#F4F7F2" },
+        surface: { DEFAULT: "#FFFFFF", muted: "#EEF2EC" },
+        ink: { DEFAULT: "#18251D", 2: "#3E4F46", 3: "#6E7D74" },
+        line: { DEFAULT: "#DCE5DD", strong: "#B9C7BC" },
+        primary: { DEFAULT: "#2F7D5B", hover: "#23634A", soft: "#DDF3E6", "soft-ink": "#1F5A42" },
+        stage: { DEFAULT: "#18251D", 2: "#2A3D32", ink: "#FFFFFF", muted: "#C9D6CE" },
+        gold: { DEFAULT: "#D4A24C", soft: "#FFF1C9" },
+        silver: { DEFAULT: "#9CA3AF", soft: "#EEF0F2" },
+        bronze: { DEFAULT: "#B45309", soft: "#FDE2C8" },
+        warn: { DEFAULT: "#B45309", soft: "#FDE2C8" },
+        error: { DEFAULT: "#B91C1C", soft: "#FEE2E2" },
       },
-      // ── Анимэйшний суурь (ChampStep "амь оруулах") ──
+      borderRadius: {
+        card: "16px",
+        modal: "24px",
+        input: "12px",
+        image: "10px",
+      },
+      boxShadow: {
+        float: "0 8px 24px rgba(28, 25, 23, 0.12)",
+        none: "none",
+      },
+      transitionDuration: { DEFAULT: "180ms" },
+      transitionTimingFunction: { DEFAULT: "cubic-bezier(0.2, 0.8, 0.25, 1)" },
       keyframes: {
         "fade-up": {
-          "0%":   { opacity: "0", transform: "translateY(16px)" },
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        pop: {
-          "0%":   { opacity: "0", transform: "scale(0.8)" },
-          "60%":  { opacity: "1", transform: "scale(1.05)" },
-          "100%": { transform: "scale(1)" },
         },
       },
       animation: {
-        "fade-up": "fade-up 0.55s cubic-bezier(0.2,0.8,0.25,1) both",
-        pop:       "pop 0.4s cubic-bezier(0.2,0.8,0.25,1) both",
+        "fade-up": "fade-up 180ms cubic-bezier(0.2,0.8,0.25,1) both",
       },
     },
   },
