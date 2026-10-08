@@ -6,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
 // Uses the installed Google Chrome (channel: "chrome") — no Chromium download needed.
 const PORT = 5174;
 const AI_PORT = 5175;
+/** Second Vite dev server built with VITE_AVATAR_DEV=1 (avatar prototype, branch avatar-prototype). */
+const AVATAR_PORT = 5176;
+export const AVATAR_FLAG_URL = `http://127.0.0.1:${AVATAR_PORT}`;
 export const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 /** Local mock of /api/ai-insight (real handler, AI_INSIGHT_MOCK=1) — see tests/e2e/helpers/api-server.mjs. */
 export const AI_API_URL = `http://127.0.0.1:${AI_PORT}`;
@@ -40,6 +43,12 @@ export default defineConfig({
     {
       command: `E2E_API_PROXY=https://www.champstep.mn E2E_AI_PROXY=${AI_API_URL} npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
       url: BASE_URL,
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      command: `VITE_AVATAR_DEV=1 E2E_API_PROXY=https://www.champstep.mn E2E_AI_PROXY=${AI_API_URL} npm run dev -- --host 127.0.0.1 --port ${AVATAR_PORT} --strictPort`,
+      url: AVATAR_FLAG_URL,
       reuseExistingServer: true,
       timeout: 60_000,
     },

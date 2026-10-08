@@ -19,3 +19,5 @@ interface ImportMeta {
 
 /** package.json version, injected by vite.config.ts `define`. */
 declare const __APP_VERSION__: string | undefined
+/** Build-time flag (vite.config.ts define): VITE_AVATAR_DEV=1 → true. Avatar prototype only. */
+declare const __AVATAR_DEV__: boolean;
