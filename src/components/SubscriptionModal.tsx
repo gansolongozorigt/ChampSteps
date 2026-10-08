@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CircleCheck, FileText, Loader2, Sparkles, Trophy, Users, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { PromoError, applyPromoCode } from "../lib/promoClient";
 import { PLANS, formatMnt } from "../../shared/plans.js";
@@ -78,7 +79,6 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
     achievements: string;
     pdf: boolean;
     ai: boolean;
-    color: string;
     badge?: string;
   }[] = [
     {
@@ -89,7 +89,6 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
       achievements: t("sub.entries", { n: PLANS.free.maxAchievements }),
       pdf: false,
       ai: false,
-      color: "border-stone-200",
     },
     {
       id: "family",
@@ -99,7 +98,6 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: false,
-      color: "border-blue-200",
       badge: t("sub.popular"),
     },
     {
@@ -110,7 +108,6 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: true,
-      color: "border-amber-300",
     },
     {
       id: "coach",
@@ -120,7 +117,6 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
       achievements: t("sub.unlimited"),
       pdf: true,
       ai: true,
-      color: "border-purple-300",
     },
   ];
   // Parents see free/family/master, teachers see free/coach.
@@ -213,22 +209,19 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
   const tierInfo = TIERS.find((t) => t.id === selectedTier);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4 print:hidden cs-backdrop-in"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl cs-panel-in"
-      >
-        <header className="flex items-center justify-between border-b border-stone-100 px-5 py-3">
-          <h2 className="font-serif text-lg font-bold text-stone-900">{t("sub.title")}</h2>
-          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-700">✕</button>
+    <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-lg">
+        <div className="cs-handle" />
+        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+          <h2 className="t-h1">{t("sub.title")}</h2>
+          <button type="button" onClick={onClose} className="cs-icon-btn -mr-2" aria-label={t("sub.close")}>
+            <X size={20} />
+          </button>
         </header>
 
         {step === "compare" && (
-          <div className="px-5 py-5 max-h-[80vh] overflow-y-auto">
-            <p className="text-sm text-stone-500 mb-4">{t("sub.subtitle")}</p>
+          <div className="px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <p className="t-body text-ink-2 mb-4">{t("sub.subtitle")}</p>
             <div className="space-y-3">
               {TIERS_VISIBLE.map((tier) => {
                 const isCurrent = subscription === tier.id;
@@ -242,43 +235,40 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                     disabled={blocked}
                     aria-disabled={blocked}
                     title={isDowngrade(subscriptionInfo, tier.id) ? downgradeMsg() : undefined}
-                    className={`w-full rounded-xl border-2 p-4 text-left transition ${
+                    aria-pressed={isSelected && !isCurrent}
+                    className={`cs-card w-full p-4 text-left transition-colors min-h-[44px] ${
                       isSelected && !isCurrent
-                        ? `${tier.color} bg-stone-50 ring-2 ring-stone-900`
+                        ? "!border-primary bg-primary-soft"
                         : isCurrent
-                        ? "border-emerald-300 bg-emerald-50 cursor-default"
-                        : `${tier.color} hover:bg-stone-50`
+                        ? "bg-bg-soft cursor-default"
+                        : "hover:bg-bg-soft disabled:cursor-not-allowed disabled:opacity-60"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-stone-900">{tier.name}</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="t-h2">{tier.name}</span>
                           {tier.badge && (
-                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                              {tier.badge}
-                            </span>
+                            <span className={`cs-badge-tier ${tier.id === "free" ? "cs-badge-tier-free" : "cs-badge-tier-paid"}`}>{tier.badge}</span>
                           )}
                           {isCurrent && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                              {t("sub.current")}
-                            </span>
+                            <span className="cs-badge-tier cs-badge-tier-paid">{t("sub.current")}</span>
                           )}
                           {isDowngrade(subscriptionInfo, tier.id) && (
-                            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">{downgradeMsg()}</span>
+                            <span className="cs-chip cs-chip-muted h-auto whitespace-normal py-1 text-left">{downgradeMsg()}</span>
                           )}
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-stone-500">
-                          <span>👤 {tier.children}</span>
-                          <span>🏆 {tier.achievements}</span>
-                          {tier.pdf && <span>📄 PDF</span>}
-                          {tier.ai && <span>🤖 AI</span>}
-                        </div>
+                        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 t-caption text-ink-2">
+                          <li className="inline-flex items-center gap-1.5"><Users size={14} strokeWidth={2} className="text-ink-3" />{tier.children}</li>
+                          <li className="inline-flex items-center gap-1.5"><Trophy size={14} strokeWidth={2} className="text-ink-3" />{tier.achievements}</li>
+                          {tier.pdf && <li className="inline-flex items-center gap-1.5"><FileText size={14} strokeWidth={2} className="text-ink-3" />PDF</li>}
+                          {tier.ai && <li className="inline-flex items-center gap-1.5"><Sparkles size={14} strokeWidth={2} className="text-ink-3" />AI</li>}
+                        </ul>
                       </div>
                       <div className="shrink-0 text-right">
-                        <span className="font-bold text-stone-900">{tier.price}</span>
+                        <span className="t-stat text-[22px]">{tier.price}</span>
                         {tier.id !== "free" && (
-                          <span className="block text-[10px] text-stone-400">{t("sub.perMonth")}</span>
+                          <span className="block t-caption mt-1">{t("sub.perMonth")}</span>
                         )}
                       </div>
                     </div>
@@ -287,37 +277,37 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
               })}
             </div>
             {/* Promo code */}
-            <div className="mt-5 rounded-xl border border-dashed border-stone-300 p-3">
-              <p className="mb-2 text-xs font-medium text-stone-500">{t("promo.label")}</p>
+            <div className="mt-5 cs-card-soft p-4">
+              <p className="cs-field-label">{t("promo.label")}</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                   placeholder={t("promo.placeholder")}
-                  className="flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
+                  className="cs-input flex-1 bg-surface"
                 />
                 <button
                   type="button"
                   onClick={handleApplyPromo}
                   disabled={promoApplying || !promoCode.trim()}
-                  className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+                  className="cs-btn cs-btn-outline shrink-0"
                 >
                   {promoApplying ? t("promo.applying") : t("promo.apply")}
                 </button>
               </div>
               {promoResult && (
-                <p className={`mt-2 text-xs ${promoResult.success ? "text-emerald-600" : "text-red-600"}`}>
+                <p className={`mt-2 t-caption ${promoResult.success ? "text-primary" : "text-error"}`}>
                   {promoResult.message}
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+              <div className="mt-3 rounded-input bg-error-soft px-3 py-2 t-body text-error">{error}</div>
             )}
             {paymentsEnabled === false && (
-              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-900" role="status" data-testid="payments-disabled">
+              <div className="mt-3 cs-card-soft px-4 py-3 t-body text-ink-2" role="status" data-testid="payments-disabled">
                 {t("pay.disabledInfo")}
               </div>
             )}
@@ -326,7 +316,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
               type="button"
               onClick={handleStartPayment}
               disabled={processing || selectedTier === "free" || isDowngrade(subscriptionInfo, selectedTier)}
-              className="mt-3 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+              className="cs-btn cs-btn-primary mt-4 w-full"
             >
               {processing
                 ? t("sub.processing")
@@ -341,23 +331,23 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
         )}
 
         {step === "pay" && invoice && (
-          <div className="px-5 py-5 max-h-[80vh] overflow-y-auto">
-            <div className="mb-4 rounded-xl bg-stone-50 p-3 flex items-center justify-between">
-              <div>
-                <span className="block text-sm font-medium text-stone-700">{tierInfo?.name}</span>
-                <span className="block text-[10px] text-stone-400">
+          <div className="px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="mb-4 cs-card-soft p-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block t-body-strong">{tierInfo?.name}</span>
+                <span className="block t-caption truncate">
                   {t("pay.orderId")}: {invoice.orderId}
                 </span>
               </div>
-              <div className="text-right">
-                <span className="block text-[10px] text-stone-400">{t("pay.amount")}</span>
-                <span className="font-bold text-stone-900">{tierInfo?.price}{t("sub.perMonth")}</span>
+              <div className="text-right shrink-0">
+                <span className="block t-label">{t("pay.amount")}</span>
+                <span className="t-body-strong">{tierInfo?.price}{t("sub.perMonth")}</span>
               </div>
             </div>
 
             {/* Desktop: том QR */}
             <div className="hidden md:block">
-              <div className="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white p-2">
+              <div className="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-card border border-line bg-surface p-2">
                 {invoice.qrImage ? (
                   <img
                     src={`data:image/png;base64,${invoice.qrImage}`}
@@ -365,16 +355,16 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                     className="h-full w-full object-contain"
                   />
                 ) : (
-                  <span className="text-xs text-stone-400">{invoice.qrText}</span>
+                  <span className="t-caption break-all">{invoice.qrText}</span>
                 )}
               </div>
-              <p className="mt-2 text-center text-xs text-stone-500">{t("pay.scanQr")}</p>
+              <p className="mt-2 text-center t-caption">{t("pay.scanQr")}</p>
             </div>
 
             {/* Мобайл: жижиг QR + банкны deeplink жагсаалт */}
             <div className="md:hidden">
               {invoice.qrImage && (
-                <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white p-1">
+                <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-card border border-line bg-surface p-1">
                   <img
                     src={`data:image/png;base64,${invoice.qrImage}`}
                     alt={t("pay.qrAlt")}
@@ -382,16 +372,16 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                   />
                 </div>
               )}
-              <p className="mt-3 mb-2 text-xs font-medium text-stone-500">{t("pay.chooseBank")}</p>
+              <p className="mt-3 mb-2 cs-field-label">{t("pay.chooseBank")}</p>
               <ul className="grid grid-cols-2 gap-2">
                 {invoice.urls.map((bank) => (
                   <li key={bank.name}>
                     <a
                       href={bank.link}
-                      className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-left text-xs text-stone-700 hover:bg-stone-50 active:scale-95 transition"
+                      className="flex min-h-[44px] items-center gap-2 rounded-input border border-line bg-surface px-2.5 py-2 text-left text-[13px] font-semibold text-ink hover:bg-bg-soft active:scale-[0.98] transition-colors"
                     >
                       {bank.logo && (
-                        <img src={bank.logo} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" loading="lazy" />
+                        <img src={bank.logo} alt="" className="h-7 w-7 shrink-0 rounded-image object-contain" loading="lazy" />
                       )}
                       <span className="truncate">{bank.description || bank.name}</span>
                     </a>
@@ -401,20 +391,20 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
             </div>
 
             {/* Төлбөр шалгаж байна… */}
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-stone-500">
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" aria-hidden />
+            <div className="mt-4 flex items-center justify-center gap-2 t-caption">
+              <Loader2 size={14} className="animate-spin text-primary" aria-hidden />
               <span>{t("pay.checking")}</span>
             </div>
 
             {error && (
-              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+              <div className="mt-3 rounded-input bg-error-soft px-3 py-2 t-body text-error">{error}</div>
             )}
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-5 flex gap-2">
               <button
                 type="button"
                 onClick={handleBackFromPay}
-                className="flex-1 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                className="cs-btn cs-btn-outline flex-1"
               >
                 {t("sub.back")}
               </button>
@@ -423,7 +413,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                   type="button"
                   onClick={handleSimulatePaid}
                   disabled={simulating}
-                  className="flex-1 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  className="cs-btn cs-btn-soft flex-1 border border-dashed border-primary"
                 >
                   {simulating ? "…" : t("pay.simulate")}
                 </button>
@@ -433,17 +423,17 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
         )}
 
         {step === "success" && (
-          <div className="px-5 py-6 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-3xl">✅</div>
-            <h3 className="mt-3 font-serif text-xl font-bold text-stone-900">{t("sub.success")}</h3>
-            <p className="mt-2 text-sm text-stone-500">
+          <div className="px-5 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center">
+            <div className="cs-badge cs-badge-primary mx-auto !h-16 !w-16"><CircleCheck size={32} strokeWidth={2} /></div>
+            <h3 className="mt-4 t-h1">{t("sub.success")}</h3>
+            <p className="mt-2 t-body text-ink-2">
               {t("sub.successMsg", { name: tierInfo?.name })}
             </p>
-            {invoice && <p className="mt-1 text-xs text-emerald-600">{t("pay.success")}</p>}
+            {invoice && <p className="mt-1 t-caption text-primary">{t("pay.success")}</p>}
             <button
               type="button"
               onClick={onClose}
-              className="mt-5 w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
+              className="cs-btn cs-btn-primary mt-6 w-full"
             >
               {t("sub.close")}
             </button>
