@@ -141,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!access) return res.status(403).json({ error: "forbidden" });
 
   const mock = mockEnabled();
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.VITE_ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey && !mock) {
     return res.status(500).json({ error: "API key not configured" });
   }

@@ -6,7 +6,7 @@
 // reflections count with the Admin SDK, builds the exact prompt the API builds
 // (api/_lib/aiInsight.ts), calls Anthropic once per child and writes the texts
 // to a markdown file. Nothing is written to Firestore (no cache, no usage).
-// Auth: FIREBASE_SERVICE_ACCOUNT_B64 + ANTHROPIC_API_KEY (or VITE_ANTHROPIC_API_KEY) from .env
+// Auth: FIREBASE_SERVICE_ACCOUNT_B64 + ANTHROPIC_API_KEY from .env (server-only name; never VITE_*)
 // =============================================================================
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -30,7 +30,7 @@ const language = arg("--lang", "mn");
 const out = arg("--out", "scratch/ai-samples.md");
 if (!email && !uidArg) { console.error("usage: --email <parent email> | --uid <uid> [--lang mn|en|ru] [--out file]"); process.exit(2); }
 const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
-const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.VITE_ANTHROPIC_API_KEY;
+const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!b64) { console.error("FIREBASE_SERVICE_ACCOUNT_B64 missing"); process.exit(2); }
 if (!apiKey) { console.error("ANTHROPIC_API_KEY missing"); process.exit(2); }
 
