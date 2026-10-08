@@ -71,7 +71,6 @@ export default function ReflectionSection({
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="t-h2">{t("reflection.heading")}</h2>
             <span className="cs-chip cs-chip-muted h-6 px-2 text-[10px] uppercase tracking-wide">
               <Lock size={12} strokeWidth={2.5} aria-hidden="true" />
               {t("reflection.private")}

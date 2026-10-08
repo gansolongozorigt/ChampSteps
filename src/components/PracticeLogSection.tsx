@@ -72,9 +72,9 @@ export default function PracticeLogSection({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="min-w-0">
-          <h2 className="t-h2">{t("practice.heading")}</h2>
+          {/* App's SectionHeader already shows the screen title; only the totals live here. */}
           {logs.length > 0 && (
-            <p className="t-caption mt-0.5">{totalText()}</p>
+            <p className="t-body-strong text-ink-2">{totalText()}</p>
           )}
         </div>
         {!readOnly && (
