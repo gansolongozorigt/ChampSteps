@@ -4,7 +4,7 @@
 // local E2E API server (real handlers, Admin SDK) — see helpers/api-server.mjs.
 import { test, expect } from "./fixtures";
 import { authUserGone, childFootprint, childIdsOf, cleanupTestUser, testEmail, uidByEmail, userDocExists } from "./helpers/admin";
-import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, addAchievement, expectToast, openUserMenu } from "./helpers/app";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, addAchievement, expectToast, openUserMenu, fillAddChildModal } from "./helpers/app";
 
 test.describe.configure({ mode: "serial" });
 const parent = { email: testEmail("delete"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
@@ -53,10 +53,15 @@ test("parent: delete child → Firestore + Storage footprint is zero; delete acc
   await expect(page.getByRole("heading", { name: tr("children.empty.title") })).toBeVisible();
   expect(await childFootprint(childId)).toEqual(EMPTY);
 
+  // reload: still the empty state, no default child re-created, no auto modal
+  await page.reload();
+  await expect(page.getByRole("heading", { name: tr("children.empty.title") })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeHidden();
+  expect(await childIdsOf(parent.email)).toEqual([]);
+
   // a new child can be added from the empty state; then the whole account goes
   await page.getByRole("button", { name: tr("children.empty.add") }).click();
-  await page.getByPlaceholder(tr("children.namePlaceholder")).fill("Анар");
-  await page.getByPlaceholder(tr("children.namePlaceholder")).press("Enter");
+  await fillAddChildModal(page, "Анар", "2016-02-20");
   await waitForDashboard(page);
   const uid = await uidByEmail(parent.email);
   const [childId2] = await childIdsOf(parent.email);

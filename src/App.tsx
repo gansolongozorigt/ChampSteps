@@ -49,6 +49,7 @@ import {
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
 import {
+  clearLocalChild,
   loadLocalChild,
   saveLocalAchievements,
   saveLocalChild,
@@ -62,17 +63,15 @@ import { TIER_LIMITS } from "./types";
 type ToastState = { kind: ToastKind; message: string } | null;
 type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
 
-const makeInitialChild = (parentId: string): Child => ({
-  childId: `child_${parentId.slice(0, 8)}_001`,
-  parentId,
-  teacherIds: [],
-  name: "Хүүхэд",
-  birthDate: "",
-  bio: "",
-  avatarUrl: undefined,
-});
-
 const seedAchievements: Achievement[] = [];
+/** First run: the "add child" modal opens by itself once per parent (per device) when they have no child yet. */
+const FIRST_RUN_KEY = (uid: string) => `champstep.firstRunAddChild.${uid}`;
+function firstRunPending(uid: string): boolean {
+  try { return localStorage.getItem(FIRST_RUN_KEY(uid)) !== "1"; } catch { return true; }
+}
+function markFirstRunShown(uid: string) {
+  try { localStorage.setItem(FIRST_RUN_KEY(uid), "1"); } catch { /* private mode */ }
+}
 /** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
 const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -150,8 +149,9 @@ function Dashboard() {
     async function load() {
       if (!user) return;
       if (!isFirebaseConfigured) {
-        const localChild = loadLocalChild(makeInitialChild(user.uid));
-        setChildren([localChild]);
+        const localChild = loadLocalChild();
+        setChildren(localChild ? [localChild] : []);
+        if (!localChild && user.role === "parent" && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
         setLoadingChildren(false);
         return;
       }
@@ -159,12 +159,9 @@ function Dashboard() {
         let list: Child[] = [];
         if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
-          // Only a PARENT ever gets an auto-created first child (never a teacher uid).
-          if (list.length === 0) {
-            const initial = makeInitialChild(user.uid);
-            await createChild({ ...initial, parentId: user.uid });
-            list = [initial];
-          }
+          // No child is ever created automatically: a new parent gets the add-child
+          // modal once; closing it leaves the empty state with its own "add" button.
+          if (list.length === 0 && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
         }
         setChildren(list);
       } catch (e) {
@@ -261,7 +258,7 @@ function Dashboard() {
     setToast({ kind: "success", message: t("status.savedProfile") });
   }
 
-  async function handleAddNewChild(name: string) {
+  async function handleAddNewChild(name: string, birthDate: string) {
     if (!user) return;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
@@ -273,13 +270,15 @@ function Dashboard() {
       parentId: user.uid,
       teacherIds: [],
       name,
-      birthDate: "",
+      birthDate,
       bio: "",
       avatarUrl: undefined,
     };
     if (isFirebaseConfigured) {
       try { await createChild(newChild); }
       catch { setToast({ kind: "error", message: t("status.errorSaving") }); return; }
+    } else {
+      saveLocalChild(newChild);
     }
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
@@ -375,6 +374,7 @@ function Dashboard() {
       catch (e) { throw new Error(deleteErrorMessage(e) || t("danger.child.error")); }
     } else {
       saveLocalAchievements([]);
+      clearLocalChild();
     }
     const remaining = children.filter((c) => c.childId !== victim.childId);
     setChildren(remaining);
@@ -1093,34 +1093,61 @@ function LanguageChip() {
   );
 }
 
-function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void | Promise<void> }) {
+/** YYYY-MM-DD, not in the future, not absurdly old. */
+function isValidBirthDate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return false;
+  const y = d.getFullYear();
+  return y >= 1990 && d.getTime() <= Date.now();
+}
+
+function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, birthDate: string) => void | Promise<void> }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const valid = name.trim().length > 0 && isValidBirthDate(birthDate);
   async function submit() {
-    if (!name.trim() || submitting) return;
+    if (!valid || submitting) return;
     setSubmitting(true);
-    try { await onAdd(name.trim()); } finally { setSubmitting(false); }
+    try { await onAdd(name.trim(), birthDate); } finally { setSubmitting(false); }
   }
   return (
     <div className="cs-modal-backdrop cs-backdrop-in" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-sm">
+      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-sm" role="dialog" aria-modal="true" aria-labelledby="add-child-title">
         <div className="cs-handle" />
         <div className="p-5 sm:p-6">
-          <h2 className="t-h1 mb-4">{t("children.addChild")}</h2>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
-            placeholder={t("children.namePlaceholder")}
-            className="cs-input"
-            autoFocus
-          />
+          <h2 id="add-child-title" className="t-h1 mb-1">{t("children.addChild")}</h2>
+          <p className="t-caption mb-4">{t("children.empty.hint")}</p>
+          <label className="block">
+            <span className="cs-field-label">{t("profile.fields.name")}</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+              placeholder={t("children.namePlaceholder")}
+              className="cs-input"
+              autoFocus
+            />
+          </label>
+          <label className="mt-4 block">
+            <span className="cs-field-label">{t("profile.fields.birthDate")}</span>
+            <input
+              type="date"
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBirthDate(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+              className="cs-input"
+              data-testid="add-child-birthdate"
+            />
+          </label>
           <div className="mt-5 flex justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
             <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">
               {t("form.actions.cancel")}
             </button>
-            <button type="button" onClick={() => void submit()} disabled={!name.trim() || submitting} className="cs-btn cs-btn-primary">
+            <button type="button" onClick={() => void submit()} disabled={!valid || submitting} className="cs-btn cs-btn-primary" data-testid="add-child-submit">
               {t("children.addChild")}
             </button>
           </div>
