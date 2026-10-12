@@ -26,11 +26,21 @@ delete process.env.VERCEL_ENV;
 
 register("./ts-loader.mjs", import.meta.url);
 const { default: handler } = await import("../../../api/ai-insight.ts");
+// Delete endpoints (real handlers, Admin SDK against the production project; the
+// E2E suite only ever deletes the qa+ accounts it created itself).
+const { default: childDelete } = await import("../../../api/child/delete.ts");
+const { default: accountDelete } = await import("../../../api/account/delete.ts");
+const ROUTES = [
+  ["/api/ai-insight", handler],
+  ["/api/child/delete", childDelete],
+  ["/api/account/delete", accountDelete],
+];
 
 const PORT = Number(process.env.E2E_AI_PORT ?? 5175);
 createServer(async (req, res) => {
   if (req.url === "/health") { res.statusCode = 200; return res.end("ok"); }
-  if (!req.url?.startsWith("/api/ai-insight")) { res.statusCode = 404; return res.end("not found"); }
+  const route = ROUTES.find(([p]) => req.url?.startsWith(p));
+  if (!route) { res.statusCode = 404; return res.end("not found"); }
   let raw = "";
   for await (const chunk of req) raw += chunk;
   try { req.body = raw ? JSON.parse(raw) : {}; } catch { req.body = {}; }
@@ -39,6 +49,6 @@ createServer(async (req, res) => {
   res.status = (n) => { res.statusCode = n; return res; };
   res.json = (o) => { res.setHeader("content-type", "application/json"); res.end(JSON.stringify(o)); return res; };
   res.send = (s) => { res.end(typeof s === "string" ? s : JSON.stringify(s)); return res; };
-  try { await handler(req, res); }
+  try { await route[1](req, res); }
   catch (e) { console.error("[e2e api] handler threw:", e); if (!res.headersSent) res.status(500).json({ error: "crash" }); }
-}).listen(PORT, "127.0.0.1", () => console.log(`[e2e api] mock ai-insight on http://127.0.0.1:${PORT}`));
+}).listen(PORT, "127.0.0.1", () => console.log(`[e2e api] ai-insight (mock) + child/account delete on http://127.0.0.1:${PORT}`));

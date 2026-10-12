@@ -10,7 +10,12 @@ export default defineConfig({
     ? {
         proxy: {
           ...(process.env.E2E_AI_PROXY
-            ? { '/api/ai-insight': { target: process.env.E2E_AI_PROXY, changeOrigin: true } }
+            ? {
+                '/api/ai-insight': { target: process.env.E2E_AI_PROXY, changeOrigin: true },
+                // delete endpoints run locally too (tests/e2e/helpers/api-server.mjs)
+                '/api/child': { target: process.env.E2E_AI_PROXY, changeOrigin: true },
+                '/api/account': { target: process.env.E2E_AI_PROXY, changeOrigin: true },
+              }
             : {}),
           '/api': { target: process.env.E2E_API_PROXY, changeOrigin: true },
         },
