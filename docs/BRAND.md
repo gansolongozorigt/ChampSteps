@@ -1,5 +1,7 @@
 # ChampStep — Брэндийн баримт
 
+Төлөв: production 2026-10-12-оос.
+
 Шийдвэр: 2026-10-08. Branch `design-refresh`. Цаашид бүх дизайны ажил энэ файлыг иш татна.
 Нэг эх сурвалж: `src/styles/tokens.css` (CSS custom properties) + `tailwind.config.js` (ижил утгууд).
 
