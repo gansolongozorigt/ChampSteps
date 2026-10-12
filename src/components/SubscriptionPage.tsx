@@ -37,45 +37,48 @@ export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" data-testid="subscription-page">
-        <p className="text-xs uppercase tracking-widest text-stone-500">{t("sub.currentPlan")}</p>
-        <h3 className="mt-1 text-2xl font-semibold text-stone-900">{t(`sub.tierNames.${subscription}`)}</h3>
+      <section className="cs-card p-5" data-testid="subscription-page">
+        <p className="t-label">{t("sub.currentPlan")}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h3 className="t-display">{t(`sub.tierNames.${subscription}`)}</h3>
+          <span className={`cs-badge-tier ${subscription === "free" ? "cs-badge-tier-free" : "cs-badge-tier-paid"}`}>{t(`sub.tierNames.${subscription}`)}</span>
+        </div>
         {subscription !== "free" && (
-          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div><dt className="text-stone-500">{t("sub.expiresOn")}</dt><dd className="font-medium text-stone-800">{subscriptionInfo.expiresAt ? fmt(subscriptionInfo.expiresAt) : t("sub.noExpiry")}</dd></div>
-            <div><dt className="text-stone-500">{t("sub.daysLeftLabel")}</dt><dd className="font-medium text-stone-800">{left === null ? t("sub.noExpiry") : t("sub.daysLeft", { days: left })}</dd></div>
+          <dl className="mt-4 grid grid-cols-2 gap-3">
+            <div className="cs-card-soft p-3"><dt className="t-label">{t("sub.expiresOn")}</dt><dd className="mt-1 t-body-strong">{subscriptionInfo.expiresAt ? fmt(subscriptionInfo.expiresAt) : t("sub.noExpiry")}</dd></div>
+            <div className="cs-card-soft p-3"><dt className="t-label">{t("sub.daysLeftLabel")}</dt><dd className="mt-1 t-body-strong tabular-nums">{left === null ? t("sub.noExpiry") : t("sub.daysLeft", { days: left })}</dd></div>
           </dl>
         )}
         {!active && subscriptionInfo.expiredFrom && (
-          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("sub.expiredBanner", { plan: t(`sub.tierNames.${subscriptionInfo.expiredFrom}`) })}</p>
+          <p className="mt-3 rounded-input bg-warn-soft px-3 py-2 t-body text-warn">{t("sub.expiredBanner", { plan: t(`sub.tierNames.${subscriptionInfo.expiredFrom}`) })}</p>
         )}
         {paymentsEnabled === false && (
-          <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900" role="status" data-testid="payments-disabled">{t("pay.disabledInfo")}</p>
+          <p className="mt-3 cs-card-soft px-4 py-3 t-body text-ink-2" role="status" data-testid="payments-disabled">{t("pay.disabledInfo")}</p>
         )}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           {active && paymentsEnabled !== false && (
-            <button type="button" onClick={() => onOpenModal(subscriptionInfo.tier)} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800">{t("sub.renew")}</button>
+            <button type="button" onClick={() => onOpenModal(subscriptionInfo.tier)} className="cs-btn cs-btn-primary">{t("sub.renew")}</button>
           )}
-          <button type="button" onClick={() => onOpenModal()} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50">{t("sub.changePlan")}</button>
-          <button type="button" onClick={check} disabled={checking} className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-50">{checking ? t("sub.processing") : t("sub.checkStatus")}</button>
+          <button type="button" onClick={() => onOpenModal()} className="cs-btn cs-btn-outline">{t("sub.changePlan")}</button>
+          <button type="button" onClick={check} disabled={checking} className="cs-btn cs-btn-outline">{checking ? t("sub.processing") : t("sub.checkStatus")}</button>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h4 className="text-sm font-semibold text-stone-900">{t("sub.paymentsTitle")}</h4>
+      <section className="cs-card p-5">
+        <h4 className="t-h2">{t("sub.paymentsTitle")}</h4>
         {payments === null ? (
-          <p className="mt-2 text-sm text-stone-500">…</p>
+          <p className="mt-2 t-body text-ink-3">…</p>
         ) : payments.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">{t("sub.paymentsEmpty")}</p>
+          <p className="mt-2 t-body text-ink-3">{t("sub.paymentsEmpty")}</p>
         ) : (
-          <ul className="mt-3 divide-y divide-stone-100 text-sm">
+          <ul className="mt-3 divide-y divide-line">
             {payments.map((p) => (
-              <li key={p.orderId} className="flex items-center justify-between gap-3 py-2">
-                <div>
-                  <p className="font-medium text-stone-800">{t(`sub.tierNames.${p.plan}`)} · {formatMnt(p.amount ?? PLANS[p.plan].amount)}</p>
-                  <p className="text-xs text-stone-500">{fmt(p.createdAt)} · {p.orderId}</p>
+              <li key={p.orderId} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="t-body-strong truncate">{t(`sub.tierNames.${p.plan}`)} · {formatMnt(p.amount ?? PLANS[p.plan].amount)}</p>
+                  <p className="t-caption truncate">{fmt(p.createdAt)} · {p.orderId}</p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>
+                <span className={`cs-chip shrink-0 ${p.status === "paid" ? "" : "cs-chip-muted"}`}>
                   {p.status === "paid" ? t("sub.paymentPaid") : t("sub.paymentPending")}
                 </span>
               </li>

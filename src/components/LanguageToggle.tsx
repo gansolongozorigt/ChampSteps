@@ -22,7 +22,7 @@ export default function LanguageToggle() {
     <div
       role="group"
       aria-label={t("app.language")}
-      className="inline-flex rounded-full border border-stone-200 bg-white p-0.5 shadow-sm"
+      className="cs-segment"
     >
       {SUPPORTED_LANGS.map((lng) => {
         const active = current === lng;
@@ -32,11 +32,7 @@ export default function LanguageToggle() {
             type="button"
             onClick={() => i18n.changeLanguage(lng)}
             aria-pressed={active}
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold tracking-wider transition ${
-              active
-                ? "bg-stone-900 text-white"
-                : "text-stone-500 hover:text-stone-800"
-            }`}
+            className="cs-segment-item min-w-[44px] justify-center tracking-wider"
           >
             {LABELS[lng]}
           </button>

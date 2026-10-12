@@ -1,9 +1,11 @@
 // =============================================================================
-// LoginPage v2 — багш / эцэг эх role сонголттой
+// LoginPage v3 — багш / эцэг эх role сонголттой (brand tokens, docs/BRAND.md)
 // =============================================================================
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { GraduationCap, Users, type LucideIcon } from "lucide-react";
+import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
@@ -75,37 +77,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-stone-50 to-amber-50 font-sans">
+    <div className="flex min-h-screen flex-col bg-bg font-sans text-ink">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
-        <div className="flex items-center gap-2">
-          {/* Logo */}
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-stone-900 overflow-hidden">
-            <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
-              <defs>
-                <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.3"/>
-                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.15"/>
-                </linearGradient>
-                <linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.7"/>
-                  <stop offset="100%" stopColor="#b45309" stopOpacity="0.5"/>
-                </linearGradient>
-                <linearGradient id="lg3" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#fbbf24"/>
-                  <stop offset="100%" stopColor="#d97706"/>
-                </linearGradient>
-              </defs>
-              <rect x="4" y="32" width="10" height="12" rx="2" fill="url(#lg1)"/>
-              <rect x="17" y="22" width="10" height="22" rx="2" fill="url(#lg2)"/>
-              <rect x="30" y="10" width="10" height="34" rx="2" fill="url(#lg3)"/>
-              <circle cx="35" cy="7" r="5" fill="white" opacity="0.9"/>
-            </svg>
-          </div>
-          <span className="font-bold tracking-tight text-stone-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Champ<span style={{ background: "linear-gradient(135deg, #d97706, #92400e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Step</span>
-          </span>
-        </div>
+        <Logo size={40} />
         <LanguageToggle />
       </header>
 
@@ -113,32 +88,32 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Title */}
           <div className="mb-6 text-center">
-            <h1 className="font-serif text-2xl font-bold text-stone-900 sm:text-3xl">
+            <h1 className="t-h1 sm:text-[26px]">
               {mode === "signin" ? t("auth.signInTitle") : t("auth.signUpTitle")}
             </h1>
-            <p className="mt-2 text-sm text-stone-500">{t("auth.subtitle")}</p>
+            <p className="mt-2 t-body text-ink-2">{t("auth.subtitle")}</p>
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <div className="cs-card p-6">
 
             {/* Role сонголт — зөвхөн signup-д */}
             {(
               <div className="mb-5">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+                <p className="t-label mb-2">
                   {t("login.whoAreYou")}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <RoleButton
                     selected={role === "parent"}
                     onClick={() => setRole("parent")}
-                    icon="👨‍👩‍👧"
+                    Icon={Users}
                     label={t("login.parent")}
                     desc={t("login.parentDesc")}
                   />
                   <RoleButton
                     selected={role === "teacher"}
                     onClick={() => setRole("teacher")}
-                    icon="🏫"
+                    Icon={GraduationCap}
                     label={t("login.teacher")}
                     desc={t("login.teacherDesc")}
                   />
@@ -181,15 +156,15 @@ export default function LoginPage() {
               />
 
               {mode === "signin" && (
-                <button type="button" onClick={handleForgot} disabled={submitting || !isFirebaseConfigured} className="-mt-1 self-end text-xs text-stone-500 hover:text-stone-900 hover:underline disabled:opacity-50">
+                <button type="button" onClick={handleForgot} disabled={submitting || !isFirebaseConfigured} className="-mt-1 min-h-[44px] px-1 text-[13px] font-bold text-primary hover:text-primary-hover hover:underline underline-offset-2 disabled:opacity-50">
                   {t("auth.forgotPassword")}
                 </button>
               )}
               {info && (
-                <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700" role="status">{info}</div>
+                <div className="rounded-input bg-primary-soft px-3 py-2.5 text-[13px] font-semibold text-primary-soft-ink" role="status">{info}</div>
               )}
               {error && (
-                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div className="rounded-input bg-error-soft px-3 py-2.5 text-[13px] font-semibold text-error">
                   {error}
                 </div>
               )}
@@ -197,7 +172,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting || !isFirebaseConfigured}
-                className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+                className="cs-btn cs-btn-primary w-full"
               >
                 {submitting
                   ? t("auth.submitting")
@@ -207,17 +182,17 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="my-4 flex items-center gap-2">
-              <div className="h-px flex-grow bg-stone-200" />
-              <span className="text-xs text-stone-400">{t("auth.or")}</span>
-              <div className="h-px flex-grow bg-stone-200" />
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-grow bg-line" />
+              <span className="t-caption">{t("auth.or")}</span>
+              <div className="h-px flex-grow bg-line" />
             </div>
 
             <button
               type="button"
               onClick={handleGoogle}
               disabled={submitting || !isFirebaseConfigured}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
+              className="cs-btn cs-btn-outline w-full"
             >
               <GoogleIcon />
               {t("auth.signInGoogle")}
@@ -226,21 +201,21 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-              className="mt-4 w-full text-center text-xs text-stone-500 hover:text-stone-800"
+              className="mt-3 w-full min-h-[44px] text-center text-[13px] font-bold text-ink-2 hover:text-primary"
             >
               {mode === "signin" ? t("auth.toggleToSignup") : t("auth.toggleToSignin")}
             </button>
           </div>
 
           {/* Offline */}
-          <div className="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white/70 p-4 text-center">
-            <p className="text-xs text-stone-500">
+          <div className="mt-6 rounded-card border border-dashed border-line-strong bg-bg-soft p-4 text-center">
+            <p className="t-caption">
               {isFirebaseConfigured ? t("auth.offlineHint") : t("auth.firebaseNotConfigured")}
             </p>
             <button
               type="button"
               onClick={handleOffline}
-              className="mt-2 text-sm font-medium text-stone-800 underline underline-offset-2 hover:text-amber-700"
+              className="mt-1 min-h-[44px] text-[13px] font-bold text-ink underline underline-offset-2 hover:text-primary"
             >
               {t("auth.continueOffline")}
             </button>
@@ -248,7 +223,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="pb-4 text-center text-xs text-stone-400">
+      <footer className="pb-[calc(1rem+env(safe-area-inset-bottom))] text-center t-caption">
         © {new Date().getFullYear()} ChampStep
       </footer>
     </div>
@@ -262,13 +237,13 @@ export default function LoginPage() {
 function RoleButton({
   selected,
   onClick,
-  icon,
+  Icon,
   label,
   desc,
 }: {
   selected: boolean;
   onClick: () => void;
-  icon: string;
+  Icon: LucideIcon;
   label: string;
   desc: string;
 }) {
@@ -276,17 +251,20 @@ function RoleButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left text-sm transition ${
+      aria-pressed={selected}
+      className={`cs-card flex min-h-[44px] flex-col items-start gap-1.5 p-3 text-left transition-colors ${
         selected
-          ? "border-stone-900 bg-stone-50 ring-2 ring-stone-900"
-          : "border-stone-200 hover:bg-stone-50"
+          ? "border-primary bg-primary-soft"
+          : "hover:bg-bg-soft"
       }`}
     >
-      <span className="text-xl">{icon}</span>
-      <span className={`font-semibold ${selected ? "text-stone-900" : "text-stone-700"}`}>
+      <span className={`cs-badge ${selected ? "bg-primary text-white" : "cs-badge-primary"}`}>
+        <Icon size={18} strokeWidth={2} />
+      </span>
+      <span className={`text-[14px] font-extrabold ${selected ? "text-primary-soft-ink" : "text-ink"}`}>
         {label}
       </span>
-      <span className="text-[11px] leading-snug text-stone-500">{desc}</span>
+      <span className="text-[11px] font-semibold leading-snug text-ink-3">{desc}</span>
     </button>
   );
 }
@@ -310,7 +288,7 @@ interface FieldProps {
 function Field({ id, label, value, onChange, placeholder, type = "text", required, autoComplete, minLength }: FieldProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-stone-600">
+      <label htmlFor={id} className="cs-field-label">
         {label}
       </label>
       <input
@@ -322,7 +300,7 @@ function Field({ id, label, value, onChange, placeholder, type = "text", require
         required={required}
         autoComplete={autoComplete}
         minLength={minLength}
-        className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition focus:border-stone-900 focus:bg-white focus:outline-none"
+        className="cs-input"
       />
     </div>
   );

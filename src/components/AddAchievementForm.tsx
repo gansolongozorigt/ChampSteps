@@ -1,15 +1,32 @@
 // =============================================================================
 // AddAchievementForm v2 — initialDraft prop нэмэгдсэн (edit дэмжинэ)
+// UI: brand tokens (docs/BRAND.md). The root is a plain container — App.tsx
+// wraps it in .cs-modal (handle, radius, backdrop). Logic unchanged.
 // =============================================================================
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { BookOpen, Camera, Dumbbell, Medal, Palette, X, type LucideIcon } from "lucide-react";
 import type { AchievementCategory, AchievementDraft, AwardType } from "../types";
 import { compressImages, validateImageFile } from "../utils/image";
-import { awardStyles, categoryStyles, formatDate } from "../utils/format";
+import { formatDate } from "../utils/format";
 
 const CATEGORIES: AchievementCategory[] = ["Sports", "Arts", "Academic"];
 const AWARDS: AwardType[] = ["Gold", "Silver", "Bronze", "Participant"];
+
+const CATEGORY_ICON: Record<AchievementCategory, LucideIcon> = { Sports: Dumbbell, Arts: Palette, Academic: BookOpen };
+const AWARD_CHIP: Record<AwardType, string> = {
+  Gold: "cs-chip-gold",
+  Silver: "cs-chip-silver",
+  Bronze: "cs-chip-bronze",
+  Participant: "cs-chip-participant",
+};
+const AWARD_ICON_COLOR: Record<AwardType, string> = {
+  Gold: "text-gold",
+  Silver: "text-silver",
+  Bronze: "text-bronze",
+  Participant: "text-ink-3",
+};
 
 const EMPTY_DRAFT: AchievementDraft = {
   title: "",
@@ -117,8 +134,10 @@ export default function AddAchievementForm({
     }
   }
 
+  const AwardIcon = Medal;
+
   return (
-    <div className="mx-auto w-full max-w-2xl rounded-2xl border border-stone-200 bg-stone-50/80 p-6 shadow-sm">
+    <div className="w-full p-5 sm:p-6">
       <Header step={step} childName={childName} isEditing={isEditing} />
 
       <div className="mt-6 space-y-5">
@@ -129,7 +148,8 @@ export default function AddAchievementForm({
                 value={draft.title}
                 onChange={(e) => update("title", e.target.value)}
                 placeholder={t("form.fields.titlePlaceholder")}
-                className={inputCls}
+                className="cs-input"
+                aria-invalid={errors.title ? "true" : undefined}
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -138,7 +158,8 @@ export default function AddAchievementForm({
                   type="date"
                   value={draft.date}
                   onChange={(e) => update("date", e.target.value)}
-                  className={inputCls}
+                  className="cs-input"
+                  aria-invalid={errors.date ? "true" : undefined}
                 />
               </Field>
               <Field label={t("form.fields.location")} error={errors.location}>
@@ -146,7 +167,8 @@ export default function AddAchievementForm({
                   value={draft.location}
                   onChange={(e) => update("location", e.target.value)}
                   placeholder={t("form.fields.locationPlaceholder")}
-                  className={inputCls}
+                  className="cs-input"
+                  aria-invalid={errors.location ? "true" : undefined}
                 />
               </Field>
             </div>
@@ -154,12 +176,16 @@ export default function AddAchievementForm({
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((c) => {
                   const selected = draft.category === c;
+                  const Icon = CATEGORY_ICON[c];
                   return (
-                    <button type="button" key={c} onClick={() => update("category", c)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium ring-1 transition ${
-                        selected ? `${categoryStyles[c].chip} ring-2` : "bg-white text-stone-600 ring-stone-200 hover:bg-stone-100"
-                      }`}
+                    <button
+                      type="button"
+                      key={c}
+                      onClick={() => update("category", c)}
+                      aria-pressed={selected}
+                      className={`cs-chip ${selected ? "" : "cs-chip-outline"} h-11 px-4 text-[14px]`}
                     >
+                      <Icon size={18} strokeWidth={2} />
                       {t(`categories.${c}`)}
                     </button>
                   );
@@ -172,18 +198,19 @@ export default function AddAchievementForm({
         {step === 2 && (
           <section className="space-y-4">
             <Field label={t("form.fields.award")} group>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="flex flex-wrap gap-2">
                 {AWARDS.map((a) => {
                   const selected = draft.awardType === a;
-                  const s = awardStyles[a];
                   return (
-                    <button type="button" key={a} onClick={() => update("awardType", a)}
-                      className={`flex flex-col items-center gap-1 rounded-xl border bg-white p-3 text-sm transition ${
-                        selected ? `border-transparent ring-2 ${s.ring} ${s.bg}` : "border-stone-200 hover:bg-stone-50"
-                      }`}
+                    <button
+                      type="button"
+                      key={a}
+                      onClick={() => update("awardType", a)}
+                      aria-pressed={selected}
+                      className={`cs-chip ${selected ? AWARD_CHIP[a] : "cs-chip-outline"} h-11 px-4 text-[14px]`}
                     >
-                      <span className="text-2xl" aria-hidden>{s.emoji}</span>
-                      <span className={`font-medium ${selected ? s.text : "text-stone-700"}`}>{t(`awards.${a}`)}</span>
+                      <AwardIcon size={18} strokeWidth={2} className={selected ? "" : AWARD_ICON_COLOR[a]} />
+                      {t(`awards.${a}`)}
                     </button>
                   );
                 })}
@@ -195,7 +222,8 @@ export default function AddAchievementForm({
                 onChange={(e) => update("description", e.target.value)}
                 rows={4}
                 placeholder={t("form.fields.descriptionPlaceholder")}
-                className={`${inputCls} resize-y`}
+                className="cs-textarea"
+                aria-invalid={errors.description ? "true" : undefined}
               />
             </Field>
           </section>
@@ -204,35 +232,44 @@ export default function AddAchievementForm({
         {step === 3 && (
           <section className="space-y-4">
             <Field label={t("form.fields.photos")}>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-300 bg-white p-8 text-center text-stone-500 hover:border-stone-400">
-                <span className="text-3xl" aria-hidden>📸</span>
-                <span className="text-sm font-medium">{t("form.fields.uploadCta")}</span>
-                <span className="text-xs text-stone-400">{t("form.fields.uploadHint")}</span>
+              <label className="flex min-h-[44px] cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong bg-bg-soft p-8 text-center transition-colors hover:border-primary hover:bg-primary-soft/40">
+                <Camera size={32} strokeWidth={2} className="text-ink-3" aria-hidden />
+                <span className="t-body-strong text-ink">{t("form.fields.uploadCta")}</span>
+                <span className="t-caption">{t("form.fields.uploadHint")}</span>
                 <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { const fl = e.target.files; void handleFiles(fl); }} />
               </label>
             </Field>
             {kept.length > 0 && (
               <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {kept.map((url, i) => (
-                  <li key={url + i} className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
-                    <img src={url} alt="" className="h-24 w-full object-cover" />
-                    <button type="button" onClick={() => setKept((k) => k.filter((_, j) => j !== i))}
-                      className="absolute right-1 top-1 rounded-full bg-white/90 px-2 py-0.5 text-[11px] text-stone-700 shadow hover:bg-white">
-                      {t("form.actions.remove")}
+                  <li key={url + i} className="relative aspect-square overflow-hidden rounded-image border border-line bg-surface-muted">
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setKept((k) => k.filter((_, j) => j !== i))}
+                      aria-label={t("form.actions.remove")}
+                      title={t("form.actions.remove")}
+                      className="cs-icon-btn cs-icon-btn-sm absolute right-1 top-1 bg-ink/80 text-white hover:bg-ink"
+                    >
+                      <X size={16} strokeWidth={2.5} />
                     </button>
                   </li>
                 ))}
               </ul>
             )}
             {previews.length > 0 && (
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {previews.map((p, i) => (
-                  <li key={p.name + i} className="group relative aspect-square overflow-hidden rounded-lg border border-stone-200">
+                  <li key={p.name + i} className="relative aspect-square overflow-hidden rounded-image border border-line bg-surface-muted">
                     <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
-                    <button type="button" onClick={() => removeImage(i)}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      aria-label={t("form.actions.remove")}
+                      title={t("form.actions.remove")}
+                      className="cs-icon-btn cs-icon-btn-sm absolute right-1 top-1 bg-ink/80 text-white hover:bg-ink"
                     >
-                      {t("form.actions.remove")}
+                      <X size={16} strokeWidth={2.5} />
                     </button>
                   </li>
                 ))}
@@ -242,38 +279,38 @@ export default function AddAchievementForm({
         )}
 
         {step === 4 && (
-          <section className="space-y-3">
-            <h3 className="font-serif text-lg text-stone-800">{t("form.review.heading")}</h3>
+          <section className="cs-card-soft p-4 sm:p-5">
+            <h3 className="t-h2 mb-2">{t("form.review.heading")}</h3>
             <ReviewRow label={t("form.review.labels.title")} value={draft.title} />
             <ReviewRow label={t("form.review.labels.date")} value={formatDate(draft.date, locale)} />
             <ReviewRow label={t("form.review.labels.location")} value={draft.location} />
             <ReviewRow label={t("form.review.labels.category")} value={t(`categories.${draft.category}`)} />
-            <ReviewRow label={t("form.review.labels.award")} value={`${awardStyles[draft.awardType].emoji} ${t(`awards.${draft.awardType}`)}`} />
+            <ReviewRow label={t("form.review.labels.award")} value={t(`awards.${draft.awardType}`)} />
             <ReviewRow label={t("form.review.labels.description")} value={draft.description} />
-            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: kept.length + draft.images.length })} />
+            <ReviewRow label={t("form.review.labels.photos")} value={t("form.review.photosAttached", { count: kept.length + draft.images.length })} last />
           </section>
         )}
       </div>
 
-      <div className="mt-8 flex items-center justify-between gap-3">
-        <button type="button"
+      <div className="sticky bottom-0 -mx-5 mt-8 flex items-center justify-between gap-3 border-t border-line bg-surface px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0">
+        <button
+          type="button"
           onClick={() => (step === 1 ? onCancel?.() : setStep((s) => (s - 1) as Step))}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+          className="cs-btn cs-btn-ghost"
         >
           {step === 1 ? t("form.actions.cancel") : t("form.actions.back")}
         </button>
 
         {step < 4 ? (
-          <button type="button"
+          <button
+            type="button"
             onClick={() => (validateStep(step) ? setStep((s) => (s + 1) as Step) : null)}
-            className="rounded-lg bg-stone-900 px-5 py-2 text-sm font-medium text-stone-50 hover:bg-stone-800"
+            className="cs-btn cs-btn-primary"
           >
             {t("form.actions.continue")}
           </button>
         ) : (
-          <button type="button" disabled={submitting} onClick={handleSubmit}
-            className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
+          <button type="button" disabled={submitting} onClick={handleSubmit} className="cs-btn cs-btn-primary">
             {submitting
               ? t("form.actions.saving")
               : isEditing
@@ -291,37 +328,26 @@ export default function AddAchievementForm({
 
 // -----------------------------------------------------------------------------
 
-const inputCls = "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200";
-
 function Header({ step, childName, isEditing }: { step: Step; childName?: string; isEditing?: boolean }) {
   const { t } = useTranslation();
   const labels = [t("form.steps.basics"), t("form.steps.story"), t("form.steps.photos"), t("form.steps.review")];
   return (
     <header>
-      <p className="text-xs uppercase tracking-widest text-stone-500">
+      <p className="t-caption">
         {childName ? t("form.headerEyebrowWithName", { name: childName }) : t("form.headerEyebrow")}
       </p>
-      <h2 className="mt-1 font-serif text-2xl text-stone-900">
+      <h2 className="t-h1 mt-1">
         {isEditing ? t("form.editHeading") : t("form.heading")}
       </h2>
-      <ol className="mt-5 flex items-center gap-2">
-        {labels.map((label, i) => {
-          const idx = (i + 1) as Step;
-          const active = idx === step;
-          const done = idx < step;
-          return (
-            <li key={label} className="flex flex-1 items-center gap-2">
-              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition ${
-                done ? "bg-emerald-600 text-white" : active ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-500"
-              }`}>
-                {done ? "✓" : idx}
-              </span>
-              <span className={`hidden text-xs sm:inline ${active ? "text-stone-800" : "text-stone-500"}`}>{label}</span>
-              {i < labels.length - 1 && <span className="h-px flex-1 bg-stone-200" />}
-            </li>
-          );
-        })}
-      </ol>
+      <div className="mt-4 flex items-center gap-3">
+        <div className="cs-progress-dots" aria-hidden>
+          {labels.map((label, i) => {
+            const idx = (i + 1) as Step;
+            return <span key={label} data-active={idx === step ? "true" : undefined} data-done={idx < step ? "true" : undefined} />;
+          })}
+        </div>
+        <span className="t-caption text-ink-2">{labels[step - 1]}</span>
+      </div>
     </header>
   );
 }
@@ -330,18 +356,18 @@ function Field({ label, error, children, group = false }: { label: string; error
   const Tag = group ? "div" : "label";
   return (
     <Tag className="block">
-      <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
+      <span className="cs-field-label">{label}</span>
       {children}
-      {error && <span className="mt-1 block text-xs text-rose-600">{error}</span>}
+      {error && <span className="mt-1 block t-caption text-error">{error}</span>}
     </Tag>
   );
 }
 
-function ReviewRow({ label, value }: { label: string; value: string }) {
+function ReviewRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-dashed border-stone-200 py-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="max-w-[60%] text-right font-medium text-stone-800">{value || "—"}</span>
+    <div className={`flex justify-between gap-4 py-2.5 ${last ? "" : "border-b border-line"}`}>
+      <span className="t-caption">{label}</span>
+      <span className="max-w-[60%] text-right t-body-strong text-ink">{value || "—"}</span>
     </div>
   );
 }
