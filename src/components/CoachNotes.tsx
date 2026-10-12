@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, MessageSquareText, Pencil, Trash2 } from "lucide-react";
 import {
   createCoachNote,
   deleteCoachNote,
@@ -140,8 +140,9 @@ export default function CoachNotes({
 
       {/* Зөвлөгөөний жагсаалт */}
       {notes.length === 0 ? (
-        <div className="cs-card-soft text-center py-10 px-4 t-body text-ink-3">
-          {isTeacher ? t("coach.empty") : t("coach.parentEmpty")}
+        <div className="cs-card border-dashed p-8 text-center">
+          <MessageSquareText size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
+          <p className="t-caption mt-3">{isTeacher ? t("coach.empty") : t("coach.parentEmpty")}</p>
         </div>
       ) : (
         <div className="space-y-3">
