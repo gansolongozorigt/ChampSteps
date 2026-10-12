@@ -7,6 +7,7 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 function loadServiceAccount(): Record<string, string> {
   const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
@@ -40,6 +41,15 @@ const app = getApp();
 
 export const adminAuth = getAuth(app);
 export const adminDb = getFirestore(app);
+
+/**
+ * Default Storage bucket (VITE_FIREBASE_STORAGE_BUCKET, else <project>.firebasestorage.app).
+ * Used by /api/child/delete and /api/account/delete to remove a child's photos/avatars.
+ */
+export function adminBucket() {
+  const name = process.env.VITE_FIREBASE_STORAGE_BUCKET || `${app.options.projectId}.firebasestorage.app`;
+  return getStorage(app).bucket(name);
+}
 
 /** ID token-ийг баталгаажуулж decoded token буцаана (uid, email...). Буруу бол null. */
 export async function verifyIdTokenFull(idToken: unknown): Promise<DecodedIdToken | null> {

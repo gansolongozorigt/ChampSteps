@@ -27,7 +27,14 @@ export async function newPage(context: BrowserContext, lang = "mn"): Promise<Pag
 
 export interface Account { email: string; password: string; name: string; role: "parent" | "teacher" }
 
-export async function signUp(page: Page, a: Account) {
+export const FIRST_CHILD = { name: "Хүүхэд", birthDate: "2014-05-01" };
+
+/**
+ * Sign up. No child is created automatically any more: a new PARENT gets the
+ * add-child modal once, and (unless `firstChild: false`) this helper fills it with
+ * FIRST_CHILD so the dashboard is ready, exactly like the old default child.
+ */
+export async function signUp(page: Page, a: Account, opts: { firstChild?: boolean } = {}) {
   await page.goto("/");
   await page.getByRole("button", { name: tr("auth.toggleToSignup") }).click();
   await page.getByRole("button", { name: tr(a.role === "parent" ? "login.parent" : "login.teacher") }).click();
@@ -36,6 +43,18 @@ export async function signUp(page: Page, a: Account) {
   await page.locator("#password").fill(a.password);
   await page.getByRole("button", { name: tr("auth.signUp"), exact: true }).click();
   await expect(page.locator("#email")).toBeHidden({ timeout: 30_000 });
+  if (a.role === "parent" && opts.firstChild !== false) {
+    await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeVisible({ timeout: 30_000 });
+    await fillAddChildModal(page, FIRST_CHILD.name, FIRST_CHILD.birthDate);
+  }
+}
+
+/** The add-child modal must already be open: name + birth date (both required), then submit. */
+export async function fillAddChildModal(page: Page, name: string, birthDate = "2015-09-15") {
+  await page.getByPlaceholder(tr("children.namePlaceholder")).fill(name);
+  await page.getByTestId("add-child-birthdate").fill(birthDate);
+  await page.getByTestId("add-child-submit").click();
+  await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeHidden({ timeout: 30_000 });
 }
 
 export async function signIn(page: Page, a: Pick<Account, "email" | "password">) {

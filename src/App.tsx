@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, LogOut,
-  Pencil, Plus, ScrollText, Settings, Star, Trophy, X, type LucideIcon,
+  Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
 
 import AddAchievementForm from "./components/AddAchievementForm";
 import AboutPage from "./components/AboutPage";
+import AccountSettingsModal from "./components/AccountSettingsModal";
+import DeleteChildModal from "./components/DeleteChildModal";
 import AdminPage from "./components/AdminPage";
 import CoachNotes from "./components/CoachNotes";
 import TermsPage from "./components/TermsPage";
@@ -47,11 +49,13 @@ import {
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
 import {
+  clearLocalChild,
   loadLocalChild,
   saveLocalAchievements,
   saveLocalChild,
 } from "./lib/localStore";
 import { celebrate } from "./lib/celebrate";
+import { DeleteError, deleteAccountRemote, deleteChildRemote } from "./lib/deleteClient";
 import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
 import type { PdfTemplate } from "./lib/pdfExport";
 import { TIER_LIMITS } from "./types";
@@ -59,17 +63,15 @@ import { TIER_LIMITS } from "./types";
 type ToastState = { kind: ToastKind; message: string } | null;
 type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
 
-const makeInitialChild = (parentId: string): Child => ({
-  childId: `child_${parentId.slice(0, 8)}_001`,
-  parentId,
-  teacherIds: [],
-  name: "Хүүхэд",
-  birthDate: "",
-  bio: "",
-  avatarUrl: undefined,
-});
-
 const seedAchievements: Achievement[] = [];
+/** First run: the "add child" modal opens by itself once per parent (per device) when they have no child yet. */
+const FIRST_RUN_KEY = (uid: string) => `champstep.firstRunAddChild.${uid}`;
+function firstRunPending(uid: string): boolean {
+  try { return localStorage.getItem(FIRST_RUN_KEY(uid)) !== "1"; } catch { return true; }
+}
+function markFirstRunShown(uid: string) {
+  try { localStorage.setItem(FIRST_RUN_KEY(uid), "1"); } catch { /* private mode */ }
+}
 /** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
 const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -94,7 +96,7 @@ export default function App() {
 
 function Dashboard() {
   const { t, i18n } = useTranslation();
-  const { user, subscription, signOut } = useAuth();
+  const { user, subscription, subscriptionInfo, signOut } = useAuth();
 
   const [children, setChildren] = useState<Child[]>([]);
   const [activeChildIdx, setActiveChildIdx] = useState(0);
@@ -112,6 +114,8 @@ function Dashboard() {
   const [modalTier, setModalTier] = useState<SubscriptionTier | undefined>(undefined);
   const openSubscription = (tier?: SubscriptionTier) => { setModalTier(tier); setShowSubscription(true); };
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showDeleteChild, setShowDeleteChild] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -145,8 +149,9 @@ function Dashboard() {
     async function load() {
       if (!user) return;
       if (!isFirebaseConfigured) {
-        const localChild = loadLocalChild(makeInitialChild(user.uid));
-        setChildren([localChild]);
+        const localChild = loadLocalChild();
+        setChildren(localChild ? [localChild] : []);
+        if (!localChild && user.role === "parent" && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
         setLoadingChildren(false);
         return;
       }
@@ -154,12 +159,9 @@ function Dashboard() {
         let list: Child[] = [];
         if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
-          // Only a PARENT ever gets an auto-created first child (never a teacher uid).
-          if (list.length === 0) {
-            const initial = makeInitialChild(user.uid);
-            await createChild({ ...initial, parentId: user.uid });
-            list = [initial];
-          }
+          // No child is ever created automatically: a new parent gets the add-child
+          // modal once; closing it leaves the empty state with its own "add" button.
+          if (list.length === 0 && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
         }
         setChildren(list);
       } catch (e) {
@@ -256,7 +258,7 @@ function Dashboard() {
     setToast({ kind: "success", message: t("status.savedProfile") });
   }
 
-  async function handleAddNewChild(name: string) {
+  async function handleAddNewChild(name: string, birthDate: string) {
     if (!user) return;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
@@ -268,13 +270,15 @@ function Dashboard() {
       parentId: user.uid,
       teacherIds: [],
       name,
-      birthDate: "",
+      birthDate,
       bio: "",
       avatarUrl: undefined,
     };
     if (isFirebaseConfigured) {
       try { await createChild(newChild); }
       catch { setToast({ kind: "error", message: t("status.errorSaving") }); return; }
+    } else {
+      saveLocalChild(newChild);
     }
     setChildren((prev) => [...prev, newChild]);
     setActiveChildIdx(children.length);
@@ -351,6 +355,48 @@ function Dashboard() {
     await signOut();
   }
 
+  /** Server error → translated message (empty = use the caller's generic one). */
+  function deleteErrorMessage(e: unknown): string {
+    if (e instanceof DeleteError && e.reason === "rate_limited") return t("danger.account.rateLimited");
+    return "";
+  }
+
+  /**
+   * Delete the ACTIVE child (the one open in the profile editor). All data goes
+   * server-side (/api/child/delete); the client only updates its own state.
+   * Throws a translated message for the modal to display.
+   */
+  async function handleDeleteChild() {
+    if (!child) return;
+    const victim = child;
+    if (isFirebaseConfigured) {
+      try { await deleteChildRemote(victim.childId); }
+      catch (e) { throw new Error(deleteErrorMessage(e) || t("danger.child.error")); }
+    } else {
+      saveLocalAchievements([]);
+      clearLocalChild();
+    }
+    const remaining = children.filter((c) => c.childId !== victim.childId);
+    setChildren(remaining);
+    setActiveChildIdx((i) => Math.min(i, Math.max(0, remaining.length - 1)));
+    setShowDeleteChild(false);
+    setShowProfile(false);
+    setActiveSection("achievements");
+    setToast({ kind: "success", message: t("danger.child.done", { name: victim.name }) });
+  }
+
+  /** Delete the signed-in account (/api/account/delete), then sign out → login page shows a notice. */
+  async function handleDeleteAccount() {
+    if (!user) return;
+    if (isFirebaseConfigured) {
+      try { await deleteAccountRemote(user.email); }
+      catch (e) { throw new Error(deleteErrorMessage(e) || t("danger.account.error")); }
+    }
+    try { sessionStorage.setItem("champstep.notice", "accountDeleted"); } catch { /* private mode */ }
+    setShowAccount(false);
+    await handleSignOut();
+  }
+
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
     if (user?.role === "teacher") {
@@ -361,6 +407,9 @@ function Dashboard() {
             <Logo size={22} />
             <div className="flex items-center gap-1">
               <LanguageChip />
+              <button type="button" onClick={() => setShowAccount(true)} className="cs-icon-btn" aria-label={t("danger.account.menu")} title={t("danger.account.menu")}>
+                <UserCog size={20} strokeWidth={2} />
+              </button>
               <button type="button" onClick={handleSignOut} className="cs-btn cs-btn-outline cs-btn-sm">
                 {t("auth.signOut")}
               </button>
@@ -374,13 +423,40 @@ function Dashboard() {
               <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
             </div>
           </main>
+          {showAccount && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
           {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
         </div>
       );
     }
+    // A parent with no child (e.g. right after deleting the last one): empty state, not a dead end.
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg">
-        <p className="t-body text-ink-3">{t("status.childNotFound")}</p>
+      <div className="min-h-screen supports-[height:100dvh]:min-h-dvh bg-bg font-sans">
+        <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <Logo size={22} />
+          <div className="flex items-center gap-1">
+            <LanguageChip />
+            <button type="button" onClick={() => setShowAccount(true)} className="cs-icon-btn" aria-label={t("danger.account.menu")} title={t("danger.account.menu")}>
+              <UserCog size={20} strokeWidth={2} />
+            </button>
+            <button type="button" onClick={handleSignOut} className="cs-btn cs-btn-outline cs-btn-sm">
+              {t("auth.signOut")}
+            </button>
+          </div>
+        </header>
+        <main className="mx-auto max-w-md px-4 py-16 text-center">
+          <div className="cs-card border-dashed p-8">
+            <UserPlus size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
+            <h1 className="t-h1 mt-4">{t("children.empty.title")}</h1>
+            <p className="t-body text-ink-2 mt-2">{t("children.empty.hint")}</p>
+            <button type="button" onClick={() => setShowAddChild(true)} className="cs-btn cs-btn-primary mt-6">
+              <Plus size={18} strokeWidth={2.5} aria-hidden="true" />
+              {t("children.empty.add")}
+            </button>
+          </div>
+        </main>
+        {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
+        {showAccount && user && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
+        {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
       </div>
     );
   }
@@ -465,6 +541,7 @@ function Dashboard() {
                   <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("about"); }} Icon={Info} label={t("nav.about")} />
                   <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("subscription"); }} Icon={Star} label={t("nav.subscriptionPage")} />
                   <MenuItem onClick={() => { setShowUserMenu(false); setActiveSection("terms"); }} Icon={ScrollText} label={t("nav.terms")} />
+                  <MenuItem onClick={() => { setShowUserMenu(false); setShowAccount(true); }} Icon={UserCog} label={t("danger.account.menu")} />
                   {user?.email === "gansolongozorigt7@gmail.com" && (
                     <MenuItem onClick={() => { setShowUserMenu(false); setShowAdmin(true); }} Icon={Settings} label={t("nav.admin")} />
                   )}
@@ -797,7 +874,38 @@ function Dashboard() {
           </div>
         </div>
       )}
-      {showProfile && <ChildProfileEditor child={child} onClose={() => setShowProfile(false)} onSave={handleUpdateChild} onError={(m) => setToast({ kind: "error", message: m })} />}
+      {showProfile && (
+        <ChildProfileEditor
+          child={child}
+          onClose={() => setShowProfile(false)}
+          onSave={handleUpdateChild}
+          onError={(m) => setToast({ kind: "error", message: m })}
+          onRequestDelete={isTeacher ? undefined : () => setShowDeleteChild(true)}
+        />
+      )}
+      {showDeleteChild && !isTeacher && (
+        <DeleteChildModal
+          child={child}
+          counts={{
+            achievements: achievements.length,
+            photos: achievements.reduce((n, a) => n + a.imageURLs.length, 0),
+            practiceLogs: practiceLogs.length,
+            reflections: reflections.length,
+          }}
+          onCancel={() => setShowDeleteChild(false)}
+          onPdf={() => { setShowDeleteChild(false); setShowProfile(false); openPdfPreview(pdfTemplate); }}
+          onConfirm={handleDeleteChild}
+        />
+      )}
+      {showAccount && user && (
+        <AccountSettingsModal
+          user={user}
+          subscriptionInfo={subscriptionInfo}
+          childrenCount={isTeacher ? 0 : children.length}
+          onClose={() => setShowAccount(false)}
+          onDeleteAccount={handleDeleteAccount}
+        />
+      )}
       {showSubscription && <SubscriptionModal initialTier={modalTier} onClose={() => { setShowSubscription(false); setModalTier(undefined); }} />}
       <PdfPreviewModal
         open={previewOpen}
@@ -985,34 +1093,61 @@ function LanguageChip() {
   );
 }
 
-function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string) => void | Promise<void> }) {
+/** YYYY-MM-DD, not in the future, not absurdly old. */
+function isValidBirthDate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return false;
+  const y = d.getFullYear();
+  return y >= 1990 && d.getTime() <= Date.now();
+}
+
+function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, birthDate: string) => void | Promise<void> }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const valid = name.trim().length > 0 && isValidBirthDate(birthDate);
   async function submit() {
-    if (!name.trim() || submitting) return;
+    if (!valid || submitting) return;
     setSubmitting(true);
-    try { await onAdd(name.trim()); } finally { setSubmitting(false); }
+    try { await onAdd(name.trim(), birthDate); } finally { setSubmitting(false); }
   }
   return (
     <div className="cs-modal-backdrop cs-backdrop-in" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-sm">
+      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-sm" role="dialog" aria-modal="true" aria-labelledby="add-child-title">
         <div className="cs-handle" />
         <div className="p-5 sm:p-6">
-          <h2 className="t-h1 mb-4">{t("children.addChild")}</h2>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
-            placeholder={t("children.namePlaceholder")}
-            className="cs-input"
-            autoFocus
-          />
+          <h2 id="add-child-title" className="t-h1 mb-1">{t("children.addChild")}</h2>
+          <p className="t-caption mb-4">{t("children.empty.hint")}</p>
+          <label className="block">
+            <span className="cs-field-label">{t("profile.fields.name")}</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+              placeholder={t("children.namePlaceholder")}
+              className="cs-input"
+              autoFocus
+            />
+          </label>
+          <label className="mt-4 block">
+            <span className="cs-field-label">{t("profile.fields.birthDate")}</span>
+            <input
+              type="date"
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBirthDate(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+              className="cs-input"
+              data-testid="add-child-birthdate"
+            />
+          </label>
           <div className="mt-5 flex justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
             <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">
               {t("form.actions.cancel")}
             </button>
-            <button type="button" onClick={() => void submit()} disabled={!name.trim() || submitting} className="cs-btn cs-btn-primary">
+            <button type="button" onClick={() => void submit()} disabled={!valid || submitting} className="cs-btn cs-btn-primary" data-testid="add-child-submit">
               {t("children.addChild")}
             </button>
           </div>

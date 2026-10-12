@@ -178,3 +178,40 @@ export async function aiInsightDoc(childId: string): Promise<Record<string, unkn
   const s = await db().collection("aiInsights").doc(childId).get();
   return s.exists ? (s.data() as Record<string, unknown>) : null;
 }
+
+// ---- read-only probes for the delete-flow spec (tests/e2e/delete.spec.ts) -----
+
+/** children/{id} docs owned by a TEST account. */
+export async function childIdsOf(email: string): Promise<string[]> {
+  const uid = await uidByEmail(email);
+  const snap = await db().collection("children").where("parentId", "==", uid).get();
+  return snap.docs.map((d) => d.id);
+}
+
+/** Everything still pointing at a childId after deletion — expected to be all zeros. */
+export async function childFootprint(childId: string): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const col of ["achievements", "practiceLogs", "reflections", "coachNotes", "inviteCodes"]) {
+    out[col] = (await db().collection(col).where("childId", "==", childId).count().get()).data().count;
+  }
+  out.childDoc = (await db().collection("children").doc(childId).get()).exists ? 1 : 0;
+  out.aiInsight = (await db().collection("aiInsights").doc(childId).get()).exists ? 1 : 0;
+  let files = 0;
+  for (const prefix of [`achievements/${childId}/`, `avatars/${childId}/`]) {
+    const [list] = await getStorage(app()).bucket().getFiles({ prefix });
+    files += list.length;
+  }
+  out.storageFiles = files;
+  return out;
+}
+
+/** true when the Auth user for a TEST e-mail no longer exists. */
+export async function authUserGone(email: string): Promise<boolean> {
+  assertTestEmail(email);
+  try { await auth().getUserByEmail(email); return false; }
+  catch (e) { return (e as { code?: string })?.code === "auth/user-not-found"; }
+}
+
+export async function userDocExists(uid: string): Promise<boolean> {
+  return (await db().collection("users").doc(uid).get()).exists;
+}

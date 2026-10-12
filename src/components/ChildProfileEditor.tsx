@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import type { Child } from "../types";
 import { compressImage, validateImageFile } from "../utils/image";
 
@@ -21,9 +21,11 @@ export interface ChildProfileEditorProps {
   onSave: (next: Child, avatarFile?: File) => Promise<void> | void;
   /** Rejected/undecodable avatar → parent shows a toast. */
   onError?: (message: string) => void;
+  /** Parent only: opens the delete-child confirmation (Danger zone at the bottom). Omit to hide. */
+  onRequestDelete?: () => void;
 }
 
-export default function ChildProfileEditor({ child, onClose, onSave, onError }: ChildProfileEditorProps) {
+export default function ChildProfileEditor({ child, onClose, onSave, onError, onRequestDelete }: ChildProfileEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Child>(child);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
@@ -148,7 +150,7 @@ export default function ChildProfileEditor({ child, onClose, onSave, onError }: 
             </Field>
           </div>
 
-          <div className="mt-8 flex items-center justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
+          <div className="mt-8 flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">
               {t("profile.actions.cancel")}
             </button>
@@ -161,6 +163,23 @@ export default function ChildProfileEditor({ child, onClose, onSave, onError }: 
               {saving ? t("form.actions.saving") : t("profile.actions.save")}
             </button>
           </div>
+
+          {onRequestDelete && (
+            <section className="mt-8 border-t border-line pt-5 pb-[env(safe-area-inset-bottom)]" aria-labelledby="child-danger">
+              <h3 id="child-danger" className="t-h2">{t("danger.zoneTitle")}</h3>
+              <p className="t-caption mt-1">{t("danger.child.hint")}</p>
+              <button
+                type="button"
+                onClick={onRequestDelete}
+                disabled={saving}
+                className="cs-btn cs-btn-outline mt-4 border-error text-error hover:bg-error-soft"
+                data-testid="child-delete-open"
+              >
+                <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
+                {t("danger.child.button")}
+              </button>
+            </section>
+          )}
         </div>
       </div>
     </div>

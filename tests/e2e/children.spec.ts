@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 import { cleanupTestUser, setTier, testEmail } from "./helpers/admin";
-import { newPage, signUp, waitForDashboard, tr, PASSWORD, pngFile, expectToast } from "./helpers/app";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, pngFile, expectToast, fillAddChildModal } from "./helpers/app";
 
 test.describe.configure({ mode: "serial" });
 const acc = { email: testEmail("children"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
@@ -27,8 +27,10 @@ test("child: edit profile with avatar → add second child → switch", async ({
 
   // second child
   await page.locator("aside").getByRole("button", { name: tr("children.addChild") }).click();
+  // name alone is not enough: birth date is required too
   await page.getByPlaceholder(tr("children.namePlaceholder")).fill("Анар");
-  await page.getByPlaceholder(tr("children.namePlaceholder")).press("Enter");
+  await expect(page.getByTestId("add-child-submit")).toBeDisabled();
+  await fillAddChildModal(page, "Анар", "2016-02-20");
   await expectToast(page, tr("status.childAdded", { name: "Анар" }));
   await expect(page.getByText(tr("app.achievementsTitle", { name: "Анар" }))).toBeVisible();
 

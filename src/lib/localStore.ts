@@ -18,9 +18,15 @@ function safeParse<T>(raw: string | null, fallback: T): T {
 // Child
 // ---------------------------------------------------------------------------
 
-export function loadLocalChild(fallback: Child): Child {
-  if (typeof window === "undefined") return fallback;
-  return safeParse<Child>(window.localStorage.getItem(KEY_CHILD), fallback);
+/** The one offline child, or null when none was added yet (no default child is ever created). */
+export function loadLocalChild(): Child | null {
+  if (typeof window === "undefined") return null;
+  return safeParse<Child | null>(window.localStorage.getItem(KEY_CHILD), null);
+}
+
+export function clearLocalChild(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(KEY_CHILD);
 }
 
 export function saveLocalChild(child: Child): void {
