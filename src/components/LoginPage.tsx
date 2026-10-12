@@ -2,7 +2,7 @@
 // LoginPage v3 — багш / эцэг эх role сонголттой (brand tokens, docs/BRAND.md)
 // =============================================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GraduationCap, Users, type LucideIcon } from "lucide-react";
 import Logo from "./Logo";
@@ -11,12 +11,21 @@ import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
 import type { UserRole } from "../types";
 
+/** sessionStorage key App sets right before signing out (one-shot notice on this page). */
+const NOTICE_KEY = "champstep.notice";
+
 type Mode = "signin" | "signup";
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
   const { signIn, signUp, signInWithGoogle, signInOffline } = useAuth();
-  const [info, setInfo] = useState<string | null>(null);
+  // One-shot notice left by the app before signing out (e.g. account deleted).
+  // Read in the initializer, cleared in an effect (StrictMode runs initializers twice).
+  const [info, setInfo] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(NOTICE_KEY) === "accountDeleted" ? t("danger.account.done") : null; }
+    catch { return null; }
+  });
+  useEffect(() => { try { sessionStorage.removeItem(NOTICE_KEY); } catch { /* private mode */ } }, []);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [role, setRole] = useState<UserRole>("parent");

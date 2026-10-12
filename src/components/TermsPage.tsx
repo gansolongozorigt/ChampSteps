@@ -95,6 +95,7 @@ export default function TermsPage() {
           <Section title={t("terms.p3Title")}>{t("terms.p3")}</Section>
           <Section title={t("terms.p4Title")}>{t("terms.p4")}</Section>
           <Section title={t("terms.p5Title")}>{t("terms.p5")}</Section>
+          <Section title={t("terms.p6Title")}>{t("terms.p6")}</Section>
         </div>
       )}
 

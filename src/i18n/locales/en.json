@@ -392,7 +392,12 @@
     "title": "Children",
     "addChild": "+ Add child",
     "switchChild": "Switch child",
-    "namePlaceholder": "Child's name"
+    "namePlaceholder": "Child's name",
+    "empty": {
+      "title": "No child yet",
+      "hint": "Add your first child to start recording achievements.",
+      "add": "Add child"
+    }
   },
   "coach": {
     "writeNote": "Write a note for {{name}}",
@@ -593,6 +598,40 @@
     "p4": "A child's data and photos are visible only to the parent and to a teacher the parent has invited. Reflection (mood) notes are visible only to the parent — never to teachers.",
     "p5Title": "5. Data Security",
     "p5": "All data is stored encrypted on Firebase. Sign-in is managed by Firebase Authentication and access is enforced by server-side security rules.",
-    "footer": "© 2026 ChampStep LLC · info@champstep.mn"
+    "footer": "© 2026 ChampStep LLC · info@champstep.mn",
+    "p6Title": "6. Deleting data",
+    "p6": "You can delete a child's record (achievements, photos, practice logs, reflections, coach notes, AI insights) and your own account from the app at any time. Deleted data cannot be recovered. Payment records (order id, plan, amount) contain no personal data and are retained for the period required by law."
+  },
+  "danger": {
+    "zoneTitle": "Danger zone",
+    "cancel": "Cancel",
+    "child": {
+      "button": "Delete this child's record",
+      "hint": "Every achievement, photo and note of this child is removed permanently.",
+      "title": "Delete {{name}}'s record?",
+      "summary": "{{achievements}} achievements, {{photos}} photos, {{practice}} practice logs, {{reflections}} reflections, coach notes and AI insights — all of it is deleted permanently.",
+      "pdfFirst": "Download the PDF portfolio first",
+      "typeName": "To confirm, type the child's name exactly: {{name}}",
+      "confirm": "Delete",
+      "deleting": "Deleting…",
+      "done": "{{name}}'s record has been deleted",
+      "error": "Could not delete. Check your connection and try again."
+    },
+    "account": {
+      "menu": "Account settings",
+      "heading": "Account",
+      "role": "Role",
+      "button": "Delete my account",
+      "title": "Delete your account completely?",
+      "summaryParent": "Your account and all data of {{children}} child(ren) (achievements, photos, practice, reflections, coach notes, AI insights) are deleted permanently. Payment records are retained for the legally required period.",
+      "summaryTeacher": "Your account, invite codes, links to students and the coach notes you wrote are deleted permanently. Students' data stays with their parents. Payment records are retained for the legally required period.",
+      "planWarning": "The remaining {{days}} days of your {{plan}} plan will not be refunded.",
+      "typeEmail": "To confirm, type your e-mail exactly: {{email}}",
+      "confirm": "Delete my account",
+      "deleting": "Deleting…",
+      "done": "Your account has been deleted. Thank you, and see you again.",
+      "error": "Could not delete. Check your connection and try again.",
+      "rateLimited": "Too many attempts. Please wait a while and try again."
+    }
   }
 }
