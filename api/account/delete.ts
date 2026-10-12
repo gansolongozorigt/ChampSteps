@@ -16,7 +16,13 @@ import { adminDeletionDeps } from "../_lib/adminDeletionDeps.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin;
-  if (!isAllowedOrigin(origin, buildAllowList(process.env.APP_URL))) {
+  // Same allow-list as /api/ai-insight, plus this deployment's own Vercel host so the
+  // flow works on branch previews (browsers send Origin on same-origin POSTs too).
+  const allowList = [
+    ...buildAllowList(process.env.APP_URL),
+    ...[process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL].filter((h): h is string => !!h).map((h) => `https://${h}`),
+  ];
+  if (!isAllowedOrigin(origin, allowList)) {
     return res.status(403).json({ error: "origin_not_allowed" });
   }
   if (origin) {
