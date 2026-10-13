@@ -49,8 +49,10 @@ import {
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
 import {
-  clearLocalChild,
+  LOGIN_MODE_KEY,
+  clearLocalData,
   loadLocalChild,
+  loadLocalData,
   saveLocalAchievements,
   saveLocalChild,
 } from "./lib/localStore";
@@ -71,6 +73,14 @@ function firstRunPending(uid: string): boolean {
 }
 function markFirstRunShown(uid: string) {
   try { localStorage.setItem(FIRST_RUN_KEY(uid), "1"); } catch { /* private mode */ }
+}
+/** Sign-up migration prompt ("move your trial data?") is asked once per account per device. */
+const MIGRATE_ASKED_KEY = (uid: string) => `champstep.migrateAsked.${uid}`;
+function migrateAsked(uid: string): boolean {
+  try { return localStorage.getItem(MIGRATE_ASKED_KEY(uid)) === "1"; } catch { return true; }
+}
+function markMigrateAsked(uid: string) {
+  try { localStorage.setItem(MIGRATE_ASKED_KEY(uid), "1"); } catch { /* private mode */ }
 }
 /** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
@@ -97,6 +107,10 @@ export default function App() {
 function Dashboard() {
   const { t, i18n } = useTranslation();
   const { user, subscription, subscriptionInfo, signOut } = useAuth();
+  // Local mode = everything stays in localStorage, Firestore is never touched:
+  // Firebase not configured (dev) OR a guest / trial user ("continue without an account") in production.
+  const localMode = !isFirebaseConfigured || !!user?.isOffline;
+  const isGuest = isFirebaseConfigured && !!user?.isOffline;
 
   const [children, setChildren] = useState<Child[]>([]);
   const [activeChildIdx, setActiveChildIdx] = useState(0);
@@ -114,6 +128,8 @@ function Dashboard() {
   const [modalTier, setModalTier] = useState<SubscriptionTier | undefined>(undefined);
   const openSubscription = (tier?: SubscriptionTier) => { setModalTier(tier); setShowSubscription(true); };
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showMigrate, setShowMigrate] = useState<number | null>(null); // number = local achievements to move
+  const [migrating, setMigrating] = useState(false);
   const [showDeleteChild, setShowDeleteChild] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -130,15 +146,15 @@ function Dashboard() {
   const child = children[activeChildIdx];
   const tierLimits = TIER_LIMITS[subscription as SubscriptionTier] ?? TIER_LIMITS.free;
 
-  const { achievements, loading: loadingAch, error: achError, addLocal } =
-    useAchievements(child?.childId ?? "", seedAchievements);
+  const { achievements, loading: loadingAch, error: achError, addLocal, replaceLocal, removeLocal } =
+    useAchievements(child?.childId ?? "", seedAchievements, localMode);
   const { logs: practiceLogs, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
-    usePracticeLogs(child?.childId ?? "");
+    usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
-    useReflections(child?.childId ?? "", user?.role !== "teacher");
+    useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
 
   useEffect(() => {
-    if (user && isFirebaseConfigured && user.role === "teacher") {
+    if (user && !localMode && user.role === "teacher") {
       // Teacher roster is live: a newly linked student appears without a reload.
       return subscribeChildrenForTeacher(
         user.uid,
@@ -148,7 +164,7 @@ function Dashboard() {
     }
     async function load() {
       if (!user) return;
-      if (!isFirebaseConfigured) {
+      if (localMode) {
         const localChild = loadLocalChild();
         setChildren(localChild ? [localChild] : []);
         if (!localChild && user.role === "parent" && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
@@ -159,9 +175,17 @@ function Dashboard() {
         let list: Child[] = [];
         if (user.role === "parent") {
           list = await getChildrenForParent(user.uid);
-          // No child is ever created automatically: a new parent gets the add-child
-          // modal once; closing it leaves the empty state with its own "add" button.
-          if (list.length === 0 && firstRunPending(user.uid)) { markFirstRunShown(user.uid); setShowAddChild(true); }
+          const trial = list.length === 0 && !migrateAsked(user.uid) ? loadLocalData() : null;
+          if (trial) {
+            // Fresh account on a device that holds trial (guest) data: offer to move it over, once.
+            markMigrateAsked(user.uid);
+            markFirstRunShown(user.uid);
+            setShowMigrate(trial.achievements.length);
+          } else if (list.length === 0 && firstRunPending(user.uid)) {
+            // No child is ever created automatically: a new parent gets the add-child
+            // modal once; closing it leaves the empty state with its own "add" button.
+            markFirstRunShown(user.uid); setShowAddChild(true);
+          }
         }
         setChildren(list);
       } catch (e) {
@@ -171,6 +195,7 @@ function Dashboard() {
       }
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -199,7 +224,7 @@ function Dashboard() {
       setToast({ kind: "info", message: t("status.freeLimit", { max: tierLimits.maxAchievements }) });
       return;
     }
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try {
         await createAchievement(child.childId, draft);
         setShowForm(false);
@@ -221,7 +246,7 @@ function Dashboard() {
       category: draft.category,
       description: draft.description,
       awardType: draft.awardType,
-      imageURLs: draft.images.map((f) => URL.createObjectURL(f)),
+      imageURLs: [], // local mode: photos are not stored (blob: URLs would not survive a reload)
       createdAt: new Date().toISOString(),
     };
     addLocal(newItem);
@@ -233,7 +258,7 @@ function Dashboard() {
   }
 
   async function handleUpdateChild(next: Child, avatarFile?: File) {
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try {
         const saved = await fbUpdateChild(next, avatarFile);
         setChildren((prev) => prev.map((c) => c.childId === saved.childId ? saved : c));
@@ -274,7 +299,7 @@ function Dashboard() {
       bio: "",
       avatarUrl: undefined,
     };
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await createChild(newChild); }
       catch { setToast({ kind: "error", message: t("status.errorSaving") }); return; }
     } else {
@@ -287,7 +312,7 @@ function Dashboard() {
   }
 
   async function handleDeleteAchievement(id: string) {
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try {
         await deleteAchievement(id);
         setToast({ kind: "success", message: t("status.deleted") });
@@ -296,14 +321,13 @@ function Dashboard() {
       }
       return;
     }
-    const updated = achievements.filter((a) => a.id !== id);
-    saveLocalAchievements(updated);
+    removeLocal(id);
     setToast({ kind: "success", message: t("status.deleted") });
   }
 
   async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
     if (!child) return;
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await createPracticeLog(child.childId, log); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
@@ -313,7 +337,7 @@ function Dashboard() {
 
   async function handleAddReflection(r: { date: string; mood: 1|2|3|4|5; content: string; parentNote?: string }) {
     if (!child) return;
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await createReflection(child.childId, r); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       return;
@@ -322,7 +346,7 @@ function Dashboard() {
   }
 
   async function handleDeleteReflection(id: string) {
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await deleteReflection(id); }
       catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
@@ -331,7 +355,7 @@ function Dashboard() {
   }
 
   async function handleDeletePracticeLog(id: string) {
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await deletePracticeLog(id); }
       catch { setToast({ kind: "error", message: t("status.errorSaving") }); }
       return;
@@ -353,7 +377,51 @@ function Dashboard() {
 
   async function handleSignOut() {
     if (!isFirebaseConfigured) saveLocalAchievements([]);
+    await signOut(); // guest: child / achievements stay on this device (see the banner)
+  }
+
+  /** Guest banner: go to the sign-up form; the local data stays for the migration prompt after sign-up. */
+  async function handleGuestSignUp() {
+    try { sessionStorage.setItem(LOGIN_MODE_KEY, "signup"); } catch { /* private mode */ }
     await signOut();
+  }
+
+  /** Copy the trial (guest) data of this device into the new account, once, then clear it. Photos are not moved (none are stored locally). */
+  async function handleMigrate() {
+    const data = loadLocalData();
+    if (!user || !data) { setShowMigrate(null); return; }
+    setMigrating(true);
+    try {
+      const newChild: Child = {
+        childId: `child_${user.uid.slice(0, 8)}_${Date.now()}`,
+        parentId: user.uid,
+        teacherIds: [],
+        name: data.child.name,
+        birthDate: data.child.birthDate,
+        bio: data.child.bio ?? "",
+        avatarUrl: undefined,
+      };
+      await createChild(newChild);
+      for (const a of [...data.achievements].reverse()) {
+        await createAchievement(newChild.childId, { title: a.title, date: a.date, location: a.location, category: a.category, description: a.description, awardType: a.awardType, images: [] });
+      }
+      for (const l of [...data.practiceLogs].reverse()) await createPracticeLog(newChild.childId, { date: l.date, duration: l.duration, content: l.content });
+      for (const r of [...data.reflections].reverse()) await createReflection(newChild.childId, { date: r.date, mood: r.mood, content: r.content, parentNote: r.parentNote });
+      clearLocalData();
+      setChildren([newChild]);
+      setActiveChildIdx(0);
+      setShowMigrate(null);
+      setToast({ kind: "success", message: t("guest.migrated", { name: newChild.name }) });
+    } catch (e) {
+      console.error("[champstep] migrate failed:", e);
+      setToast({ kind: "error", message: t("status.errorSaving") });
+    } finally {
+      setMigrating(false);
+    }
+  }
+  function handleMigrateDecline() {
+    setShowMigrate(null);
+    setShowAddChild(true);
   }
 
   /** Server error → translated message (empty = use the caller's generic one). */
@@ -370,12 +438,11 @@ function Dashboard() {
   async function handleDeleteChild() {
     if (!child) return;
     const victim = child;
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await deleteChildRemote(victim.childId); }
       catch (e) { throw new Error(deleteErrorMessage(e) || t("danger.child.error")); }
     } else {
-      saveLocalAchievements([]);
-      clearLocalChild();
+      clearLocalData();
     }
     const remaining = children.filter((c) => c.childId !== victim.childId);
     setChildren(remaining);
@@ -389,9 +456,11 @@ function Dashboard() {
   /** Delete the signed-in account (/api/account/delete), then sign out → login page shows a notice. */
   async function handleDeleteAccount() {
     if (!user) return;
-    if (isFirebaseConfigured) {
+    if (!localMode) {
       try { await deleteAccountRemote(user.email); }
       catch (e) { throw new Error(deleteErrorMessage(e) || t("danger.account.error")); }
+    } else {
+      clearLocalData();
     }
     try { sessionStorage.setItem("champstep.notice", "accountDeleted"); } catch { /* private mode */ }
     setShowAccount(false);
@@ -444,6 +513,7 @@ function Dashboard() {
             </button>
           </div>
         </header>
+        {isGuest && <GuestBanner onSignUp={handleGuestSignUp} />}
         <main className="mx-auto max-w-md px-4 py-16 text-center">
           <div className="cs-card border-dashed p-8">
             <UserPlus size={40} strokeWidth={1.75} className="mx-auto text-ink-3" aria-hidden="true" />
@@ -455,7 +525,8 @@ function Dashboard() {
             </button>
           </div>
         </main>
-        {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
+        {showMigrate !== null && <MigrateModal count={showMigrate} busy={migrating} onConfirm={handleMigrate} onDecline={handleMigrateDecline} />}
+        {showAddChild && showMigrate === null && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
         {showAccount && user && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
         {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
       </div>
@@ -575,6 +646,7 @@ function Dashboard() {
       {!isFirebaseConfigured && (
         <div className="bg-warn-soft px-4 py-2 text-center t-caption text-warn print:hidden">{t("status.offlineBanner")}</div>
       )}
+      {isGuest && <GuestBanner onSignUp={handleGuestSignUp} />}
 
       {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
@@ -665,7 +737,7 @@ function Dashboard() {
             <TimelineDashboard
               child={child}
               achievements={achievements}
-              loading={loadingAch && isFirebaseConfigured}
+              loading={loadingAch && !localMode}
               readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
               onEditProfile={() => setShowProfile(true)}
@@ -695,8 +767,8 @@ function Dashboard() {
               <SectionHeader title={t("invite.parent.heading")} subtitle={child.name} />
               <div className="grid gap-4">
                 {user?.role === "teacher" && <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />}
-                {user?.role === "parent" && child && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
-                {user && isFirebaseConfigured && (
+                {user?.role === "parent" && child && !localMode && <ParentLinkPanel childId={child.childId} childName={child.name} onUseCode={useInviteCode} />}
+                {user && !localMode && (
                   <CoachNotes
                     childId={child.childId}
                     childName={child.name}
@@ -849,7 +921,7 @@ function Dashboard() {
         <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={() => setShowForm(false)}>
           <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-2xl">
             <div className="cs-handle" />
-            <AddAchievementForm childId={child.childId} childName={child.name} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
+            <AddAchievementForm childId={child.childId} childName={child.name} allowPhotos={!localMode} onCancel={() => setShowForm(false)} onSubmit={handleAddAchievement} onError={(m) => setToast({ kind: "error", message: m })} />
           </div>
         </div>
       )}
@@ -861,10 +933,11 @@ function Dashboard() {
               childId={child.childId}
               childName={child.name}
               initialDraft={editingAchievement}
+              allowPhotos={!localMode}
               onError={(m) => setToast({ kind: "error", message: m })}
               onCancel={() => setEditingAchievement(null)}
               onSubmit={async (draft) => {
-                if (isFirebaseConfigured) {
+                if (!localMode) {
                   try {
                     const { updateAchievementWithImages } = await import("./lib/firebase");
                     await updateAchievementWithImages(editingAchievement.id, child.childId, draft, editingAchievement.imageURLs ?? []);
@@ -874,6 +947,13 @@ function Dashboard() {
                     setToast({ kind: "error", message: t("status.errorSaving") });
                   }
                 } else {
+                  replaceLocal({
+                    ...editingAchievement,
+                    title: draft.title, date: draft.date, location: draft.location, category: draft.category,
+                    description: draft.description, awardType: draft.awardType,
+                    imageURLs: draft.keptImageURLs ?? editingAchievement.imageURLs ?? [],
+                    updatedAt: new Date().toISOString(),
+                  });
                   setEditingAchievement(null);
                   setToast({ kind: "success", message: t("status.entryUpdated") });
                 }
@@ -1111,6 +1191,44 @@ function isValidBirthDate(v: string): boolean {
   if (Number.isNaN(d.getTime())) return false;
   const y = d.getFullYear();
   return y >= 1990 && d.getTime() <= Date.now();
+}
+
+/** Thin strip for guest / trial users: data lives on this device only; sign up to keep it. */
+function GuestBanner({ onSignUp }: { onSignUp: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-line bg-bg-soft px-4 py-1.5 text-center t-caption text-ink-2 print:hidden" data-testid="guest-banner">
+      <span>{t("guest.banner")}</span>
+      <button type="button" onClick={onSignUp} className="min-h-[32px] font-bold text-primary underline underline-offset-2 hover:text-primary-hover" data-testid="guest-signup">
+        {t("guest.signUpSave")}
+      </button>
+    </div>
+  );
+}
+
+/** After sign-up on a device with trial data: move it into the new account (once) or start empty. */
+function MigrateModal({ count, busy, onConfirm, onDecline }: { count: number; busy: boolean; onConfirm: () => void; onDecline: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="cs-modal-backdrop cs-backdrop-in">
+      <div className="cs-modal cs-panel-in sm:max-w-sm" role="dialog" aria-modal="true" aria-labelledby="migrate-title">
+        <div className="cs-handle" />
+        <div className="p-5 sm:p-6">
+          <h2 id="migrate-title" className="t-h1 mb-1">{t("guest.migrateTitle")}</h2>
+          <p className="t-body text-ink-2 mb-5">{t("guest.migrateBody", { count })}</p>
+          <div className="flex justify-end gap-2 pb-[env(safe-area-inset-bottom)]">
+            <button type="button" onClick={onDecline} disabled={busy} className="cs-btn cs-btn-ghost" data-testid="migrate-no">
+              {t("guest.migrateNo")}
+            </button>
+            <button type="button" onClick={onConfirm} disabled={busy} className="cs-btn cs-btn-primary" data-testid="migrate-yes">
+              {busy && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+              {t("guest.migrateYes")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function AddChildModal({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, birthDate: string) => void | Promise<void> }) {

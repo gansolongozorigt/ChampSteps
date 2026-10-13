@@ -4,9 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { isFirebaseConfigured, subscribeReflections } from "../lib/firebase";
+import { KEY_REFLECTIONS as KEY } from "../lib/localStore";
 import type { Reflection } from "../types";
-
-const KEY = "champstep.reflections.v1";
 
 function loadLocal(childId: string): Reflection[] {
   try {
@@ -22,12 +21,13 @@ function saveLocal(childId: string, items: Reflection[]) {
 /**
  * @param enabled  false → Firestore-д subscribe хийхгүй (багшийн горим:
  *                 reflections нь эцэг эхэд л зориулагдсан, rules хориглоно).
+ * @param local    true → localStorage only (Firebase not configured, or a guest / trial user).
  */
-export function useReflections(childId: string, enabled = true) {
+export function useReflections(childId: string, enabled = true, local: boolean = !isFirebaseConfigured) {
   const [reflections, setReflections] = useState<Reflection[]>(() =>
-    isFirebaseConfigured ? [] : loadLocal(childId)
+    local ? loadLocal(childId) : []
   );
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [loading, setLoading] = useState(!local);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function useReflections(childId: string, enabled = true) {
       setLoading(false);
       return;
     }
-    if (!isFirebaseConfigured) {
+    if (local) {
       setReflections(loadLocal(childId));
       setLoading(false);
       return;
@@ -50,7 +50,7 @@ export function useReflections(childId: string, enabled = true) {
       (err) => { setError(err instanceof Error ? err.message : "Failed to load reflections"); setLoading(false); }
     );
     return unsub;
-  }, [childId, enabled]);
+  }, [childId, enabled, local]);
 
   function addLocal(r: Reflection) {
     setReflections((prev) => {

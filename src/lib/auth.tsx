@@ -138,6 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsub = onAuthChange(async (fbUser) => {
       if (fbUser) {
+        // A real account replaces any guest session (the guest's local data stays for the migration prompt).
+        saveOfflineUser(null);
         // Show the loader (role undefined) until users/{uid}.role is known.
         setUser((prev) => (prev && prev.uid === fbUser.uid ? prev : fbUserToApp(fbUser, undefined)));
         setLoading(false);
@@ -153,8 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Server decides expiry (sets users/{uid} to free + expiredFrom when the plan ran out).
         fetchSubscriptionStatus().then((s) => { if (s) setSubscriptionInfo(s); }).catch((e) => console.warn("[champstep] subscription status:", e));
       } else {
-        setUser(null);
-        setSubscriptionInfo(FREE_INFO);
+        // Guest ("continue without an account") sessions live in localStorage only and survive a reload.
+        const offline = loadOfflineUser();
+        setUser(offline ? offlineToApp(offline) : null);
+        setSubscriptionInfo(offline ? { ...FREE_INFO, tier: loadLocalSubscription().status } : FREE_INFO);
       }
       setLoading(false);
     });
@@ -211,12 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       async signOut() {
-        if (isFirebaseConfigured) {
+        if (user?.isOffline || !isFirebaseConfigured) {
+          saveOfflineUser(null); // guest: the child / achievements stay on the device
+        } else {
           try { await fbSignOut(); } catch (e) {
             console.error("[champstep] signOut failed:", e);
           }
-        } else {
-          saveOfflineUser(null);
         }
         setUser(null);
         setSubscriptionInfo(FREE_INFO);

@@ -9,6 +9,7 @@ import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
+import { LOGIN_MODE_KEY } from "../lib/localStore";
 import type { UserRole } from "../types";
 
 /** sessionStorage key App sets right before signing out (one-shot notice on this page). */
@@ -27,7 +28,12 @@ export default function LoginPage() {
   });
   useEffect(() => { try { sessionStorage.removeItem(NOTICE_KEY); } catch { /* private mode */ } }, []);
 
-  const [mode, setMode] = useState<Mode>("signin");
+  // Guest banner → "sign up and keep": open the sign-up form right away. The flag is read in the
+  // initializer (StrictMode runs it twice, so it must stay readable) and cleared after mount.
+  const [mode, setMode] = useState<Mode>(() => {
+    try { return sessionStorage.getItem(LOGIN_MODE_KEY) === "signup" ? "signup" : "signin"; } catch { return "signin"; }
+  });
+  useEffect(() => { try { sessionStorage.removeItem(LOGIN_MODE_KEY); } catch { /* private mode */ } }, []);
   const [role, setRole] = useState<UserRole>("parent");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

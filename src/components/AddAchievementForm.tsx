@@ -47,6 +47,8 @@ export interface AddAchievementFormProps {
   onCancel?: () => void;
   /** Rejected/undecodable photo → parent shows a toast. */
   onError?: (message: string) => void;
+  /** false (guest / trial mode): photos cannot be attached; the photo step explains why instead of an upload box. */
+  allowPhotos?: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -58,6 +60,7 @@ export default function AddAchievementForm({
   onSubmit,
   onCancel,
   onError,
+  allowPhotos = true,
 }: AddAchievementFormProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -232,12 +235,19 @@ export default function AddAchievementForm({
         {step === 3 && (
           <section className="space-y-4">
             <Field label={t("form.fields.photos")}>
-              <label className="flex min-h-[44px] cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong bg-bg-soft p-8 text-center transition-colors hover:border-primary hover:bg-primary-soft/40">
-                <Camera size={32} strokeWidth={2} className="text-ink-3" aria-hidden />
-                <span className="t-body-strong text-ink">{t("form.fields.uploadCta")}</span>
-                <span className="t-caption">{t("form.fields.uploadHint")}</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { const fl = e.target.files; void handleFiles(fl); }} />
-              </label>
+              {allowPhotos ? (
+                <label className="flex min-h-[44px] cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong bg-bg-soft p-8 text-center transition-colors hover:border-primary hover:bg-primary-soft/40">
+                  <Camera size={32} strokeWidth={2} className="text-ink-3" aria-hidden />
+                  <span className="t-body-strong text-ink">{t("form.fields.uploadCta")}</span>
+                  <span className="t-caption">{t("form.fields.uploadHint")}</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { const fl = e.target.files; void handleFiles(fl); }} />
+                </label>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line bg-bg-soft p-6 text-center" data-testid="photos-locked">
+                  <Camera size={28} strokeWidth={2} className="text-ink-3" aria-hidden />
+                  <span className="t-caption">{t("guest.photosLocked")}</span>
+                </div>
+              )}
             </Field>
             {kept.length > 0 && (
               <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">

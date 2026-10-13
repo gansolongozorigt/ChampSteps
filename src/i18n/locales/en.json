@@ -234,12 +234,22 @@
     "close": "Close",
     "downloadN": "Download ({{n}})"
   },
+  "guest": {
+    "banner": "Trial mode: your data is stored on this device only.",
+    "signUpSave": "Sign up to keep it",
+    "photosLocked": "Photos can be attached after you sign up. In trial mode achievements are saved without photos.",
+    "migrateTitle": "Move your trial data?",
+    "migrateBody": "This device holds a child and {{count}} achievement(s) created in trial mode. Copy them into your new account once? (Photos are not moved.)",
+    "migrateYes": "Move it",
+    "migrateNo": "Start empty",
+    "migrated": "{{name}}'s trial data is now in your account."
+  },
   "status": {
     "loading": "Loading…",
     "saved": "Saved successfully",
     "savedProfile": "Profile updated",
     "errorTitle": "Something went wrong",
-    "errorSaving": "Could not save. Check your internet connection and Firebase rules.",
+    "errorSaving": "Could not save. Check your internet connection and try again.",
     "errorLoading": "Could not load data.",
     "offlineBanner": "Firebase is not configured — data is only stored on this device.",
     "dismiss": "Dismiss",

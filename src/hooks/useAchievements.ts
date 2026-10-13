@@ -20,24 +20,30 @@ export interface UseAchievementsResult {
   achievements: Achievement[];
   loading: boolean;
   error: string | null;
-  /** Offline-only: insert a new achievement and persist to localStorage. */
+  /** Local-only: insert a new achievement and persist to localStorage. */
   addLocal: (item: Achievement) => void;
+  /** Local-only: replace an achievement (edit) and persist. */
+  replaceLocal: (item: Achievement) => void;
+  /** Local-only: delete an achievement and persist. */
+  removeLocal: (id: string) => void;
 }
 
 export function useAchievements(
   childId: string,
   /** Seed used only on first offline render when localStorage is empty. */
-  fallback: Achievement[] = []
+  fallback: Achievement[] = [],
+  /** true → localStorage only (Firebase not configured, or a guest / trial user). Firestore is never touched. */
+  local: boolean = !isFirebaseConfigured
 ): UseAchievementsResult {
   const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    if (isFirebaseConfigured) return [];
+    if (!local) return [];
     return loadLocalAchievements(fallback);
   });
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
+  const [loading, setLoading] = useState<boolean>(!local);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (local) {
       setAchievements(loadLocalAchievements(fallback));
       setLoading(false);
       return;
@@ -70,7 +76,7 @@ export function useAchievements(
     );
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [childId]);
+  }, [childId, local]);
 
   function addLocal(item: Achievement) {
     setAchievements((prev) => {
@@ -80,5 +86,21 @@ export function useAchievements(
     });
   }
 
-  return { achievements, loading, error, addLocal };
+  function replaceLocal(item: Achievement) {
+    setAchievements((prev) => {
+      const next = prev.map((a) => (a.id === item.id ? item : a));
+      saveLocalAchievements(next);
+      return next;
+    });
+  }
+
+  function removeLocal(id: string) {
+    setAchievements((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      saveLocalAchievements(next);
+      return next;
+    });
+  }
+
+  return { achievements, loading, error, addLocal, replaceLocal, removeLocal };
 }
