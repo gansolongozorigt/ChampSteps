@@ -1,6 +1,6 @@
 # ChampStep — Админ гарын авлага: үнэгүй / партнерийн эрх олгох
 
-Шинэчилсэн: 2026-10-13 (plan/days дэмжлэг нэмэгдсэн). Бүх үйлдэл Firebase Admin SDK-ээр (service account) хийгдэнэ. Скриптүүд
+Шинэчилсэн: 2026-10-13 (plan/days дэмжлэг; QPay production хэсэг нэмэгдсэн). Бүх үйлдэл Firebase Admin SDK-ээр (service account) хийгдэнэ. Скриптүүд
 `FIREBASE_SERVICE_ACCOUNT_B64`-ийг env эсвэл репогийн `.env`-ээс уншина; нууц утгыг хэзээ ч хэвлэхгүй.
 
 ## 1. Promo кодын механизм (кодоос)
@@ -91,3 +91,48 @@ node scripts/admin/grant-tier.mjs partner@example.com coach 365 --note "partner:
 - Бүх аккаунтын тойм (зөвхөн унших): `node scratch/list-accounts-20261013.mjs` (scratch, gitignore).
 - Хэрэглэгч өөрөө: апп → Бүртгэлийн тохиргоо → Бүртгэлээ устгах (`/api/account/delete`); хүүхэд: Профайл засах → Аюултай бүс.
 - Админ устгал: `api/_lib/deletion.ts`-ийн `deleteAccountData`-г `adminDeletionDeps`-тэй дуудна (жишээ `scratch/delete-accounts-20261013.mjs`, `--dry-run` эхлээд). payments хэзээ ч устгагдахгүй.
+
+## 6. QPay production (2026-10-13-наас)
+
+**Env (Vercel → Settings → Environment Variables → Production; утгыг энд хэзээ ч бичихгүй):**
+
+| Нэр | Юу | Хаанаас |
+|---|---|---|
+| `QPAY_BASE_URL` | `https://merchant.qpay.mn` (`/v2`-гүй; sandbox: `https://merchant-sandbox.qpay.mn`) | код |
+| `QPAY_USERNAME`, `QPAY_PASSWORD` | merchant client credential | QPay-ийн гэрээний мэйл |
+| `QPAY_INVOICE_CODE` | `invoice_code` | QPay |
+| `QPAY_CALLBACK_SECRET` | 32 тэмдэгт санамсаргүй (`openssl rand -hex 16`); callback URL-ийн `s=` | өөрсдөө |
+| `APP_URL` | `https://www.champstep.mn` (эцэст нь `/` байхгүй) | — |
+
+`VITE_QPAY_SANDBOX`-ийг Production-д **тавихгүй** (client-д "simulate" товч гаргадаг build-time flag).
+Env солисны дараа заавал redeploy. Sandbox эсэхийг сервер `QPAY_BASE_URL`-д "sandbox" байгаа эсэхээр л шийднэ;
+production үед `/api/qpay/simulate-paid` 404 буцаана.
+
+**Callback URL:** invoice бүрт сервер `https://www.champstep.mn/api/qpay/callback?order=<orderId>&s=<secret>`
+гэж үүсгэж QPay-д `callback_url`-аар илгээнэ (`www`-тэй; `champstep.mn` 308 redirect хийдэг). QPay-д урьдчилан
+бүртгүүлэх шаардлага гарвал яг энэ үндсийг өгнө.
+
+**Урсгал (кодоос):** `create-invoice` → `payments/{orderId}` (status pending, invoiceId) → хэрэглэгч QR төлнө →
+QPay `callback` дуудна → сервер `/v2/payment/check`-ээр баталгаажуулж (PAID, дүн бүрэн) байж л
+`activateSubscription` → `payments` status paid, `users/{uid}` subscription → client `status`-ийг 3с тутам poll хийж
+"Амжилттай" харуулна. Callback-ийн body-д хэзээ ч итгэхгүй (`api/_lib/qpayCallback.ts`, тест `tests/qpay-callback.test.mjs`).
+Access token `system/qpayToken` доктод кэшлэгдэнэ (бүх instance хуваалцана, дуусахаас 60с өмнө шинэчилнэ) — гараар хүрэхгүй;
+асуудал гарвал докыг устгахад дараагийн хүсэлт шинээр авна.
+
+**Төлбөр баталгаажаагүй үед (хэрэглэгч төлсөн гэж байгаа ч багц идэвхжээгүй):**
+
+1. `node scripts/admin/payments-report.mjs --order <orderId>` — status, invoiceId, paymentId, users doc-ийн tier/expiresAt.
+   orderId-г хэрэглэгч мэдэхгүй бол `node scripts/admin/payments-report.mjs 7` (сүүлийн 7 хоног) жагсаалтаас email-ээр ол.
+2. `vercel logs --since 2h --no-follow | grep qpay` — `callback` мөр ирсэн эсэх, `[qpay] callback but not paid/insufficient`
+   (QPay check PAID биш / дүн дутуу), `[qpay] callback check failed` (QPay API алдаа, 502 → QPay дахин дуудна), `activated:`.
+3. Callback огт ирээгүй бол QPay merchant портал → Invoice → төлөв PAID эсэх. PAID боловч бидэнд pending бол callback URL-ийг
+   дахин дуудна: `curl "https://www.champstep.mn/api/qpay/callback?order=<orderId>&s=<QPAY_CALLBACK_SECRET>"` →
+   сервер өөрөө `/v2/payment/check` хийгээд PAID бол идэвхжүүлнэ (`SUCCESS`), үгүй бол `PENDING`.
+4. Бүх зүйл зөв мөртлөө идэвхжихгүй бол түр `grant-tier.mjs`-ээр олгоод (note-д orderId), QPay-тэй тодруулна.
+
+**Буцаалт:** кодоор хийгдэхгүй. QPay merchant портал дээр тухайн invoice/payment-ийн refund-ийг гараар хийнэ; дараа нь
+`users/{uid}`-ийн subscription талбаруудыг гараар free болгоно (`payments` док устгахгүй, `refundedAt` тэмдэглэж болно).
+
+**Сар бүрийн тооцоо:** `node scripts/admin/payments-report.mjs 30 --status paid` (эсвэл `--csv > scratch/payments-YYYY-MM.csv`).
+
+**Хийгдээгүй:** и-баримт (eBarimt 3.0), жилийн багц — тусдаа.
