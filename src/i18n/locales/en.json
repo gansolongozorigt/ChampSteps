@@ -408,6 +408,8 @@
     "defaultName": "Teacher"
   },
   "sub": {
+    "guestNotice": "Sign up to get a plan. Payments and promo codes are not available in trial mode.",
+    "guestSignUp": "Sign up",
     "upgradeBarDismiss": "Dismiss upgrade bar",
     "downgradeBlocked": "You already have a higher plan active (until {{until}})",
     "expiredBanner": "Your {{plan}} plan has expired — switched to Free, your data is kept.",
@@ -483,9 +485,9 @@
   "login": {
     "whoAreYou": "WHO ARE YOU?",
     "parent": "Parent",
-    "parentDesc": "Track your child's achievements",
+    "parentDesc": "Record your child's achievements and build their portfolio",
     "teacher": "Teacher / Coach",
-    "teacherDesc": "Manage your students",
+    "teacherDesc": "See your students' achievements and leave notes",
     "createAccount": "New here? Create an account.",
     "tryFirst": "Want to try it first?",
     "continueWithout": "Continue without an account",

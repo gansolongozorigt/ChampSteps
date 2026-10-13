@@ -43,7 +43,22 @@ test("guest: add child + achievement locally, survive reload, migrate on sign-up
   await expect(card(page, "Хоёр дахь амжилт")).toBeVisible();
   await expect(page.getByText(tr("status.errorSaving"))).toHaveCount(0);
 
-  // banner → sign-up form (opens in sign-up mode) → migration prompt
+  // subscription modal: no "pay" / promo for guests, only a sign-up notice
+  await page.locator("header").getByTitle(tr("nav.subscription")).click();
+  await expect(page.getByRole("heading", { name: tr("sub.title") })).toBeVisible();
+  await expect(page.getByTestId("sub-guest-notice")).toContainText(tr("sub.guestNotice"));
+  await expect(page.getByRole("button", { name: tr("sub.pay"), exact: true })).toHaveCount(0);
+  await expect(page.getByPlaceholder(tr("promo.placeholder"))).toHaveCount(0);
+  await page.getByRole("button", { name: tr("sub.close") }).click();
+  await expect(page.getByRole("heading", { name: tr("sub.title") })).toBeHidden();
+  await page.locator("header").getByTitle(tr("nav.subscription")).click();
+  await page.getByTestId("sub-guest-signup").click();
+  await expect(page.locator("#displayName")).toBeVisible({ timeout: 20_000 });
+  // back to the guest session, then the banner path → sign-up form → migration prompt
+  await page.goto("/");
+  await page.getByRole("button", { name: tr("auth.continueOffline") }).click();
+  await waitForDashboard(page);
+  await expect(card(page, "Туршилтын амжилт")).toBeVisible();
   await page.getByTestId("guest-signup").click();
   await expect(page.locator("#displayName")).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: tr("login.parent") }).click();

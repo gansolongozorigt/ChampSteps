@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleCheck, FileText, Loader2, Sparkles, Trophy, Users, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { isFirebaseConfigured } from "../lib/firebase";
+import { LOGIN_MODE_KEY } from "../lib/localStore";
 import { PromoError, applyPromoCode } from "../lib/promoClient";
 import { PLANS, formatMnt } from "../../shared/plans.js";
 import {
@@ -24,7 +26,10 @@ type Step = "compare" | "pay" | "success";
 
 export default function SubscriptionModal({ onClose, initialTier }: { onClose: () => void; initialTier?: SubscriptionTier }) {
   const { t, i18n } = useTranslation();
-  const { user, subscription, subscriptionInfo, activateSubscription, refreshSubscription } = useAuth();
+  const { user, subscription, subscriptionInfo, activateSubscription, refreshSubscription, signOut } = useAuth();
+  // Guest / trial user in production: plans need an account (no local activation, no promo).
+  // Without Firebase (dev / offline demo) the old local activation stays.
+  const isGuest = isFirebaseConfigured && !!user?.isOffline;
   const [step, setStep] = useState<Step>("compare");
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(
     initialTier && initialTier !== "free" ? initialTier : subscription !== "free" ? subscription : user?.role === "teacher" ? "coach" : "family"
@@ -150,12 +155,19 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
     }, 3000);
   }
 
+  /** Guest: open the sign-up form (the trial data stays on the device for the migration prompt). */
+  async function handleGuestSignUp() {
+    try { sessionStorage.setItem(LOGIN_MODE_KEY, "signup"); } catch { /* private mode */ }
+    await signOut();
+  }
+
   /** Багц сонгоод "Төлөх" дарахад: нэхэмжлэх үүсгэж төлбөрийн алхам руу орно. */
   async function handleStartPayment() {
     setError(null);
     if (!user) return;
 
-    // Firebase байхгүй (offline) үед хуучин локал идэвхжүүлэлт хэвээр
+    if (isGuest) return; // button is not rendered for guests; plans need an account
+    // Firebase байхгүй (offline demo) үед хуучин локал идэвхжүүлэлт хэвээр
     if (user.isOffline) {
       setProcessing(true);
       try {
@@ -276,7 +288,16 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                 );
               })}
             </div>
+            {isGuest && (
+              <div className="mt-5 cs-card-soft p-4 text-center" role="status" data-testid="sub-guest-notice">
+                <p className="t-body text-ink-2">{t("sub.guestNotice")}</p>
+                <button type="button" onClick={handleGuestSignUp} className="cs-btn cs-btn-primary mt-3 w-full" data-testid="sub-guest-signup">
+                  {t("sub.guestSignUp")}
+                </button>
+              </div>
+            )}
             {/* Promo code */}
+            {!isGuest && (
             <div className="mt-5 cs-card-soft p-4">
               <p className="cs-field-label">{t("promo.label")}</p>
               <div className="flex gap-2">
@@ -302,6 +323,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                 </p>
               )}
             </div>
+            )}
 
             {error && (
               <div className="mt-3 rounded-input bg-error-soft px-3 py-2 t-body text-error">{error}</div>
@@ -311,7 +333,7 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
                 {t("pay.disabledInfo")}
               </div>
             )}
-            {paymentsEnabled !== false && (
+            {paymentsEnabled !== false && !isGuest && (
             <button
               type="button"
               onClick={handleStartPayment}
