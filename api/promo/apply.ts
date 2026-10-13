@@ -1,4 +1,5 @@
-// POST /api/promo/apply — { idToken, code } → family багцыг кодын сарын тоогоор идэвхжүүлнэ.
+// POST /api/promo/apply — { idToken, code } → кодын багцыг (plan: family/master/coach,
+// байхгүй бол family) кодын хугацаагаар (days, байхгүй бол discountMonths × 30) идэвхжүүлнэ.
 // promoCodes-ийг зөвхөн сервер уншиж/бичнэ (Firestore rules client-ийг хориглоно).
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -7,7 +8,7 @@ import { currentFromUserDoc, planNextSubscription } from "../_lib/subscriptionMa
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import { subscriptionFields } from "../_lib/activate.js";
 import {
-  MONTH_MS, PROMO_PLAN, normalizeCode, promoExpiresAt, promoMonths, type PromoCodeDoc,
+  DAY_MS, normalizeCode, promoDurationMs, promoExpiresAt, promoPlan, type PromoCodeDoc,
 } from "../_lib/promo.js";
 
 type Reason = "not_found" | "inactive" | "expired" | "used" | "exhausted" | "downgrade";
@@ -41,10 +42,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (usedBy.includes(uid)) throw new PromoReject("used");
       if (promo.maxUses && usedBy.length >= Number(promo.maxUses)) throw new PromoReject("exhausted");
 
-      const months = promoMonths(promo);
+      const plan = promoPlan(promo);
+      const durationMs = promoDurationMs(promo);
+      const days = Math.round(durationMs / DAY_MS);
       const now = new Date();
       const userSnap = await tx.get(userRef);
-      const next = planNextSubscription(currentFromUserDoc(userSnap.data()), PROMO_PLAN, now, months * MONTH_MS);
+      // Lower plan than the user's active one → 409 downgrade (same rule as paid upgrades).
+      const next = planNextSubscription(currentFromUserDoc(userSnap.data()), plan, now, durationMs);
       if (!next.ok) throw new PromoReject("downgrade");
       const expiresAt = next.expiresAt;
 
@@ -55,16 +59,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       tx.set(
         userRef,
-        subscriptionFields(PROMO_PLAN, "promo", now, expiresAt, { promoCode: code, lastOrderId: null }),
+        subscriptionFields(plan, "promo", now, expiresAt, { promoCode: code, lastOrderId: null }),
         { merge: true }
       );
-      return { months, expiresAt };
+      return { plan, days, expiresAt };
     });
 
-    console.log("[promo] applied:", code, result.months, "mo");
+    console.log("[promo] applied:", code, result.plan, result.days, "days");
     return res.status(200).json({
-      plan: PROMO_PLAN,
-      months: result.months,
+      plan: result.plan,
+      days: result.days,
+      // kept for the client's "{{months}} months free" message
+      months: Math.max(1, Math.round(result.days / 30)),
       expiresAt: result.expiresAt.toISOString(),
     });
   } catch (err) {

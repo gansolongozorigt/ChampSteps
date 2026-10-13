@@ -1,9 +1,14 @@
 // api/_lib/promo.ts — promoCodes коллекцын серверийн загвар (client хандах эрхгүй)
 
 import { Timestamp } from "firebase-admin/firestore";
+import { isPaidPlanId, type PaidPlanId } from "../../shared/plans.js";
 
 export interface PromoCodeDoc {
   code: string;
+  /** Plan to grant (family | master | coach). Absent/invalid → legacy family. */
+  plan?: unknown;
+  /** Duration in days. Absent/invalid → discountMonths × 30 (legacy). */
+  days?: unknown;
   discountMonths?: number;
   months?: number;
   usedBy: string[];
@@ -16,6 +21,8 @@ export interface PromoCodeDoc {
 
 export interface PromoCodeView {
   code: string;
+  plan: PaidPlanId;
+  days: number;
   discountMonths: number;
   usedBy: string[];
   maxUses: number;
@@ -23,13 +30,30 @@ export interface PromoCodeView {
   active: boolean;
 }
 
-/** Promo код ямар багц өгөх (Part 1: үргэлж family). */
+/** Legacy default plan: a code without a valid `plan` field grants family. */
 export const PROMO_PLAN = "family" as const;
-export const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+export const MONTH_MS = 30 * DAY_MS;
 
 export function promoMonths(doc: PromoCodeDoc): number {
   const m = Number(doc.discountMonths ?? doc.months ?? 1);
   return Number.isFinite(m) && m > 0 ? Math.floor(m) : 1;
+}
+
+/** Plan the code grants: `plan` when it is a paid plan id (family/master/coach), else family. */
+export function promoPlan(doc: PromoCodeDoc): PaidPlanId {
+  return isPaidPlanId(doc.plan) ? doc.plan : PROMO_PLAN;
+}
+
+/** Duration: a positive `days` wins; otherwise discountMonths (or months) × 30 days. */
+export function promoDurationMs(doc: PromoCodeDoc): number {
+  const d = Number(doc.days);
+  if (Number.isFinite(d) && d >= 1) return Math.floor(d) * DAY_MS;
+  return promoMonths(doc) * MONTH_MS;
+}
+
+export function promoDays(doc: PromoCodeDoc): number {
+  return Math.round(promoDurationMs(doc) / DAY_MS);
 }
 
 export function promoExpiresAt(doc: PromoCodeDoc): Date | null {
@@ -43,6 +67,8 @@ export function promoExpiresAt(doc: PromoCodeDoc): Date | null {
 export function toView(doc: PromoCodeDoc): PromoCodeView {
   return {
     code: doc.code,
+    plan: promoPlan(doc),
+    days: promoDays(doc),
     discountMonths: promoMonths(doc),
     usedBy: Array.isArray(doc.usedBy) ? doc.usedBy : [],
     maxUses: Number(doc.maxUses) || 0,
