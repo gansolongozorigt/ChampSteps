@@ -8,8 +8,10 @@
 | Storage bucket | `gs://champstep-22358.firebasestorage.app`, US-CENTRAL1, Regional, Object Versioning унтраалттай |
 | Firestore хэмжээ | 10 коллекц, 64 doc, ~33 KB |
 | Storage хэмжээ | 63 файл, 17.4 MB (`achievements/{childId}/*.jpg` 54, `avatars/{childId}/*` 9) |
-| Scheduled backup | **Байхгүй** (энэ баримтын A хэсгээр үүсгэнэ) |
-| gcloud | `~/Downloads/google-cloud-sdk/bin/gcloud` (567.0.0), account/project тохируулгатай |
+| Scheduled backup | **Байгаа** (2026-10-13-наас): daily 7d `c8c2588f…`, weekly SUN 14w `517f3c4b…` |
+| Delete protection / PITR | Хоёулаа **идэвхтэй** (2026-10-13) |
+| Backup bucket | `gs://champstep-22358-backups` — Nearline, US-CENTRAL1, versioning ON, lifecycle 400 хоног (2026-10-13-нд үүсгэсэн) |
+| gcloud | **`~/google-cloud-sdk`** (588.0.0, bundled Python). Хуучин `~/Downloads/google-cloud-sdk` (567, системийн Python 3.9) ажиллахаа больсон, устгаж болно |
 
 Гурван давхарга:
 
@@ -23,31 +25,25 @@
 
 ## 0. Бэлтгэл: gcloud
 
-gcloud суусан, нэвтэрсэн байна (`gcloud config list` → account, project = champstep-22358). Шинээр суулгах бол: https://cloud.google.com/sdk/docs/install → `gcloud init` → `gcloud auth login`.
+gcloud нь `~/google-cloud-sdk`-д (2026-10-13-нд шинээр суулгасан, bundled Python-той, 588.0.0). `~/.zshrc` нь `~/google-cloud-sdk/path.zsh.inc`-ийг ачаалдаг тул шинэ Terminal-д `gcloud`, `gsutil` шууд ажиллана:
 
 ```bash
-export PATH="$HOME/Downloads/google-cloud-sdk/bin:$PATH"
-gcloud config set project champstep-22358
-gcloud auth list
+which gcloud          # /Users/mac/google-cloud-sdk/bin/gcloud байх ёстой
+gcloud config list    # account = gansolongozorigt7@gmail.com, project = champstep-22358
+gsutil version -l     # алдаагүй
 ```
 
-**Анхаар (Python):** gcloud одоо Python 3.9 дээр ажиллаж "no longer officially supported" гэж анхааруулна. `gcloud firestore ...` командууд ажилладаг, харин `gcloud storage ...` зарим үед `importlib.metadata` алдаа өгдөг тул энэ баримтад bucket-ийн ажилд **`gsutil`** хэрэглэсэн. Бүрмөсөн засах бол:
+Хэрэв `which gcloud` хуучин `~/Downloads/google-cloud-sdk/bin/gcloud`-ийг заавал тэр Terminal-ийн PATH хуучирсан байна: Terminal-ээ шинээр нээх эсвэл `export PATH="$HOME/google-cloud-sdk/bin:$PATH"`. Хуучин `~/Downloads/google-cloud-sdk` хавтас (567.0.0, системийн Python 3.9-өөр ажилладаг, `gsutil` болон `gcloud storage` алдаа өгдөг) хэрэггүй, устгаж болно: `rm -rf ~/Downloads/google-cloud-sdk`.
 
-```bash
-brew install python@3.11
-export CLOUDSDK_PYTHON="$(brew --prefix)/bin/python3.11"   # ~/.zshrc-д нэмж болно
-gcloud components reinstall
-```
+Шинээр суулгах бол (Homebrew байхгүй Mac дээр): https://cloud.google.com/sdk/docs/install → macOS ARM64 tarball → `~/google-cloud-sdk`-д задлаад `./google-cloud-sdk/install.sh --quiet --path-update true --usage-reporting false --install-python true`. Системийн Python 3.9 дээр install.sh унавал (urllib3 `|` алдаа) эхлээд user-space Python 3.12 суулгана: `curl -LsSf https://astral.sh/uv/install.sh | sh && ~/.local/bin/uv python install 3.12`, дараа нь `CLOUDSDK_PYTHON="$(~/.local/bin/uv python find 3.12)" ./google-cloud-sdk/install.sh ...`. Суулгасны дараа bundled Python (3.14) ашиглагддаг тул `CLOUDSDK_PYTHON` хэрэггүй.
 
-Шаардлагатай эрх: төслийн Owner (таны account). Firestore backup-д нэмэлт API идэвхжүүлэх шаардлагагүй (Firestore API аль хэдийн идэвхтэй).
-
----
+Нэвтрэлт/проект `~/.config/gcloud`-д хадгалагддаг тул SDK солиход дахин нэвтрэх шаардлагагүй болсон. Шаардлагатай эрх: төслийн Owner (таны account).
 
 ## A. Firestore scheduled backups (Google-ийн удирддаг)
 
 Region: Firestore database `(default)` **us-central1**-д байгаа тул backup-ууд мөн `us-central1`-д хадгалагдана.
 
-### A1. Хуваарь үүсгэх (нэг удаа)
+### A1. Хуваарь үүсгэх (нэг удаа — 2026-10-13-нд ХИЙГДСЭН, дахин үүсгэхгүй)
 
 ```bash
 # Өдөр бүр, 7 хоног хадгална
@@ -109,17 +105,17 @@ Backup-ийг `(default)` дээр шууд буулгах боломжгүй, �
    gcloud firestore databases delete --database=restore-20261013
    ```
 
-Нэмэлт сонголт: Point-in-time recovery (PITR, 7 хоногийн дотор ямар ч минут руу буцах; хадгалалтын зардал нэмэгдэнэ):
-`gcloud firestore databases update --database='(default)' --enable-pitr`. Одоогоор идэвхжүүлээгүй.
+Point-in-time recovery (PITR, 7 хоногийн дотор ямар ч минут руу буцах; хадгалалтын зардал бага зэрэг нэмэгдэнэ) **2026-10-13-нд идэвхжүүлсэн**:
+`gcloud firestore databases update --database='(default)' --enable-pitr`.
 
-Delete protection (database-ийг санамсаргүй устгахаас хамгаална, үнэгүй, зөвлөж байна):
-`gcloud firestore databases update --database='(default)' --delete-protection`.
+Delete protection (database-ийг санамсаргүй устгахаас хамгаална, үнэгүй) **2026-10-13-нд идэвхжүүлсэн**:
+`gcloud firestore databases update --database='(default)' --delete-protection`. Шалгах: `gcloud firestore databases describe --database='(default)'`.
 
 ---
 
 ## B. Сар бүрийн гар экспорт (offsite, урт хугацаа)
 
-### B1. Backup bucket үүсгэх (нэг удаа)
+### B1. Backup bucket үүсгэх (нэг удаа — 2026-10-13-нд ХИЙГДСЭН)
 
 `gs://champstep-22358-backups`, ижил region (us-central1), Nearline (сард нэг бичих, ховор унших), Object Versioning ON, 400 хоногийн дараа автоматаар устгах lifecycle.
 
