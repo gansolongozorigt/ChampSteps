@@ -600,6 +600,19 @@
     "p6Title": "6. Deleting data",
     "p6": "You can delete a child's record (achievements, photos, practice logs, reflections, coach notes, AI insights) and your own account from the app at any time. Deleted data cannot be recovered. Payment records (order id, plan, amount) contain no personal data and are retained for the period required by law."
   },
+  "myData": {
+    "title": "My data",
+    "desc": "You can download all of your data at any time. ChampStep backs up your data every day.",
+    "json": "Download JSON",
+    "zip": "Download ZIP with photos",
+    "teacherNote": "A teacher's export contains your account and the notes you wrote. Children's records belong to their parents and are not included.",
+    "guestNote": "Trial mode: the data on this device is downloaded as JSON (no photos).",
+    "progress": "Downloading photos: {{done}}/{{total}}",
+    "tooBig": "Too large: {{count}} photos or more than 100 MB. Download the JSON and save the photos separately.",
+    "done": "Export ready: {{file}}",
+    "doneMissing": "Export ready. {{count}} photo(s) could not be fetched; see images-missing.txt.",
+    "error": "Could not export. Check your internet connection and try again."
+  },
   "danger": {
     "zoneTitle": "Danger zone",
     "cancel": "Cancel",

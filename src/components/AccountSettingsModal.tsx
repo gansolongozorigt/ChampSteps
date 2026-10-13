@@ -7,7 +7,9 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, TriangleAlert } from "lucide-react";
+import { Download, FileJson, Loader2, TriangleAlert } from "lucide-react";
+import { buildUserExport, downloadJson, downloadZip, type ZipProgress } from "../lib/exportFetch";
+import { exportFilename } from "../lib/exportData";
 import type { AppUser } from "../lib/auth";
 import { daysLeft, isActive, type SubscriptionInfo } from "../lib/subscription";
 import { PLANS } from "../../shared/plans.js";
@@ -27,6 +29,10 @@ export default function AccountSettingsModal({ user, subscriptionInfo, childrenC
   const [typed, setTyped] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "My data" export: json | zip while running, plus a status line
+  const [exporting, setExporting] = useState<"json" | "zip" | null>(null);
+  const [exportMsg, setExportMsg] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [zipProgress, setZipProgress] = useState<ZipProgress | null>(null);
 
   const email = user.email.trim();
   const matches = typed.trim().toLowerCase() === email.toLowerCase() && email.length > 0;
@@ -35,6 +41,31 @@ export default function AccountSettingsModal({ user, subscriptionInfo, childrenC
   const days = daysLeft(subscriptionInfo);
   const planLabel = PLANS[subscriptionInfo.tier]?.label[lang] ?? subscriptionInfo.tier;
   const roleLabel = user.role === "teacher" ? t("login.teacher") : t("login.parent");
+
+  async function exportData(kind: "json" | "zip") {
+    if (exporting) return;
+    setExporting(kind);
+    setExportMsg(null);
+    setZipProgress(null);
+    try {
+      const file = await buildUserExport(user);
+      if (kind === "json") {
+        downloadJson(file);
+        setExportMsg({ kind: "info", text: t("myData.done", { file: exportFilename(new Date(file.exportedAt), "json") }) });
+      } else {
+        const r = await downloadZip(file, setZipProgress);
+        if (!r.ok) setExportMsg({ kind: "error", text: t("myData.tooBig", { count: file.images.length }) });
+        else if (r.missing > 0) setExportMsg({ kind: "info", text: t("myData.doneMissing", { count: r.missing }) });
+        else setExportMsg({ kind: "info", text: t("myData.done", { file: exportFilename(new Date(file.exportedAt), "zip") }) });
+      }
+    } catch (e) {
+      console.error("[champstep] export failed:", e);
+      setExportMsg({ kind: "error", text: t("myData.error") });
+    } finally {
+      setExporting(null);
+      setZipProgress(null);
+    }
+  }
 
   async function confirm() {
     if (!matches || deleting) return;
@@ -78,7 +109,32 @@ export default function AccountSettingsModal({ user, subscriptionInfo, childrenC
                 </div>
               </dl>
 
-              <section className="mt-8 border-t border-line pt-5" aria-labelledby="account-danger">
+              <section className="mt-6 border-t border-line pt-5" aria-labelledby="account-mydata" data-testid="my-data">
+                <h3 id="account-mydata" className="t-h2">{t("myData.title")}</h3>
+                <p className="t-caption mt-1">{t("myData.desc")}</p>
+                {user.role === "teacher" && <p className="t-caption mt-1">{t("myData.teacherNote")}</p>}
+                {user.isOffline && <p className="t-caption mt-1">{t("myData.guestNote")}</p>}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void exportData("json")} disabled={exporting !== null} className="cs-btn cs-btn-outline" data-testid="export-json">
+                    {exporting === "json" ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <FileJson size={16} aria-hidden="true" />}
+                    {t("myData.json")}
+                  </button>
+                  {user.role !== "teacher" && !user.isOffline && (
+                    <button type="button" onClick={() => void exportData("zip")} disabled={exporting !== null} className="cs-btn cs-btn-outline" data-testid="export-zip">
+                      {exporting === "zip" ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
+                      {t("myData.zip")}
+                    </button>
+                  )}
+                </div>
+                {zipProgress && zipProgress.total > 0 && (
+                  <p className="t-caption mt-2" role="status">{t("myData.progress", { done: zipProgress.done, total: zipProgress.total })}</p>
+                )}
+                {exportMsg && (
+                  <p className={`mt-2 t-caption ${exportMsg.kind === "error" ? "text-error" : "text-primary"}`} role="status" data-testid="export-status">{exportMsg.text}</p>
+                )}
+              </section>
+
+              <section className="mt-6 border-t border-line pt-5" aria-labelledby="account-danger">
                 <h3 id="account-danger" className="t-h2">{t("danger.zoneTitle")}</h3>
                 <p className="t-caption mt-1">
                   {user.role === "teacher" ? t("danger.account.summaryTeacher") : t("danger.account.summaryParent", { children: childrenCount })}

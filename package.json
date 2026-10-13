@@ -15,6 +15,7 @@
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
     "test:plans": "node --test tests/plans.test.mjs",
     "test:pdf": "node --import tsx --test tests/pdf-templates.test.mjs",
+    "test:export": "node --import tsx --test tests/export-data.test.mjs",
     "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "i18next": "^23.15.1",
     "i18next-browser-languagedetector": "^8.0.0",
     "jspdf": "^2.5.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.52.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
