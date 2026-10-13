@@ -1,7 +1,12 @@
 // =============================================================================
-// pdfExport v7 — 4 template: official, kids, gold, portfolio (resume-style)
-// Монгол+Англи+Орос хэл, NotoSans фонт, зурагтай
-// v7: appendix pages with full-size images + tap-to-enlarge internal links
+// pdfExport v8 — 3 template: official, framed, portfolio
+//   official  — албан хэлбэр (сургууль, тэтгэлэг); үнэгүй багцад ч ажиллана
+//   framed    — гэрчилгээний хэв маяг, хуудас бүр давхар хүрээтэй
+//   portfolio — зургийн загвар: том зураг, гэрчилгээ бүтэн хуудсаар хавсралтад
+// Монгол+Англи+Орос хэл, NotoSans фонт (emoji байхгүй — NotoSans зурдаггүй),
+// хавсралт хуудас (бүтэн хэмжээний зураг) + thumbnail-аас үсрэх холбоос.
+// Браузер болон Node (tests/pdf-templates.test.mjs) хоёуланд ажиллана:
+// fonts-ийг opts.fonts-оор өгч болно, зураг data: URL бол canvas хэрэггүй.
 // =============================================================================
 
 import { jsPDF } from "jspdf";
@@ -10,8 +15,7 @@ import type { AppLang } from "../i18n";
 import { LOGO_BARS } from "../components/Logo";
 
 // -----------------------------------------------------------------------------
-// Brand palette (docs/BRAND.md) as RGB for jsPDF. Only colours and the logo
-// changed in this file — every template keeps its layout, sizes and flow.
+// Brand palette (docs/BRAND.md) as RGB for jsPDF.
 // -----------------------------------------------------------------------------
 type RGB = [number, number, number];
 const INK: RGB = [24, 37, 29];            // #18251D graphite
@@ -20,14 +24,53 @@ const INK3: RGB = [110, 125, 116];        // #6E7D74
 const LINE: RGB = [220, 229, 221];        // #DCE5DD
 const PRIMARY: RGB = [47, 125, 91];       // #2F7D5B forest green
 const PRIMARY_SOFT: RGB = [221, 243, 230]; // #DDF3E6
+const PRIMARY_SOFT_INK: RGB = [31, 90, 66]; // #1F5A42
 const SURFACE_MUTED: RGB = [238, 242, 236]; // #EEF2EC
-const STAGE2: RGB = [42, 61, 50];         // #2A3D32
 const STAGE_MUTED: RGB = [201, 214, 206]; // #C9D6CE
 const WHITE: RGB = [255, 255, 255];
 const GOLD: RGB = [212, 162, 76];         // #D4A24C
-const GOLD_SOFT: RGB = [255, 241, 201];   // #FFF1C9
 const SILVER: RGB = [156, 163, 175];      // #9CA3AF
 const BRONZE: RGB = [180, 83, 9];         // #B45309
+
+const AWARD_COLOR: Record<string, RGB> = { Gold: GOLD, Silver: SILVER, Bronze: BRONZE, Participant: INK3 };
+
+// -----------------------------------------------------------------------------
+// Templates + legacy id map live in ./pdfTemplates (no jsPDF there); re-exported for callers/tests.
+// -----------------------------------------------------------------------------
+
+import { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, type PdfTemplate } from "./pdfTemplates";
+export { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate };
+export type { PdfTemplate };
+
+type T = (key: string, opts?: Record<string, unknown>) => string;
+
+export interface PdfFonts {
+  /** base64 TTF */
+  regular: string;
+  bold: string;
+}
+
+interface ExportOpts {
+  template?: PdfTemplate;
+  filename?: string;
+  language?: AppLang;
+  includeImages?: boolean;
+  t?: T;
+  // "save" (default) → файл татна; "bloburl" → preview-д object URL; "arraybuffer" → Node тест.
+  output?: "save" | "bloburl" | "arraybuffer";
+  /** Fonts as base64 (Node / tests). In the browser they are fetched from /NotoSans-*.ttf. */
+  fonts?: PdfFonts;
+  /** Footer date (defaults to today). */
+  now?: Date;
+}
+
+const A4 = { w: 210, h: 297 };
+const M = 18;
+const CW = A4.w - M * 2;
+
+// -----------------------------------------------------------------------------
+// Logo
+// -----------------------------------------------------------------------------
 
 /** Logo mark: three ascending rounded bars (LOGO_BARS, 32-unit box) scaled to `size` mm. */
 function drawLogoMark(doc: jsPDF, x: number, y: number, size: number, tone: "color" | "light" = "color") {
@@ -39,10 +82,7 @@ function drawLogoMark(doc: jsPDF, x: number, y: number, size: number, tone: "col
   });
 }
 
-/**
- * Mark + wordmark ("Champ" ink/white, "Step" green/soft green) on one baseline.
- * Replaces the old "CHAMPSTEP" text at the same anchor; align "center" centres the whole lockup.
- */
+/** Mark + wordmark ("Champ" ink/white, "Step" green/soft green) on one baseline. */
 function drawLogo(
   doc: jsPDF,
   x: number,
@@ -67,24 +107,6 @@ function drawLogo(
   doc.text("Step", x0 + mark + gap + wChamp, baseline);
 }
 
-export type PdfTemplate = "official" | "gold" | "portfolio" | "framed";
-
-interface ExportOpts {
-  template?: PdfTemplate;
-  filename?: string;
-  language?: AppLang;
-  includeImages?: boolean;
-  t?: (key: string, opts?: Record<string, unknown>) => string;
-  // "save" (default) → файл татна; "bloburl" → preview-д зориулж object URL буцаана.
-  output?: "save" | "bloburl";
-  // Зөвхөн "framed" загварт: хүрээний хэв маяг
-  frameStyle?: FrameStyle;
-}
-
-const A4 = { w: 210, h: 297 };
-const M = 18;
-const CW = A4.w - M * 2;
-
 // -----------------------------------------------------------------------------
 // ImgRef — thumbnail бүрийн байрлал + хавсралт холбоос
 // -----------------------------------------------------------------------------
@@ -104,30 +126,23 @@ interface ImgRef {
 // Font cache
 // -----------------------------------------------------------------------------
 
-const fontCache: { regular: string | null; bold: string | null } = {
-  regular: null,
-  bold: null,
-};
+const fontCache: { regular: string | null; bold: string | null } = { regular: null, bold: null };
 
-async function loadFont(doc: jsPDF) {
+async function loadFont(doc: jsPDF, fonts?: PdfFonts) {
+  if (fonts) {
+    fontCache.regular = fonts.regular;
+    fontCache.bold = fonts.bold;
+  }
   if (!fontCache.regular || !fontCache.bold) {
     try {
-      const [regRes, boldRes] = await Promise.all([
-        fetch("/NotoSans-Regular.ttf"),
-        fetch("/NotoSans-Bold.ttf"),
-      ]);
+      const [regRes, boldRes] = await Promise.all([fetch("/NotoSans-Regular.ttf"), fetch("/NotoSans-Bold.ttf")]);
       if (!regRes.ok || !boldRes.ok) throw new Error("Font fetch failed");
-      const [regBuf, boldBuf] = await Promise.all([
-        regRes.arrayBuffer(),
-        boldRes.arrayBuffer(),
-      ]);
+      const [regBuf, boldBuf] = await Promise.all([regRes.arrayBuffer(), boldRes.arrayBuffer()]);
       const toBase64 = (buf: ArrayBuffer) => {
         const bytes = new Uint8Array(buf);
         let binary = "";
         const CHUNK = 8192;
-        for (let i = 0; i < bytes.byteLength; i += CHUNK) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-        }
+        for (let i = 0; i < bytes.byteLength; i += CHUNK) binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
         return btoa(binary);
       };
       fontCache.regular = toBase64(regBuf);
@@ -147,77 +162,6 @@ async function loadFont(doc: jsPDF) {
   }
 }
 
-function drawImagePlaceholder(doc: jsPDF, x: number, y: number, w: number, h: number) {
-  doc.setFillColor(...SURFACE_MUTED);
-  doc.roundedRect(x, y, w, h, 2, 2, "F");
-  doc.setFontSize(7);
-  doc.setTextColor(...INK3);
-  doc.text("[ image ]", x + w / 2, y + h / 2 + 2, { align: "center" });
-}
-
-// Crop an image dataURL into a circle (transparent corners) via offscreen canvas.
-// Cover-fits + centers the source so non-square photos aren't distorted. Returns PNG.
-async function circleCropDataUrl(dataUrl: string, sizePx = 320): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = sizePx;
-        canvas.height = sizePx;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { resolve(dataUrl); return; }
-        ctx.beginPath();
-        ctx.arc(sizePx / 2, sizePx / 2, sizePx / 2, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        const scale = Math.max(sizePx / img.width, sizePx / img.height);
-        const dw = img.width * scale;
-        const dh = img.height * scale;
-        ctx.drawImage(img, (sizePx - dw) / 2, (sizePx - dh) / 2, dw, dh);
-        resolve(canvas.toDataURL("image/png"));
-      } catch {
-        resolve(dataUrl);
-      }
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
-
-// Draw a circular avatar: photo if available, green initial circle otherwise.
-// cx/cy = center in mm, r = radius in mm.
-async function drawAvatar(
-  doc: jsPDF,
-  child: Child,
-  cx: number,
-  cy: number,
-  r: number,
-  opts: { bgR: number; bgG: number; bgB: number; textR: number; textG: number; textB: number } = {
-    bgR: PRIMARY[0], bgG: PRIMARY[1], bgB: PRIMARY[2], textR: 255, textG: 255, textB: 255,
-  }
-) {
-  const d = r * 2;
-  if (child.avatarUrl) {
-    const dataUrl = await urlToDataUrl(child.avatarUrl);
-    if (dataUrl) {
-      try {
-        const circular = await circleCropDataUrl(dataUrl, 320);
-        doc.addImage(circular, "PNG", cx - r, cy - r, d, d);
-        return;
-      } catch { /* fall through to initial */ }
-    }
-  }
-  // Initial circle fallback
-  doc.setFillColor(opts.bgR, opts.bgG, opts.bgB);
-  doc.circle(cx, cy, r, "F");
-  const initial = (child.name || "?")[0].toUpperCase();
-  setFont(doc, "bold");
-  doc.setFontSize(r * 4);
-  doc.setTextColor(opts.textR, opts.textG, opts.textB);
-  doc.text(initial, cx, cy + r * 1.3, { align: "center" });
-}
-
 function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
   const fontList = doc.getFontList();
   doc.setFont(fontList["NotoSans"] ? "NotoSans" : "helvetica", weight);
@@ -229,6 +173,14 @@ function setFont(doc: jsPDF, weight: "normal" | "bold" = "normal") {
 
 const MAX_IMG_PX = 1600;
 const IMG_QUALITY = 0.85;
+
+function drawImagePlaceholder(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  doc.setFillColor(...SURFACE_MUTED);
+  doc.roundedRect(x, y, w, h, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setTextColor(...INK3);
+  doc.text("[ image ]", x + w / 2, y + h / 2 + 2, { align: "center" });
+}
 
 function compressImgElement(img: HTMLImageElement): string {
   let w = img.naturalWidth;
@@ -244,15 +196,48 @@ function compressImgElement(img: HTMLImageElement): string {
   return canvas.toDataURL("image/jpeg", IMG_QUALITY);
 }
 
-// dataUrl-с байгалийн хэмжээг (пиксель) авна — thumbnail + appendix хоёуланд хэрэгтэй
-function imgNaturalDims(dataUrl: string): Promise<{ w: number; h: number }> {
-  return new Promise((resolve) => {
-    if (!dataUrl) { resolve({ w: 0, h: 0 }); return; }
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve({ w: 0, h: 0 });
-    img.src = dataUrl;
-  });
+function base64Bytes(b64: string, maxBytes = Infinity): Uint8Array {
+  const clean = b64.replace(/\s/g, "");
+  const bin = typeof atob === "function" ? atob(clean) : "";
+  const n = Math.min(bin.length, maxBytes);
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Image format jsPDF should use for a data URL. */
+function dataUrlFormat(dataUrl: string): "PNG" | "JPEG" {
+  return /^data:image\/png/i.test(dataUrl) ? "PNG" : "JPEG";
+}
+
+/**
+ * Natural pixel size parsed from the PNG IHDR / JPEG SOF header — pure, sync,
+ * works in Node. Returns 0×0 when unknown (callers fall back to a 4:3 box).
+ */
+export function dataUrlDims(dataUrl: string): { w: number; h: number } {
+  const m = /^data:image\/(png|jpe?g);base64,(.*)$/is.exec(dataUrl);
+  if (!m) return { w: 0, h: 0 };
+  try {
+    const b = base64Bytes(m[2]);
+    if (m[1].toLowerCase() === "png") {
+      if (b.length < 24) return { w: 0, h: 0 };
+      const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+      return { w: dv.getUint32(16), h: dv.getUint32(20) };
+    }
+    // JPEG: walk the markers until a SOFn (C0–CF except C4, C8, CC)
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) { i++; continue; }
+      const marker = b[i + 1];
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue; }
+      const len = (b[i + 2] << 8) | b[i + 3];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8] };
+      }
+      i += 2 + len;
+    }
+  } catch { /* fall through */ }
+  return { w: 0, h: 0 };
 }
 
 // jsPDF-ийн одоогийн хуудасны дугаарыг авна (1-indexed)
@@ -265,8 +250,13 @@ function currentPageNum(doc: jsPDF): number {
   }
 }
 
+function totalPages(doc: jsPDF): number {
+  return (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
+}
+
 export async function urlToDataUrl(url: string): Promise<string> {
   if (url.startsWith("data:")) return url;
+  if (typeof Image === "undefined") return ""; // Node: only data URLs are supported
 
   // Blob URLs are same-origin — load directly, no crossOrigin needed
   if (url.startsWith("blob:")) {
@@ -312,81 +302,102 @@ export async function urlToDataUrl(url: string): Promise<string> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Үндсэн export функц
-// -----------------------------------------------------------------------------
-
-export async function exportPortfolio(
-  child: Child,
-  achievements: Achievement[],
-  opts: ExportOpts = {}
-): Promise<string | void> {
-  const {
-    template = "official",
-    t = (k: string) => k,
-    filename,
-    includeImages = true,
-    output = "save",
-    frameStyle = "classic",
-  } = opts;
-
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  await loadFont(doc);
-
-  // Хавсралт бичлэгийн массив — export бүрт шинэ
-  const imgRefs: ImgRef[] = [];
-
-  if (template === "official") {
-    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs);
-  } else if (template === "gold") {
-    await renderGold(doc, child, achievements, t, includeImages, imgRefs);
-  } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, frameStyle, imgRefs);
-  } else {
-    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs);
+/** Draw a data URL cover-fitted into a box and clipped to a circle (no canvas needed). */
+function drawCircleImage(doc: jsPDF, dataUrl: string, cx: number, cy: number, r: number) {
+  const { w, h } = dataUrlDims(dataUrl);
+  const d = r * 2;
+  let iw = d, ih = d;
+  if (w > 0 && h > 0) {
+    const aspect = w / h;
+    if (aspect > 1) iw = d * aspect; else ih = d / aspect;
   }
-
-  const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
-  if (output === "bloburl") {
-    return URL.createObjectURL(doc.output("blob"));
-  }
-  doc.save(`${safeName}_${template}.pdf`);
+  doc.saveGraphicsState();
+  doc.circle(cx, cy, r, null as unknown as string);
+  doc.clip();
+  doc.discardPath();
+  doc.addImage(dataUrl, dataUrlFormat(dataUrl), cx - iw / 2, cy - ih / 2, iw, ih);
+  doc.restoreGraphicsState();
 }
 
-// =============================================================================
-// Template 1: Official
-// =============================================================================
+// Circular avatar: photo if available, green initial circle otherwise. cx/cy = center mm, r = radius mm.
+async function drawAvatar(doc: jsPDF, child: Child, cx: number, cy: number, r: number, bg: RGB = PRIMARY, fg: RGB = WHITE) {
+  if (child.avatarUrl) {
+    const dataUrl = await urlToDataUrl(child.avatarUrl);
+    if (dataUrl) {
+      try {
+        drawCircleImage(doc, dataUrl, cx, cy, r);
+        return;
+      } catch { /* fall through to initial */ }
+    }
+  }
+  doc.setFillColor(...bg);
+  doc.circle(cx, cy, r, "F");
+  const initial = (child.name || "?")[0].toUpperCase();
+  setFont(doc, "bold");
+  doc.setFontSize(r * 4);
+  doc.setTextColor(...fg);
+  doc.text(initial, cx, cy + r * 1.3, { align: "center" });
+}
 
-// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна.
-// refCtx өгвөл thumbnail бүрийг imgRefs-д бүртгэнэ.
+/** Label-style text (BRAND.md .t-label): uppercase, letter-spaced. */
+function drawLabel(doc: jsPDF, text: string, x: number, y: number, size: number, color: RGB, align: "left" | "center" = "left") {
+  setFont(doc, "bold");
+  doc.setFontSize(size);
+  doc.setTextColor(...color);
+  doc.text(text.toUpperCase(), x, y, { align, charSpace: size * 0.09 });
+}
+
+/** Medal / category chip (pill) with text; returns its width. */
+function drawChip(doc: jsPDF, text: string, x: number, y: number, bg: RGB, fg: RGB, size = 7.5): number {
+  setFont(doc, "bold");
+  doc.setFontSize(size);
+  const w = doc.getTextWidth(text) + 6;
+  const h = size * 0.7;
+  doc.setFillColor(...bg);
+  doc.roundedRect(x, y - h * 0.72, w, h, h / 2, h / 2, "F");
+  doc.setTextColor(...fg);
+  doc.text(text, x + 3, y);
+  return w;
+}
+
+// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна; refCtx өгвөл thumbnail бүрийг imgRefs-д бүртгэнэ.
 async function drawImageRow(
   doc: jsPDF,
   urls: string[],
   x: number,
   y: number,
-  refCtx?: { list: ImgRef[]; title: string; date: string }
+  refCtx?: { list: ImgRef[]; title: string; date: string },
+  size?: { w: number; h: number; gap: number },
 ) {
   const imgs = urls.slice(0, 3);
   const n = imgs.length;
   if (n === 0) return;
-  const dims =
+  const dims = size ?? (
     n === 1 ? { w: 55, h: 40, gap: 0 } :
     n === 2 ? { w: 50, h: 37, gap: 5 } :
-              { w: 40, h: 30, gap: 4 };
+              { w: 40, h: 30, gap: 4 });
   for (let i = 0; i < n; i++) {
     const ix = x + i * (dims.w + dims.gap);
     try {
       const dataUrl = await urlToDataUrl(imgs[i]);
       if (!dataUrl) { drawImagePlaceholder(doc, ix, y, dims.w, dims.h); continue; }
-      doc.addImage(dataUrl, "JPEG", ix, y, dims.w, dims.h);
+      // contain-fit inside the box (portrait certificates are no longer squashed); box size unchanged
+      const { w: naturalW, h: naturalH } = dataUrlDims(dataUrl);
+      let dw = dims.w, dh = dims.h;
+      if (naturalW > 0 && naturalH > 0) {
+        const aspect = naturalW / naturalH;
+        if (dw / dh > aspect) dw = dh * aspect; else dh = dw / aspect;
+      }
+      const dx = ix + (dims.w - dw) / 2;
+      const dy = y + (dims.h - dh) / 2;
+      doc.addImage(dataUrl, dataUrlFormat(dataUrl), dx, dy, dw, dh);
       if (refCtx) {
-        const { w: naturalW, h: naturalH } = await imgNaturalDims(dataUrl);
         refCtx.list.push({
           dataUrl, naturalW, naturalH,
           achievementTitle: refCtx.title,
           achievementDate: refCtx.date,
           page: currentPageNum(doc),
-          x: ix, y, w: dims.w, h: dims.h,
+          x: dx, y: dy, w: dw, h: dh,
         });
       }
     } catch {
@@ -395,14 +406,55 @@ async function drawImageRow(
   }
 }
 
-async function renderOfficial(
-  doc: jsPDF,
+// -----------------------------------------------------------------------------
+// Үндсэн export функц
+// -----------------------------------------------------------------------------
+
+export async function exportPortfolio(
   child: Child,
   achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true,
-  imgRefs: ImgRef[]
-) {
+  opts: ExportOpts = {}
+): Promise<string | ArrayBuffer | void> {
+  const {
+    template: rawTemplate = "official",
+    t = (k: string) => k,
+    filename,
+    includeImages = true,
+    output = "save",
+    fonts,
+    now = new Date(),
+  } = opts;
+  const template = normalizePdfTemplate(rawTemplate);
+
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  await loadFont(doc, fonts);
+
+  // Хавсралт бичлэгийн массив — export бүрт шинэ
+  const imgRefs: ImgRef[] = [];
+  const dateStr = now.toISOString().slice(0, 10);
+
+  if (template === "official") {
+    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs);
+    addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
+  } else if (template === "framed") {
+    await renderFramed(doc, child, achievements, t, includeImages, imgRefs);
+    addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
+  } else {
+    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs);
+    addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - 8 });
+  }
+
+  if (output === "arraybuffer") return doc.output("arraybuffer");
+  if (output === "bloburl") return URL.createObjectURL(doc.output("blob"));
+  const safeName = (filename ?? `${child.name}_ChampStep`).replace(/[^\w.-]+/g, "_");
+  doc.save(`${safeName}_${template}.pdf`);
+}
+
+// =============================================================================
+// Template 1: Official — layout, fonts and table unchanged (BRAND.md)
+// =============================================================================
+
+async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
   doc.setFillColor(...INK);
   doc.rect(0, 0, A4.w, 32, "F");
 
@@ -416,7 +468,7 @@ async function renderOfficial(
   const avatarCX = M + 14;
   const avatarCY = 56;
   const avatarR = 14;
-  await drawAvatar(doc, child, avatarCX, avatarCY, avatarR, { bgR: PRIMARY[0], bgG: PRIMARY[1], bgB: PRIMARY[2], textR: 255, textG: 255, textB: 255 });
+  await drawAvatar(doc, child, avatarCX, avatarCY, avatarR);
 
   const textX = M + 14 * 2 + 5;
   setFont(doc, "bold");
@@ -492,681 +544,395 @@ async function renderOfficial(
   }
 
   await addAppendix(doc, imgRefs, t);
-  addFooters(doc, t("pdf.coverFooter"));
 }
 
 // =============================================================================
-// Template 3: Gold
+// Template 2: Framed — certificate feel, double frame on every page
 // =============================================================================
 
-async function renderGold(
-  doc: jsPDF,
-  child: Child,
-  achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true,
-  imgRefs: ImgRef[]
-) {
-  doc.setFillColor(...INK);
-  doc.rect(0, 0, A4.w, A4.h, "F");
-  doc.setFillColor(...GOLD);
-  doc.rect(0, 0, A4.w, 3, "F");
-  doc.setFillColor(...GOLD_SOFT);
-  doc.rect(0, 3, A4.w, 1, "F");
+const PT = 0.3528; // 1pt in mm
+/** Outer graphite 1.2pt at 10mm, inner green 0.5pt 2.5mm further in, content 10mm inside the inner frame. */
+const FRAME = { outer: 10, inner: 12.5, content: 22.5 };
+const FW = A4.w - FRAME.content * 2; // content width
 
-  drawLogo(doc, M, 22, 9, "light");
+function drawFrame(doc: jsPDF) {
+  doc.setDrawColor(...INK);
+  doc.setLineWidth(1.2 * PT);
+  doc.rect(FRAME.outer, FRAME.outer, A4.w - FRAME.outer * 2, A4.h - FRAME.outer * 2);
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.5 * PT);
+  doc.rect(FRAME.inner, FRAME.inner, A4.w - FRAME.inner * 2, A4.h - FRAME.inner * 2);
+  doc.setLineWidth(0.2);
+}
 
-  const gAvatarR = 14;
-  const gAvatarCX = A4.w - M - gAvatarR;
-  const gAvatarCY = 35;
-  await drawAvatar(doc, child, gAvatarCX, gAvatarCY, gAvatarR, { bgR: STAGE2[0], bgG: STAGE2[1], bgB: STAGE2[2], textR: GOLD_SOFT[0], textG: GOLD_SOFT[1], textB: GOLD_SOFT[2] });
+/** Total / Gold / Silver / Bronze row (shared by framed + portfolio covers). Returns bottom y. */
+function drawMedalStats(doc: jsPDF, t: T, achievements: Achievement[], x: number, width: number, y: number, valueSize = 20): number {
+  const count = (k: string) => String(achievements.filter((a) => a.awardType === k).length);
+  const cells: Array<[string, string, RGB]> = [
+    ["pdf.totalEntries", String(achievements.length), INK],
+    ["awards.Gold", count("Gold"), GOLD],
+    ["awards.Silver", count("Silver"), SILVER],
+    ["awards.Bronze", count("Bronze"), BRONZE],
+  ];
+  return cells.reduce((bottom, [key, val, color], i) => {
+    const cx = x + (i + 0.5) * (width / cells.length);
+    setFont(doc, "bold");
+    doc.setFontSize(valueSize);
+    doc.setTextColor(...color);
+    doc.text(val, cx, y, { align: "center" });
+    setFont(doc, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...INK3);
+    doc.text(t(key), cx, y + 6, { align: "center" });
+    return y + 6;
+  }, y);
+}
+async function renderFramed(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
+  const X = FRAME.content;
+  const bottomLimit = A4.h - FRAME.content - 8; // keep clear of the footer
+
+  drawFrame(doc);
+
+  // Header: logo + label
+  drawLogo(doc, A4.w / 2, 38, 11, "color", "center");
+  drawLabel(doc, t("pdf.portfolioLabel"), A4.w / 2, 45.5, 8, INK3, "center");
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.5);
+  doc.line(A4.w / 2 - 10, 49, A4.w / 2 + 10, 49);
+
+  // Avatar with a green ring
+  await drawAvatar(doc, child, A4.w / 2, 68, 14);
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.6);
+  doc.circle(A4.w / 2, 68, 14.8, "S");
+
+  // Name (Display 28), bio, birth date
+  setFont(doc, "bold");
+  doc.setFontSize(28);
+  doc.setTextColor(...INK);
+  const nameLines = doc.splitTextToSize(child.name, FW);
+  doc.text(nameLines.slice(0, 2), A4.w / 2, 96, { align: "center" });
+  let y = 96 + (Math.min(nameLines.length, 2) - 1) * 11;
+  if (child.bio) {
+    setFont(doc, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...INK2);
+    const bio = doc.splitTextToSize(child.bio, FW - 30);
+    doc.text(bio.slice(0, 2), A4.w / 2, y + 8, { align: "center" });
+    y += 8 + (Math.min(bio.length, 2) - 1) * 5;
+  }
+  if (child.birthDate) {
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...INK3);
+    doc.text(`${t("pdf.birthDate")}: ${child.birthDate}`, A4.w / 2, y + 7, { align: "center" });
+    y += 7;
+  }
+
+  y = drawMedalStats(doc, t, achievements, X, FW, y + 16) + 6;
+  doc.setDrawColor(...LINE);
+  doc.setLineWidth(0.3);
+  doc.line(X, y, A4.w - X, y);
+  y += 10;
+
+  for (const a of achievements) {
+    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
+    const descLines = a.description ? doc.splitTextToSize(a.description, FW - 8).slice(0, 2) : [];
+    const blockH = 12 + descLines.length * 4.5 + imgH + 4;
+    if (y + blockH > bottomLimit) {
+      doc.addPage();
+      drawFrame(doc);
+      y = FRAME.content + 8;
+    }
+    // award-coloured tick + title
+    const award = AWARD_COLOR[a.awardType] ?? INK3;
+    doc.setFillColor(...award);
+    doc.rect(X, y - 3.8, 1, 5.2, "F");
+    setFont(doc, "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...INK);
+    doc.text(doc.splitTextToSize(a.title, FW - 8)[0], X + 4, y);
+    // meta line with the award in its medal colour
+    setFont(doc, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...INK3);
+    const meta = `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  `;
+    doc.text(meta, X + 4, y + 5.5);
+    setFont(doc, "bold");
+    doc.setTextColor(...award);
+    doc.text(t(`awards.${a.awardType}`), X + 4 + doc.getTextWidth(meta), y + 5.5);
+    if (descLines.length) {
+      setFont(doc, "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK2);
+      doc.text(descLines, X + 4, y + 11);
+    }
+    if (imgH) {
+      await drawImageRow(doc, a.imageURLs, X + 4, y + 12 + descLines.length * 4.5 + 1, { list: imgRefs, title: a.title, date: a.date });
+    }
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    doc.line(X, y + blockH, A4.w - X, y + blockH);
+    y += blockH + 7;
+  }
+
+  await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
+}
+
+// =============================================================================
+// Template 3: Portfolio — image-led: big photos, certificates full-page in the appendix
+// =============================================================================
+
+async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
+  const bottomLimit = A4.h - 20;
+
+  // ---- Cover ----
+  drawLogo(doc, A4.w / 2, 30, 12, "color", "center");
+  drawLabel(doc, t("pdf.portfolioLabel"), A4.w / 2, 38, 8, PRIMARY, "center");
+
+  await drawAvatar(doc, child, A4.w / 2, 82, 27);
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.8);
+  doc.circle(A4.w / 2, 82, 28.2, "S");
 
   setFont(doc, "bold");
   doc.setFontSize(28);
-  doc.setTextColor(...GOLD_SOFT);
-  doc.text(child.name, M, 60);
-
-  setFont(doc, "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(...STAGE_MUTED);
-  if (child.bio) doc.text(child.bio, M, 70, { maxWidth: CW - gAvatarR * 2 - 8 });
-
-  doc.setFillColor(...GOLD);
-  doc.rect(M, 80, 40, 0.5, "F");
-
-  const golds = achievements.filter(a => a.awardType === "Gold").length;
-  const statsData = [
-    [t("pdf.statsTotal"), String(achievements.length)],
-    [t("pdf.statsGold"), String(golds)],
-    [t("pdf.statsYear"), new Date().getFullYear().toString()],
-  ];
-
-  statsData.forEach(([label, val], i) => {
-    const x = M + i * 55;
+  doc.setTextColor(...INK);
+  const nameLines = doc.splitTextToSize(child.name, CW);
+  doc.text(nameLines.slice(0, 2), A4.w / 2, 126, { align: "center" });
+  let y = 126 + (Math.min(nameLines.length, 2) - 1) * 11;
+  if (child.bio) {
     setFont(doc, "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...STAGE_MUTED);
-    doc.text(label, x, 94);
-    setFont(doc, "bold");
-    doc.setFontSize(20);
-    doc.setTextColor(...GOLD_SOFT);
-    doc.text(val, x, 106);
-  });
-
-  let y = 122;
-  for (const a of achievements) {
-    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
-    const blockH = 28 + imgH;
-
-    if (y + blockH > A4.h - 20) {
-      doc.addPage();
-      doc.setFillColor(...INK);
-      doc.rect(0, 0, A4.w, A4.h, "F");
-      doc.setFillColor(...GOLD);
-      doc.rect(0, 0, A4.w, 3, "F");
-      y = 20;
-    }
-
-    doc.setFillColor(...GOLD);
-    doc.rect(M, y - 1, 2, 18, "F");
-
-    setFont(doc, "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...GOLD_SOFT);
-    doc.text(a.title, M + 6, y + 7);
-
+    doc.setFontSize(10.5);
+    doc.setTextColor(...INK2);
+    const bio = doc.splitTextToSize(child.bio, CW - 30);
+    doc.text(bio.slice(0, 3), A4.w / 2, y + 9, { align: "center" });
+    y += 9 + (Math.min(bio.length, 3) - 1) * 5.2;
+  }
+  if (child.birthDate) {
     setFont(doc, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...STAGE_MUTED);
-    doc.text(
-      `${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`,
-      M + 6, y + 14
-    );
-
-    if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, M + 6, y + 20, { list: imgRefs, title: a.title, date: a.date });
-    }
-
-    doc.setDrawColor(...STAGE2);
-    doc.line(M, y + blockH, A4.w - M, y + blockH);
-    y += blockH + 6;
+    doc.setFontSize(9);
+    doc.setTextColor(...INK3);
+    doc.text(`${t("pdf.birthDate")}: ${child.birthDate}`, A4.w / 2, y + 8, { align: "center" });
+    y += 8;
   }
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.6);
+  doc.line(A4.w / 2 - 12, y + 8, A4.w / 2 + 12, y + 8);
 
-  doc.setFillColor(...GOLD);
-  doc.rect(0, A4.h - 2, A4.w, 2, "F");
+  y = drawMedalStats(doc, t, achievements, M, CW, y + 26, 24);
 
-  await addAppendix(doc, imgRefs, t);
-
-  // Footer loop — runs over all pages including appendix
-  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(...STAGE_MUTED);
-    doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
-  }
-}
-
-// =============================================================================
-// Template 4: Portfolio — Resume-style (graphite sidebar + clean content, one green accent)
-// =============================================================================
-
-async function renderPortfolio(
-  doc: jsPDF,
-  child: Child,
-  achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true,
-  imgRefs: ImgRef[]
-) {
-  const SIDEBAR_W = 62;
-  const CONTENT_X = SIDEBAR_W + 9;
-  const CONTENT_W = A4.w - CONTENT_X - 8;
-
-  // Brand mapping: sidebar graphite (was navy), accent green (was steel/gold), categories share one colour.
-  const NAVY: RGB = INK;
-  const STEEL: RGB = PRIMARY;
-  const ACCENT: RGB = PRIMARY;
-  const MUTED: RGB = STAGE_MUTED;
-  const DARK: RGB = STAGE2;
-
-  const awardColor: Record<string, RGB> = {
-    Gold: GOLD,
-    Silver: SILVER,
-    Bronze: BRONZE,
-    Participant: STAGE_MUTED,
-  };
-  const catColor: Record<string, RGB> = {
-    Sports: PRIMARY,
-    Arts: PRIMARY,
-    Academic: PRIMARY,
-  };
-
-  const golds = achievements.filter(a => a.awardType === "Gold").length;
-  const silvers = achievements.filter(a => a.awardType === "Silver").length;
-  const bronzes = achievements.filter(a => a.awardType === "Bronze").length;
-  const cats = {
-    Sports: achievements.filter(a => a.category === "Sports").length,
-    Arts: achievements.filter(a => a.category === "Arts").length,
-    Academic: achievements.filter(a => a.category === "Academic").length,
-  };
-  const maxCat = Math.max(cats.Sports, cats.Arts, cats.Academic, 1);
-
-  async function drawSidebar(pageIdx: number) {
-    const cx = SIDEBAR_W / 2;
-
-    doc.setFillColor(...NAVY);
-    doc.rect(0, 0, SIDEBAR_W, A4.h, "F");
-
-    doc.setFillColor(...STEEL);
-    doc.rect(SIDEBAR_W - 2.5, 0, 2.5, A4.h, "F");
-
-    doc.setFillColor(...ACCENT);
-    doc.rect(0, 0, SIDEBAR_W, 3.5, "F");
-
-    drawLogo(doc, cx, 9, 6, "light", "center");
-
-    if (pageIdx === 1) {
-      await drawAvatar(doc, child, cx, 38, 20, { bgR: DARK[0], bgG: DARK[1], bgB: DARK[2], textR: WHITE[0], textG: WHITE[1], textB: WHITE[2] });
-      doc.setDrawColor(...ACCENT);
-      doc.setLineWidth(0.7);
-      doc.circle(cx, 38, 20, "S");
-
-      let sy = 63;
-
-      setFont(doc, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...WHITE);
-      const nameLines = doc.splitTextToSize(child.name, SIDEBAR_W - 10);
-      doc.text(nameLines, cx, sy, { align: "center" });
-      sy += nameLines.length * 6.5 + 2;
-
-      if (child.bio) {
-        setFont(doc, "normal");
-        doc.setFontSize(7);
-        doc.setTextColor(...MUTED);
-        const bioLines = doc.splitTextToSize(child.bio, SIDEBAR_W - 10);
-        doc.text(bioLines.slice(0, 3), cx, sy, { align: "center" });
-        sy += Math.min(bioLines.length, 3) * 4.5 + 3;
-      }
-
-      doc.setDrawColor(...ACCENT);
-      doc.setLineWidth(0.25);
-      doc.line(7, sy, SIDEBAR_W - 7, sy);
-      sy += 6;
-
-      setFont(doc, "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(...PRIMARY_SOFT);
-      doc.text(t("pdf.statsTotal").toUpperCase(), 7, sy);
-      sy += 5;
-
-      const statRows: Array<[string, string, RGB]> = [
-        [t("pdf.totalEntries"), String(achievements.length), WHITE],
-        [t("pdf.goldMedals"), String(golds), GOLD],
-        [t("awards.Silver"), String(silvers), SILVER],
-        [t("awards.Bronze"), String(bronzes), BRONZE],
-      ];
-
-      for (const [label, val, color] of statRows) {
-        setFont(doc, "normal");
-        doc.setFontSize(7);
-        doc.setTextColor(...MUTED);
-        doc.text(label, 7, sy);
-        setFont(doc, "bold");
-        doc.setFontSize(8.5);
-        doc.setTextColor(...color);
-        doc.text(val, SIDEBAR_W - 6, sy, { align: "right" });
-        sy += 5.5;
-      }
-
-      sy += 3;
-      doc.setDrawColor(...STAGE2);
-      doc.line(7, sy, SIDEBAR_W - 7, sy);
-      sy += 6;
-
-      setFont(doc, "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(...PRIMARY_SOFT);
-      doc.text(t("categories.All").toUpperCase(), 7, sy);
-      sy += 5;
-
-      const catRows: Array<[string, number, RGB]> = [
-        [t("categories.Sports"), cats.Sports, catColor.Sports],
-        [t("categories.Arts"), cats.Arts, catColor.Arts],
-        [t("categories.Academic"), cats.Academic, catColor.Academic],
-      ];
-
-      for (const [label, count, color] of catRows) {
-        const barW = SIDEBAR_W - 18;
-        const fillW = (count / maxCat) * barW;
-
-        doc.setFillColor(...STAGE2);
-        doc.roundedRect(7, sy - 1.5, barW, 3.5, 1, 1, "F");
-
-        if (fillW > 0) {
-          doc.setFillColor(...color);
-          doc.roundedRect(7, sy - 1.5, fillW, 3.5, 1, 1, "F");
-        }
-
-        setFont(doc, "normal");
-        doc.setFontSize(6.5);
-        doc.setTextColor(...MUTED);
-        doc.text(label, 7, sy + 5);
-        doc.setTextColor(...color);
-        doc.text(String(count), SIDEBAR_W - 6, sy + 5, { align: "right" });
-        sy += 10;
-      }
-
-      if (child.birthDate) {
-        sy += 2;
-        doc.setDrawColor(...STAGE2);
-        doc.line(7, sy, SIDEBAR_W - 7, sy);
-        sy += 6;
-
-        setFont(doc, "bold");
-        doc.setFontSize(6.5);
-        doc.setTextColor(...PRIMARY_SOFT);
-        doc.text(t("pdf.birthDate").toUpperCase(), 7, sy);
-        sy += 5;
-
-        setFont(doc, "normal");
-        doc.setFontSize(7.5);
-        doc.setTextColor(...WHITE);
-        doc.text(child.birthDate, 7, sy);
-      }
-    } else {
-      setFont(doc, "bold");
-      doc.setFontSize(8.5);
-      doc.setTextColor(...WHITE);
-      const nameLines = doc.splitTextToSize(child.name, SIDEBAR_W - 10);
-      doc.text(nameLines, cx, 22, { align: "center" });
-
-      setFont(doc, "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(...STAGE_MUTED);
-      doc.text(String(pageIdx), cx, A4.h - 10, { align: "center" });
-    }
-
-    setFont(doc, "normal");
-    doc.setFontSize(5.5);
-    doc.setTextColor(...STAGE_MUTED);
-    doc.text(t("pdf.coverFooter"), cx, A4.h - 4, { align: "center" });
-  }
-
-  function achievementBlockH(a: typeof achievements[0], withImg: boolean): number {
-    const descH = a.description ? 9 : 0;
-    const imgH = withImg && a.imageURLs?.length ? 34 : 0;
-    return 5 + 6 + descH + imgH + 5;
-  }
-
-  let pageIdx = 1;
-  await drawSidebar(pageIdx);
-
-  let y = 13;
+  // category chips
+  const cats = (["Sports", "Arts", "Academic"] as const).map((c) => `${t(`categories.${c}`)} ${achievements.filter((a) => a.category === c).length}`);
   setFont(doc, "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...NAVY);
-  doc.text(t("pdf.achievementsTitle", { name: child.name }), CONTENT_X, y + 8);
+  doc.setFontSize(8);
+  const chipW = cats.map((c) => doc.getTextWidth(c) + 6);
+  let cx = A4.w / 2 - (chipW.reduce((s, w) => s + w, 0) + 4 * (cats.length - 1)) / 2;
+  cats.forEach((c, i) => { cx += drawChip(doc, c, cx, y + 16, PRIMARY_SOFT, PRIMARY_SOFT_INK, 8) + 4; });
+
+  // ---- Achievements ----
+  doc.addPage();
+  y = 22;
+  drawLabel(doc, t("pdf.achievementsTitle", { name: child.name }), M, y, 8, INK3);
+  doc.setDrawColor(...PRIMARY);
+  doc.setLineWidth(0.6);
+  doc.line(M, y + 3, M + 14, y + 3);
   y += 12;
 
-  setFont(doc, "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...STEEL);
-  doc.text(t("pdf.subtitle"), CONTENT_X, y);
-  y += 3;
-
-  doc.setFillColor(...ACCENT);
-  doc.rect(CONTENT_X, y, CONTENT_W, 0.8, "F");
-  y += 6;
+  const ensure = (h: number) => {
+    if (y + h > bottomLimit) { doc.addPage(); y = 22; }
+  };
 
   for (const a of achievements) {
-    const blockH = achievementBlockH(a, includeImages);
+    const award = AWARD_COLOR[a.awardType] ?? INK3;
+    const descLines = a.description ? doc.splitTextToSize(a.description, CW - 8).slice(0, 3) : [];
+    const titleLines = doc.splitTextToSize(a.title, CW - 8).slice(0, 2);
+    const textH = titleLines.length * 6 + 6 + descLines.length * 4.6 + 3;
 
-    if (y + blockH > A4.h - 10) {
-      doc.addPage();
-      pageIdx++;
-      await drawSidebar(pageIdx);
-      y = 14;
+    const urls = includeImages ? (a.imageURLs ?? []).map(String) : [];
+    const main = urls.length ? await urlToDataUrl(urls[0]) : "";
+
+    if (!main) {
+      // ---- simple card (no image) ----
+      const cardH = textH + 12;
+      ensure(cardH + 6);
+      doc.setDrawColor(...LINE);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(M, y, CW, cardH, 4, 4, "S");
+      doc.setFillColor(...award);
+      doc.circle(M + 7, y + 8.5, 2.2, "F");
+      let ty = y + 10;
+      setFont(doc, "bold"); doc.setFontSize(12); doc.setTextColor(...INK);
+      doc.text(titleLines, M + 13, ty);
+      ty += titleLines.length * 6;
+      setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
+      doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M + 13, ty);
+      ty += 6;
+      if (descLines.length) { doc.setFontSize(9.5); doc.setTextColor(...INK2); doc.text(descLines, M + 13, ty); }
+      y += cardH + 8;
+      continue;
     }
 
-    const dotC = awardColor[a.awardType] ?? STAGE_MUTED;
-    doc.setFillColor(...dotC);
-    doc.circle(CONTENT_X + 2.5, y + 3, 2.5, "F");
+    // ---- image block: landscape → 100% width, portrait → 60% width, centred ----
+    const { w: nw, h: nh } = dataUrlDims(main);
+    const aspect = nw > 0 && nh > 0 ? nw / nh : 4 / 3;
+    let iw: number, ih: number;
+    if (aspect >= 1.15) {
+      iw = CW;
+      ih = Math.min(iw / aspect, 118);
+      iw = ih * aspect;
+    } else {
+      iw = CW * 0.6;
+      ih = Math.min(iw / aspect, 132);
+      iw = ih * aspect;
+    }
+    const extras = urls.slice(1, 3);
+    const thumbH = extras.length ? 30 : 0;
+    const blockH = ih + 7 + textH + (thumbH ? thumbH + 4 : 0);
+    // one per page when tall, otherwise pack two
+    ensure(blockH + 6);
 
-    setFont(doc, "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...NAVY);
-    const titleLines = doc.splitTextToSize(a.title, CONTENT_W - 25);
-    doc.text(titleLines[0], CONTENT_X + 7, y + 4.5);
+    const ix = M + (CW - iw) / 2;
+    try {
+      doc.addImage(main, dataUrlFormat(main), ix, y, iw, ih);
+    } catch {
+      drawImagePlaceholder(doc, ix, y, iw, ih);
+    }
+    imgRefs.push({ dataUrl: main, naturalW: nw, naturalH: nh, achievementTitle: a.title, achievementDate: a.date, page: currentPageNum(doc), x: ix, y, w: iw, h: ih });
+    y += ih + 7;
 
-    setFont(doc, "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...INK3);
-    doc.text(a.date, A4.w - 8, y + 4.5, { align: "right" });
-
+    doc.setFillColor(...award);
+    doc.circle(M + 2.2, y - 1.6, 2.2, "F");
+    setFont(doc, "bold"); doc.setFontSize(13); doc.setTextColor(...INK);
+    doc.text(titleLines, M + 8, y);
+    y += titleLines.length * 6;
+    setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M + 8, y);
     y += 6;
-
-    const catC = catColor[a.category] ?? PRIMARY;
-    doc.setFillColor(...catC);
-    doc.circle(CONTENT_X + 8, y + 1, 1.5, "F");
-
-    setFont(doc, "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...INK3);
-    doc.text(
-      `${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`,
-      CONTENT_X + 11, y + 2
-    );
-    y += 5;
-
-    if (a.description) {
-      setFont(doc, "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(...INK2);
-      const descLines = doc.splitTextToSize(a.description, CONTENT_W - 8);
-      doc.text(descLines.slice(0, 2), CONTENT_X + 7, y + 3);
-      y += descLines.slice(0, 2).length * 4 + 1;
-    }
-
-    // Portfolio зураг — inline loop (FAST compression for thumbnail)
-    if (includeImages && a.imageURLs?.length) {
-      const imgs = a.imageURLs.slice(0, 3);
-      const n = imgs.length;
-      const iw = n === 1 ? 42 : n === 2 ? 40 : 38;
-      const gap = 4;
-      for (let i = 0; i < n; i++) {
-        const ix = CONTENT_X + 7 + i * (iw + gap);
-        try {
-          const dataUrl = await urlToDataUrl(imgs[i]);
-          if (!dataUrl) { drawImagePlaceholder(doc, ix, y + 1, iw, 30); continue; }
-          doc.addImage(dataUrl, "JPEG", ix, y + 1, iw, 30, undefined, "FAST");
-          // Ref бүртгэл (хавсралтад FAST ашиглахгүй — addAppendix дотор шууд addImage хийнэ)
-          const { w: naturalW, h: naturalH } = await imgNaturalDims(dataUrl);
-          imgRefs.push({
-            dataUrl, naturalW, naturalH,
-            achievementTitle: a.title,
-            achievementDate: a.date,
-            page: currentPageNum(doc),
-            x: ix, y: y + 1, w: iw, h: 30,
-          });
-        } catch {
-          drawImagePlaceholder(doc, ix, y + 1, iw, 30);
-        }
-      }
-      y += 33;
-    }
-
-    doc.setDrawColor(...LINE);
-    doc.setLineWidth(0.25);
-    doc.line(CONTENT_X + 5, y + 2, A4.w - 8, y + 2);
-    y += 6;
-  }
-
-  await addAppendix(doc, imgRefs, t);
-}
-
-// -----------------------------------------------------------------------------
-// Бүх хуудасны footer + page number
-// -----------------------------------------------------------------------------
-
-// =============================================================================
-// Template: Framed — decorative frame + auto category atmosphere (seal + accent)
-// =============================================================================
-
-type FrameRGB = RGB;
-// Categories share the brand accent (BRAND.md: no per-category colour); the seal shape still differs.
-const FRAME_THEMES: Record<string, { accent: FrameRGB; kind: "arts" | "sports" | "academic" }> = {
-  Arts:     { accent: PRIMARY, kind: "arts" },
-  Sports:   { accent: PRIMARY, kind: "sports" },
-  Academic: { accent: PRIMARY, kind: "academic" },
-};
-
-function dominantCategory(achievements: Achievement[]): "Arts" | "Sports" | "Academic" {
-  const counts: Record<string, number> = { Arts: 0, Sports: 0, Academic: 0 };
-  achievements.forEach((a) => { if (counts[a.category] !== undefined) counts[a.category]++; });
-  let best: "Arts" | "Sports" | "Academic" = "Arts";
-  let max = -1;
-  (["Arts", "Sports", "Academic"] as const).forEach((c) => { if (counts[c] > max) { max = counts[c]; best = c; } });
-  return best;
-}
-
-export type FrameStyle = "classic" | "corner" | "minimal";
-
-function drawFrameBorder(doc: jsPDF, a: FrameRGB, style: FrameStyle = "classic") {
-  doc.setDrawColor(a[0], a[1], a[2]);
-  const corners: [number, number, number, number][] = [
-    [12, 12, 1, 1], [A4.w - 12, 12, -1, 1], [12, A4.h - 12, 1, -1], [A4.w - 12, A4.h - 12, -1, -1],
-  ];
-  const dots: [number, number][] = [[12, 12], [A4.w - 12, 12], [12, A4.h - 12], [A4.w - 12, A4.h - 12]];
-
-  if (style === "minimal") {
-    doc.setLineWidth(0.3); doc.rect(10, 10, A4.w - 20, A4.h - 20);
-    return;
-  }
-
-  if (style === "corner") {
-    const L = 16;
-    doc.setLineWidth(0.7);
-    for (const [cx, cy, dx, dy] of corners) { doc.line(cx, cy, cx + dx * L, cy); doc.line(cx, cy, cx, cy + dy * L); }
-    doc.setFillColor(a[0], a[1], a[2]);
-    for (const [cx, cy] of dots) doc.circle(cx, cy, 1.1, "F");
-    return;
-  }
-
-  // classic
-  doc.setLineWidth(0.5); doc.rect(8, 8, A4.w - 16, A4.h - 16);
-  doc.setLineWidth(0.2); doc.rect(10, 10, A4.w - 20, A4.h - 20);
-  const L = 6;
-  doc.setLineWidth(0.5);
-  for (const [cx, cy, dx, dy] of corners) { doc.line(cx, cy, cx + dx * L, cy); doc.line(cx, cy, cx, cy + dy * L); }
-  doc.setFillColor(a[0], a[1], a[2]);
-  for (const [cx, cy] of dots) doc.circle(cx, cy, 0.8, "F");
-}
-
-function drawSeal(doc: jsPDF, cx: number, cy: number, a: FrameRGB, kind: "arts" | "sports" | "academic") {
-  doc.setDrawColor(a[0], a[1], a[2]);
-  doc.setLineWidth(0.4); doc.circle(cx, cy, 5.6, "S");
-  doc.setLineWidth(0.22); doc.circle(cx, cy, 6.6, "S");
-  if (kind === "arts") {
-    doc.setFillColor(a[0], a[1], a[2]); doc.ellipse(cx - 1.1, cy + 1.5, 1.3, 0.9, "F");
-    doc.setLineWidth(0.5);
-    doc.line(cx + 0.15, cy + 1.5, cx + 0.15, cy - 2.6);
-    doc.line(cx + 0.15, cy - 2.6, cx + 1.8, cy - 1.5);
-  } else if (kind === "sports") {
-    const ro = 3, ri = 1.25;
-    const pts: [number, number][] = [];
-    for (let i = 0; i < 10; i++) {
-      const ang = -Math.PI / 2 + (i * Math.PI) / 5;
-      const r = i % 2 === 0 ? ro : ri;
-      pts.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
-    }
-    const dl: [number, number][] = [];
-    for (let i = 1; i < pts.length; i++) dl.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
-    doc.setFillColor(a[0], a[1], a[2]);
-    doc.lines(dl, pts[0][0], pts[0][1], [1, 1], "F", true);
-  } else {
-    doc.setLineWidth(0.45);
-    doc.line(cx, cy - 2.6, cx, cy + 2.4);
-    doc.lines([[-4, 1], [0, 3.6], [4, -1.4]], cx, cy - 2.2, [1, 1], "S", false);
-    doc.lines([[4, 1], [0, 3.6], [-4, -1.4]], cx, cy - 2.2, [1, 1], "S", false);
-  }
-}
-
-async function renderFramed(
-  doc: jsPDF,
-  child: Child,
-  achievements: Achievement[],
-  t: (k: string, o?: Record<string, unknown>) => string,
-  includeImages = true,
-  frameStyle: FrameStyle = "classic",
-  imgRefs: ImgRef[]
-) {
-  const cat = dominantCategory(achievements);
-  const { accent, kind } = FRAME_THEMES[cat];
-  const FM = 20;
-
-  drawFrameBorder(doc, accent, frameStyle);
-
-  drawSeal(doc, A4.w / 2, 24, accent, kind);
-  drawLogo(doc, A4.w / 2, 36, 11, "color", "center");
-  setFont(doc, "bold"); doc.setFontSize(8); doc.setTextColor(accent[0], accent[1], accent[2]);
-  doc.text(t(`categories.${cat}`).toUpperCase(), A4.w / 2, 41, { align: "center" });
-  doc.setDrawColor(accent[0], accent[1], accent[2]); doc.setLineWidth(0.5);
-  doc.line(A4.w / 2 - 9, 44, A4.w / 2 + 9, 44);
-
-  setFont(doc, "bold"); doc.setFontSize(22); doc.setTextColor(...INK);
-  doc.text(child.name, FM, 60);
-  await drawAvatar(doc, child, A4.w - FM - 8, 56, 8, { bgR: accent[0], bgG: accent[1], bgB: accent[2], textR: 255, textG: 255, textB: 255 });
-  doc.setDrawColor(accent[0], accent[1], accent[2]); doc.setLineWidth(0.5); doc.circle(A4.w - FM - 8, 56, 8, "S");
-  if (child.bio) {
-    setFont(doc, "normal"); doc.setFontSize(10); doc.setTextColor(...INK3);
-    doc.text(child.bio, FM, 67, { maxWidth: A4.w - 2 * FM - 22 });
-  }
-  doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(FM, 74, A4.w - FM, 74);
-
-  let y = 86;
-  for (const a of achievements) {
-    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
-    const blockH = 26 + imgH;
-    if (y + blockH > A4.h - 20) {
-      doc.addPage();
-      drawFrameBorder(doc, accent, frameStyle);
-      y = 26;
-    }
-    doc.setFillColor(accent[0], accent[1], accent[2]); doc.rect(FM, y - 3.5, 0.9, 5, "F");
-    setFont(doc, "bold"); doc.setFontSize(12); doc.setTextColor(...INK);
-    doc.text(a.title, FM + 4, y, { maxWidth: A4.w - 2 * FM - 8 });
-    setFont(doc, "normal"); doc.setFontSize(9); doc.setTextColor(...INK3);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`awards.${a.awardType}`)}`, FM + 4, y + 5.5);
-    if (a.description) {
+    if (descLines.length) {
       doc.setFontSize(9.5); doc.setTextColor(...INK2);
-      const lines = doc.splitTextToSize(a.description, A4.w - 2 * FM - 8);
-      doc.text(lines.slice(0, 2), FM + 4, y + 11);
+      doc.text(descLines, M + 8, y);
+      y += descLines.length * 4.6;
     }
-    if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, FM + 4, y + 16, { list: imgRefs, title: a.title, date: a.date });
+    if (thumbH) {
+      await drawImageRow(doc, extras, M + 8, y + 1, { list: imgRefs, title: a.title, date: a.date }, { w: 40, h: 30, gap: 4 });
+      y += thumbH + 4;
     }
-    doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(FM, y + blockH, A4.w - FM, y + blockH);
-    y += blockH + 6;
+    y += 3;
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    doc.line(M, y, A4.w - M, y);
+    y += 10;
   }
 
   await addAppendix(doc, imgRefs, t);
-
-  // Footer loop — runs over all pages including appendix
-  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    setFont(doc, "normal"); doc.setFontSize(8); doc.setTextColor(...INK3);
-    doc.text(t("pdf.footer"), A4.w / 2, A4.h - 14, { align: "center" });
-    doc.text(`${i} / ${total}`, A4.w - FM, A4.h - 14, { align: "right" });
-  }
 }
 
 // =============================================================================
 // Appendix — thumbnail тус бүрд бүтэн хуудас + буцах холбоос
 // =============================================================================
 
-async function addAppendix(
-  doc: jsPDF,
-  refs: ImgRef[],
-  t: (k: string, o?: Record<string, unknown>) => string,
-) {
-  if (refs.length === 0) return;
+interface AppendixOpts {
+  margin?: number;
+  top?: number;
+  bottom?: number;
+  /** Drawn on every appendix page right after addPage (framed: the frame). */
+  decorate?: (doc: jsPDF) => void;
+}
 
-  const BM = 18; // back margin
+async function addAppendix(doc: jsPDF, refs: ImgRef[], t: T, opts: AppendixOpts = {}) {
+  if (refs.length === 0) return;
+  const BM = opts.margin ?? 18;
+  const top = opts.top ?? 20;
+  const bottom = opts.bottom ?? 22;
 
   for (const ref of refs) {
     doc.addPage();
+    opts.decorate?.(doc);
     ref.appendixPage = currentPageNum(doc);
 
-    // Цагаан дэвсгэр
-    doc.setFillColor(...WHITE);
-    doc.rect(0, 0, A4.w, A4.h, "F");
-
-    // Хавсралт тэмдэглэгээ (дээд баруун)
-    setFont(doc, "normal");
+    setFont(doc, "bold");
     doc.setFontSize(7);
     doc.setTextColor(...INK3);
-    doc.text(t("pdf.appendixTitle"), A4.w - BM, 10, { align: "right" });
+    doc.text(t("pdf.appendixTitle").toUpperCase(), A4.w - BM, top - 6, { align: "right", charSpace: 0.6 });
 
-    // Амжилтын гарчиг
     setFont(doc, "bold");
     doc.setFontSize(13);
     doc.setTextColor(...INK);
     const titleLines = doc.splitTextToSize(ref.achievementTitle, A4.w - 2 * BM);
-    doc.text(titleLines.slice(0, 2), BM, 20);
+    doc.text(titleLines.slice(0, 2), BM, top);
     const titleH = Math.min(titleLines.length, 2) * 6.5;
 
-    // Огноо
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(...INK3);
-    doc.text(ref.achievementDate, BM, 20 + titleH + 2);
+    doc.text(ref.achievementDate, BM, top + titleH + 2);
 
-    // Хуваагч
     doc.setDrawColor(...LINE);
     doc.setLineWidth(0.3);
-    doc.line(BM, 20 + titleH + 7, A4.w - BM, 20 + titleH + 7);
+    doc.line(BM, top + titleH + 7, A4.w - BM, top + titleH + 7);
 
     // Зургийн талбай — харьцааг хадгалж хамгийн томоор нь багтаа
-    const areaTop = 20 + titleH + 12;
-    const areaX = BM;
+    const areaTop = top + titleH + 12;
     const areaW = A4.w - 2 * BM;
-    const areaH = A4.h - areaTop - 22;
-
+    const areaH = A4.h - areaTop - bottom - 8;
     let iw = areaW;
     let ih = areaH;
     if (ref.naturalW > 0 && ref.naturalH > 0) {
       const aspect = ref.naturalW / ref.naturalH;
-      if (iw / ih > aspect) {
-        iw = ih * aspect;
-      } else {
-        ih = iw / aspect;
-      }
+      if (iw / ih > aspect) iw = ih * aspect; else ih = iw / aspect;
     }
-    const ix = areaX + (areaW - iw) / 2;
+    const ix = BM + (areaW - iw) / 2;
     const iy = areaTop + (areaH - ih) / 2;
-
     try {
-      // FAST флаг ашиглахгүй — бүтэн чанараар зурна
-      doc.addImage(ref.dataUrl, "JPEG", ix, iy, iw, ih);
+      doc.addImage(ref.dataUrl, dataUrlFormat(ref.dataUrl), ix, iy, iw, ih);
     } catch {
       drawImagePlaceholder(doc, ix, iy, iw, ih);
     }
 
-    // Буцах холбоос + текст
-    const backText = t("pdf.backLink");
+    // Буцах холбоос: жижиг chevron + текст (emoji / arrow glyph хэрэглэхгүй)
+    const by = A4.h - bottom + 2;
+    doc.setDrawColor(...PRIMARY);
+    doc.setLineWidth(0.5);
+    doc.line(BM + 2.2, by - 2.6, BM, by - 1);
+    doc.line(BM, by - 1, BM + 2.2, by + 0.6);
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(...PRIMARY);
-    doc.text(backText, BM, A4.h - 10);
-    doc.link(BM - 1, A4.h - 15, 38, 8, { pageNumber: ref.page });
+    doc.text(t("pdf.backLink"), BM + 4.5, by);
+    doc.link(BM - 1, by - 5, 40, 8, { pageNumber: ref.page });
   }
 
-  // Thumbnail хуудас руу буцаж очиж холбоос + ⤢ дүрс тавина
+  // Thumbnail → appendix холбоос + "томруулах" тэмдэг (зурсан, глиф биш)
   for (const ref of refs) {
     if (!ref.appendixPage) continue;
     doc.setPage(ref.page);
-    // Thumbnail дээр дарахад appendix руу үсэрнэ
     doc.link(ref.x, ref.y, ref.w, ref.h, { pageNumber: ref.appendixPage });
-    // Жижиг ⤢ дүрс (томруулж харах заавар)
-    setFont(doc, "normal");
-    doc.setFontSize(6);
-    doc.setTextColor(...INK3);
-    doc.text("⤢", ref.x + ref.w - 0.5, ref.y + ref.h - 0.5, { align: "right" });
+    const s = 4;
+    const bx = ref.x + ref.w - s - 1;
+    const byy = ref.y + ref.h - s - 1;
+    doc.setFillColor(...WHITE);
+    doc.roundedRect(bx, byy, s, s, 0.8, 0.8, "F");
+    doc.setDrawColor(...PRIMARY);
+    doc.setLineWidth(0.35);
+    // diagonal arrow to the top-right corner
+    doc.line(bx + 1, byy + s - 1, bx + s - 1, byy + 1);
+    doc.line(bx + s - 1, byy + 1, bx + s - 2.4, byy + 1);
+    doc.line(bx + s - 1, byy + 1, bx + s - 1, byy + 2.4);
   }
 }
 
 // -----------------------------------------------------------------------------
-function addFooters(doc: jsPDF, footerText: string) {
-  const total = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1;
+// Footer on every page: "ChampStep-ээр үүсгэсэн · champstep.mn · 2026-10-13 · 1/5"
+// -----------------------------------------------------------------------------
+
+function addFooters(doc: jsPDF, t: T, dateStr: string, pos: { align: "left" | "center"; x: number; y: number }) {
+  const total = totalPages(doc);
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     setFont(doc, "normal");
     doc.setFontSize(8);
     doc.setTextColor(...INK3);
-    doc.text(footerText, M, A4.h - 8);
-    doc.text(`${i} / ${total}`, A4.w - M, A4.h - 8, { align: "right" });
+    doc.text(t("pdf.footerLine", { date: dateStr, page: i, total }), pos.x, pos.y, { align: pos.align });
   }
 }

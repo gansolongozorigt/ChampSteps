@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Dumbbell, Medal, Award, Palette, Pencil, Search, Trash2, type LucideIcon } from "lucide-react";
+import { BookOpen, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Trash2, type LucideIcon } from "lucide-react";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
   awardStyles,
@@ -321,7 +321,7 @@ function TimelineCard({
               {t(`categories.${achievement.category}`)}
             </span>
             {photoCount > 0 && (
-              <span className="t-caption">{t("card.photos", { count: photoCount })}</span>
+              <span className="t-caption inline-flex items-center gap-1"><Camera size={13} strokeWidth={2.2} aria-hidden />{t("card.photos", { count: photoCount })}</span>
             )}
           </div>
 

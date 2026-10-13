@@ -45,8 +45,8 @@
     "reset": "Шүүлтүүр цэвэрлэх"
   },
   "card": {
-    "photos_one": "📷 {{count}} зураг",
-    "photos_other": "📷 {{count}} зураг"
+    "photos_one": "{{count}} зураг",
+    "photos_other": "{{count}} зураг"
   },
   "form": {
     "headerEyebrow": "Шинэ тэмдэглэл",
@@ -172,7 +172,7 @@
     "qpayIntro": "QPay аппаар дараах QR кодыг уншуулна уу.",
     "qpayScanHint": "Өөрийн банкны аппаар сканнердана уу.",
     "demoNote": "Туршилтын QR — бодит төлбөр хийгдэхгүй.",
-    "successTitle": "Баярлалаа! 🎉",
+    "successTitle": "Баярлалаа!",
     "successBody": "Таны Premium эрх идэвхжлээ. Одоо PDF татаж болно.",
     "done": "Ойлголоо",
     "close": "Хаах",
@@ -191,9 +191,6 @@
     "previewOnPhoneHint": "Шинэ цонхонд бүтэн дэлгэцээр нээгдэнэ",
     "expand": "Томруулах",
     "collapse": "Багасгах",
-    "coverTitle": "{{name}} — Амжилтын тэмдэглэл",
-    "coverFooter": "ChampStep-ээр үүсгэсэн.",
-    "pageOf": "{{current}} / {{total}}",
     "meta": {
       "birthDate": "Төрсөн огноо",
       "totalEntries": "Нийт бичлэг",
@@ -204,34 +201,23 @@
     "goldMedals": "Алтан медаль",
     "birthDate": "Төрсөн огноо",
     "achievementsTitle": "{{name}}-ийн амжилтууд",
-    "footer": "ChampStep · Хүүхдийн өсөлтийн дэвтэр",
-    "statsTotal": "НИЙТ",
-    "statsGold": "АЛТАН",
-    "statsYear": "ОН",
-    "official": "📄 Албан ёсны",
-    "kids": "🎨 Хүүхэдлэг",
-    "gold": "✨ Алтлаг",
-    "portfolio": "👤 Портфолио",
-    "officialDesc": "Албан ёсны хэв маягт",
-    "kidsDesc": "Өнгөлөг, хөгжилтэй загвар",
-    "goldDesc": "Шагнал, алт загвар",
-    "portfolioDesc": "Бүрэн портфолио хэв",
-    "framed": "🖼 Хүрээт",
-    "framedDesc": "Чимэглэлт хүрээ, ангиллын өнгө",
+    "official": "Албан ёсны",
+    "portfolio": "Портфолио",
+    "officialDesc": "Сургууль, тэтгэлэгт зориулсан албан хэлбэр",
+    "portfolioDesc": "Зурагтай, гэрчилгээний хавсралттай",
+    "framed": "Хүрээтэй",
+    "framedDesc": "Гэрчилгээний хэв маяг, хүрээтэй",
     "appendixTitle": "Хавсралт",
-    "backLink": "← Буцах",
+    "backLink": "Буцах",
     "tapToEnlarge": "Томруулж үзэх",
     "downloadSubtitle": "{{name}}-ийн PDF портфолио татах",
     "includeImages": "Зураг оруулах",
-    "premiumMessage": "🔒 PDF татах — Premium эрх шаардлагатай. Upgrade хийх →"
+    "premiumMessage": "Хүрээтэй, Портфолио загвар — Гэр бүл багцаас. Багц сонгох",
+    "lockedCaption": "Гэр бүл багцаас",
+    "portfolioLabel": "Амжилтын портфолио",
+    "footerLine": "ChampStep-ээр үүсгэсэн · champstep.mn · {{date}} · {{page}}/{{total}}"
   },
   "pdfPreview": {
-    "frame": "Хүрээ",
-    "frameStyle": {
-      "classic": "Сонгодог",
-      "corner": "Булан",
-      "minimal": "Энгийн"
-    },
     "title": "PDF урьдчилж харах",
     "preview": "Харах",
     "entries": "Амжилтууд",
@@ -356,7 +342,7 @@
       "codeLabel": "Урилгын код",
       "codeExpiry": "7 хоногийн дотор ашиглана",
       "copyButton": "Код хуулах",
-      "copied": "✓ Хуулагдлаа!",
+      "copied": "Хуулагдлаа!",
       "newCode": "Шинэ код үүсгэх"
     },
     "parent": {
@@ -455,7 +441,7 @@
     "pay": "Төлөх",
     "premiumFeatures": "Хязгааргүй амжилт · PDF · AI",
     "upgrade": "⬆ Багцаа ахиулах",
-    "nearLimit": "⚠️ {{count}}/{{max}} — хязгаарт ойртлоо",
+    "nearLimit": "{{count}}/{{max}} — хязгаарт ойртлоо",
     "success": "Амжилттай!",
     "successMsg": "{{name}} эрх идэвхжлээ.",
     "close": "Хаах",

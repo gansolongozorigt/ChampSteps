@@ -45,8 +45,8 @@
     "reset": "Clear filters"
   },
   "card": {
-    "photos_one": "📷 {{count}} photo",
-    "photos_other": "📷 {{count}} photos"
+    "photos_one": "{{count}} photo",
+    "photos_other": "{{count}} photos"
   },
   "form": {
     "headerEyebrow": "New entry",
@@ -172,7 +172,7 @@
     "qpayIntro": "Scan the QR code with the QPay app.",
     "qpayScanHint": "Use your banking app's scanner.",
     "demoNote": "Demo QR — no real charge is made.",
-    "successTitle": "Thank you! 🎉",
+    "successTitle": "Thank you!",
     "successBody": "Your Premium plan is active. You can now download PDFs.",
     "done": "Got it",
     "close": "Close",
@@ -191,9 +191,6 @@
     "previewOnPhoneHint": "Opens full screen in a new tab",
     "expand": "Expand",
     "collapse": "Collapse",
-    "coverTitle": "{{name}} — Achievement Journal",
-    "coverFooter": "Generated with ChampStep.",
-    "pageOf": "{{current}} / {{total}}",
     "meta": {
       "birthDate": "Birth date",
       "totalEntries": "Total entries",
@@ -204,34 +201,23 @@
     "goldMedals": "Gold medals",
     "birthDate": "Birth date",
     "achievementsTitle": "{{name}}'s achievements",
-    "footer": "ChampStep · Achievement Journal",
-    "statsTotal": "TOTAL",
-    "statsGold": "GOLD",
-    "statsYear": "YEAR",
-    "official": "📄 Official",
-    "kids": "🎨 Kids",
-    "gold": "✨ Gold",
-    "portfolio": "👤 Portfolio",
-    "officialDesc": "Official format template",
-    "kidsDesc": "Colorful, fun design",
-    "goldDesc": "Award, gold theme",
-    "portfolioDesc": "Full portfolio format",
-    "framed": "🖼 Framed",
-    "framedDesc": "Decorative frame, category theme",
+    "official": "Official",
+    "portfolio": "Portfolio",
+    "officialDesc": "Formal layout for schools and scholarships",
+    "portfolioDesc": "Photo-led, certificates in an appendix",
+    "framed": "Framed",
+    "framedDesc": "Certificate style with a frame",
     "appendixTitle": "Appendix",
-    "backLink": "← Back",
+    "backLink": "Back",
     "tapToEnlarge": "Tap to enlarge",
     "downloadSubtitle": "Download {{name}}'s PDF portfolio",
     "includeImages": "Include images",
-    "premiumMessage": "🔒 PDF download — Premium required. Upgrade →"
+    "premiumMessage": "Framed and Portfolio templates — from the Family plan. Choose a plan",
+    "lockedCaption": "From the Family plan",
+    "portfolioLabel": "Achievement portfolio",
+    "footerLine": "Generated with ChampStep · champstep.mn · {{date}} · {{page}}/{{total}}"
   },
   "pdfPreview": {
-    "frame": "Frame",
-    "frameStyle": {
-      "classic": "Classic",
-      "corner": "Corner",
-      "minimal": "Minimal"
-    },
     "title": "PDF Preview",
     "preview": "Preview",
     "entries": "Achievements",
@@ -356,7 +342,7 @@
       "codeLabel": "Invite code",
       "codeExpiry": "Valid for 7 days",
       "copyButton": "Copy code",
-      "copied": "✓ Copied!",
+      "copied": "Copied!",
       "newCode": "Generate new code"
     },
     "parent": {
@@ -455,7 +441,7 @@
     "pay": "Pay",
     "premiumFeatures": "Unlimited · PDF · AI",
     "upgrade": "⬆ Upgrade",
-    "nearLimit": "⚠️ {{count}}/{{max}} — approaching limit",
+    "nearLimit": "{{count}}/{{max}} — approaching limit",
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",
     "close": "Close",
