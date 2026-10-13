@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, LogOut,
+  AlertTriangle, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
   Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
@@ -57,7 +57,7 @@ import {
 import { celebrate } from "./lib/celebrate";
 import { DeleteError, deleteAccountRemote, deleteChildRemote } from "./lib/deleteClient";
 import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
-import type { PdfTemplate } from "./lib/pdfExport";
+import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "./lib/pdfTemplates";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
@@ -339,9 +339,10 @@ function Dashboard() {
     removeLocalLog(id);
   }
 
+  // "official" is open to every plan; "framed" / "portfolio" need hasPdf (Family+).
   function openPdfPreview(template: PdfTemplate) {
     if (!child) return;
-    if (!tierLimits.hasPdf) {
+    if (isPaidTemplate(template) && !tierLimits.hasPdf) {
       setShowSubscription(true);
       setToast({ kind: "info", message: t("pdf.premiumRequired") });
       return;
@@ -732,28 +733,35 @@ function Dashboard() {
                   <p className="t-caption">{t("pdf.downloadSubtitle", { name: child.name })}</p>
                 </div>
                 <div className="divide-y divide-line">
-                  {([
-                    { id: "official" as PdfTemplate, label: t("pdf.official"), desc: t("pdf.officialDesc") },
-                    { id: "gold"     as PdfTemplate, label: t("pdf.gold"),     desc: t("pdf.goldDesc") },
-                    { id: "portfolio" as PdfTemplate, label: t("pdf.portfolio"), desc: t("pdf.portfolioDesc") },
-                    { id: "framed" as PdfTemplate, label: t("pdf.framed"), desc: t("pdf.framedDesc") },
-                  ]).map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      type="button"
-                      onClick={() => openPdfPreview(tmpl.id)}
-                      disabled={pdfBusy || !tierLimits.hasPdf}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-bg-soft active:bg-surface-muted disabled:opacity-40 min-h-[56px]"
-                    >
-                      <div className="min-w-0">
-                        <span className="t-body-strong text-ink">{tmpl.label}</span>
-                        <p className="t-caption mt-0.5">{tmpl.desc}</p>
-                      </div>
-                      {pdfTemplate === tmpl.id && pdfBusy
-                        ? <Loader2 size={20} className="animate-spin text-ink-3 shrink-0" />
-                        : <span className="cs-badge cs-badge-primary"><Download size={18} /></span>}
-                    </button>
-                  ))}
+                  {PDF_TEMPLATES.map((id) => {
+                    const locked = isPaidTemplate(id) && !tierLimits.hasPdf;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => openPdfPreview(id)}
+                        disabled={pdfBusy}
+                        data-testid={`pdf-template-${id}`}
+                        data-locked={locked ? "true" : undefined}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-bg-soft active:bg-surface-muted disabled:opacity-40 min-h-[56px]"
+                      >
+                        <div className="min-w-0">
+                          <span className={`t-body-strong ${locked ? "text-ink-2" : "text-ink"}`}>{t(`pdf.${id}`)}</span>
+                          <p className="t-caption mt-0.5">{t(`pdf.${id}Desc`)}</p>
+                          {locked && (
+                            <span className="t-caption mt-1 inline-flex items-center gap-1 text-primary-soft-ink">
+                              <Lock size={12} strokeWidth={2.5} aria-hidden />{t("pdf.lockedCaption")}
+                            </span>
+                          )}
+                        </div>
+                        {pdfTemplate === id && pdfBusy
+                          ? <Loader2 size={20} className="animate-spin text-ink-3 shrink-0" />
+                          : locked
+                          ? <span className="cs-badge"><Lock size={16} aria-hidden /></span>
+                          : <span className="cs-badge cs-badge-primary"><Download size={18} /></span>}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="px-4 py-3 border-t border-line">
                   <label className="flex items-center gap-3 cursor-pointer select-none min-h-[44px]">
@@ -771,8 +779,8 @@ function Dashboard() {
                 </div>
                 {!tierLimits.hasPdf && (
                   <div className="px-4 py-3 bg-bg-soft border-t border-line">
-                    <button type="button" onClick={() => setShowSubscription(true)} className="t-body-strong text-primary">
-                      {t("pdf.premiumMessage")}
+                    <button type="button" onClick={() => setShowSubscription(true)} className="t-body-strong text-primary inline-flex items-center gap-2">
+                      <Lock size={16} strokeWidth={2.5} aria-hidden />{t("pdf.premiumMessage")}
                     </button>
                   </div>
                 )}
@@ -789,7 +797,7 @@ function Dashboard() {
           <div className="bg-bg-soft border-b border-line px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="t-caption text-ink-2 min-w-0 truncate">
               {achNear || showLimitWarning
-                ? <span className="text-warn font-bold">{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
+                ? <span className="text-warn font-bold inline-flex items-center gap-1"><AlertTriangle size={14} strokeWidth={2.5} aria-hidden />{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
                 : childNear
                 ? <span className="text-warn font-bold">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
                 : <><span className="font-bold text-ink">{t("sub.tierNames.free").toUpperCase()}</span> · <span className="tabular-nums">{achCount}/{maxAch}</span> {t("summary.entries")}</>}
@@ -913,6 +921,9 @@ function Dashboard() {
         child={child}
         achievements={achievements}
         template={pdfTemplate}
+        onTemplateChange={setPdfTemplate}
+        canUsePaidTemplates={tierLimits.hasPdf}
+        onUpgrade={() => { setPreviewOpen(false); setShowSubscription(true); }}
         includeImages={includeImages}
       />
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}

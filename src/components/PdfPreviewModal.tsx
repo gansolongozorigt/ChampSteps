@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check, Expand, FileText, Maximize2, Shrink, X } from "lucide-react";
-import type { PdfTemplate, FrameStyle } from "../lib/pdfExport";
-
-const FRAME_STYLES: FrameStyle[] = ["classic", "corner", "minimal"];
+import { ArrowLeft, ArrowRight, Check, Expand, FileText, Lock, Maximize2, Shrink, X } from "lucide-react";
+import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "../lib/pdfTemplates";
 import type { Achievement, Child } from "../types";
 import { SUPPORTED_LANGS, type AppLang } from "../i18n";
 
@@ -12,7 +10,12 @@ interface PdfPreviewModalProps {
   onClose: () => void;
   child: Child;
   achievements: Achievement[];
+  /** Initially selected template; the modal has its own segmented control to switch. */
   template: PdfTemplate;
+  onTemplateChange?: (t: PdfTemplate) => void;
+  /** false on the free plan: framed / portfolio are shown locked and route to onUpgrade. */
+  canUsePaidTemplates: boolean;
+  onUpgrade: () => void;
   includeImages: boolean;
 }
 
@@ -21,7 +24,10 @@ export default function PdfPreviewModal({
   onClose,
   child,
   achievements,
-  template,
+  template: initialTemplate,
+  onTemplateChange,
+  canUsePaidTemplates,
+  onUpgrade,
   includeImages,
 }: PdfPreviewModalProps) {
   const { t, i18n } = useTranslation();
@@ -29,7 +35,7 @@ export default function PdfPreviewModal({
     ? (i18n.resolvedLanguage as AppLang)
     : "mn";
 
-  const [frameStyle, setFrameStyle] = useState<FrameStyle>("classic");
+  const [template, setTemplate] = useState<PdfTemplate>(initialTemplate);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -57,8 +63,15 @@ export default function PdfPreviewModal({
       setSelectedIds(new Set(achievements.map((a) => a.id)));
       setStep("select");
       setExpanded(false);
+      setTemplate(initialTemplate);
     }
-  }, [open, achievements]);
+  }, [open, achievements, initialTemplate]);
+
+  const pickTemplate = (next: PdfTemplate) => {
+    if (isPaidTemplate(next) && !canUsePaidTemplates) { onUpgrade(); return; }
+    setTemplate(next);
+    onTemplateChange?.(next);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +96,7 @@ export default function PdfPreviewModal({
       try {
         const { exportPortfolio } = await import("../lib/pdfExport");
         const url = await exportPortfolio(child, selectedList, {
-          t, template, language, includeImages, frameStyle, output: "bloburl",
+          t, template, language, includeImages, output: "bloburl",
         });
         if (!cancelled && typeof url === "string") replaceUrl(url);
       } catch (err) {
@@ -95,7 +108,7 @@ export default function PdfPreviewModal({
 
     return () => { cancelled = true; window.clearTimeout(handle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isMobile, step, selectedList, template, includeImages, language, frameStyle]);
+  }, [open, isMobile, step, selectedList, template, includeImages, language]);
 
   useEffect(() => {
     if (!open) replaceUrl(null);
@@ -129,7 +142,7 @@ export default function PdfPreviewModal({
       setGenerating(true);
       const { exportPortfolio } = await import("../lib/pdfExport");
       await exportPortfolio(child, selectedList, {
-        t, template, language, includeImages, frameStyle, output: "save",
+        t, template, language, includeImages, output: "save",
       });
       onClose();
     } catch (err) {
@@ -299,24 +312,34 @@ export default function PdfPreviewModal({
           </button>
         </div>
 
-        {template === "framed" && (
-          <div className="flex items-center gap-3 px-4 sm:px-5 py-2.5 border-b border-line bg-bg-soft shrink-0 overflow-x-auto scrollbar-hide">
-            <span className="t-label shrink-0">{t("pdfPreview.frame")}</span>
-            <div className="cs-segment" role="group">
-              {FRAME_STYLES.map((fs) => (
+        {/* Template segmented control: 3 options, i18n names, one-line description, lock on the free plan */}
+        <div className="px-4 sm:px-5 py-2.5 border-b border-line bg-bg-soft shrink-0">
+          <div className="cs-segment w-full" role="group" aria-label={t("pdfPreview.title")} data-testid="pdf-template-segment">
+            {PDF_TEMPLATES.map((id) => {
+              const locked = isPaidTemplate(id) && !canUsePaidTemplates;
+              return (
                 <button
-                  key={fs}
+                  key={id}
                   type="button"
-                  onClick={() => setFrameStyle(fs)}
-                  aria-pressed={frameStyle === fs}
-                  className="cs-segment-item"
+                  onClick={() => pickTemplate(id)}
+                  aria-pressed={template === id}
+                  data-testid={`pdf-segment-${id}`}
+                  data-locked={locked ? "true" : undefined}
+                  className="cs-segment-item flex-1 justify-center"
                 >
-                  {t(`pdfPreview.frameStyle.${fs}`)}
+                  {locked && <Lock size={13} strokeWidth={2.5} aria-hidden />}
+                  {t(`pdf.${id}`)}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+          <p className="t-caption mt-1.5 inline-flex items-center gap-1.5" data-testid="pdf-template-desc">
+            {t(`pdf.${template}Desc`)}
+            {isPaidTemplate(template) && !canUsePaidTemplates && (
+              <span className="inline-flex items-center gap-1 text-primary-soft-ink"><Lock size={12} aria-hidden />{t("pdf.lockedCaption")}</span>
+            )}
+          </p>
+        </div>
 
         <div className="flex-1 min-h-0">
           {!isMobile ? (
