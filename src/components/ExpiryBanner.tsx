@@ -1,5 +1,5 @@
-// ExpiryBanner — "plan ends in N days → renew" (7/3/1 days, dismissable once per day)
-// and "plan expired → switched to Free, data kept" (dismissable once).
+// ExpiryBanner — "plan ends in N days -> renew" (7/3/1 days, dismissable once per day)
+// and "plan expired -> switched to Free, data kept" (dismissable once).
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
@@ -21,7 +21,7 @@ export default function ExpiryBanner({ onRenew }: { onRenew: (tier: Subscription
   const today = new Date().toISOString().slice(0, 10);
   const tierName = (tier: SubscriptionTier) => t(`sub.tierNames.${tier}`);
 
-  // expired → free (server set expiredFrom); show once per expiry
+  // expired -> free (server set expiredFrom); show once per expiry
   if (!isActive(subscriptionInfo) && subscriptionInfo.expiredFrom) {
     const key = `champstep.expiredBanner.${user.uid}.${subscriptionInfo.expiredAt?.getTime() ?? "x"}`;
     if (readFlag(key)) return null;

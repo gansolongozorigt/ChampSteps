@@ -136,3 +136,7 @@ Access token `system/qpayToken` доктод кэшлэгдэнэ (бүх instan
 **Сар бүрийн тооцоо:** `node scripts/admin/payments-report.mjs 30 --status paid` (эсвэл `--csv > scratch/payments-YYYY-MM.csv`).
 
 **Хийгдээгүй:** и-баримт (eBarimt 3.0), жилийн багц — тусдаа.
+
+## 7. Сар бүрийн нөөцлөлт (2026-10-13-наас)
+
+Сарын 1-нд `node scripts/admin/payments-report.mjs 31`-тэй хамт `bash scripts/admin/monthly-backup.sh` ажиллуулна (Firestore export + Storage rsync + Auth export; дэлгэрэнгүй, сэргээх заавар: docs/BACKUP.md). Firestore-ийн өдөр тутмын/долоо хоногийн scheduled backup Google талд автоматаар явна.

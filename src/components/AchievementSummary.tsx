@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Award, Medal, type LucideIcon } from "lucide-react";
 import type { Achievement } from "../types";
 
-/** 0 → end рүү easeOutCubic-аар тоолно. reduced-motion үед шууд утга өгнө. */
+/** 0 -> end рүү easeOutCubic-аар тоолно. reduced-motion үед шууд утга өгнө. */
 function useCountUp(end: number, duration = 1100): number {
   const [val, setVal] = useState(0);
   const raf = useRef<number>();

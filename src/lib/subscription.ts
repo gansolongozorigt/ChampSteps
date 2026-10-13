@@ -18,7 +18,7 @@ export function isTier(v: unknown): v is SubscriptionTier {
   return v === "free" || v === "family" || v === "master" || v === "coach";
 }
 
-/** Firestore Timestamp | Date | ISO | epoch → Date | null */
+/** Firestore Timestamp | Date | ISO | epoch -> Date | null */
 export function toDate(v: unknown): Date | null {
   if (!v) return null;
   if (v instanceof Date) return v;
@@ -42,7 +42,7 @@ export function isActive(info: SubscriptionInfo, now: Date = new Date()): boolea
   return info.tier !== "free" && (info.expiresAt === null || info.expiresAt.getTime() > now.getTime());
 }
 
-/** The tier every limit/feature check must use: expired → free. */
+/** The tier every limit/feature check must use: expired -> free. */
 export function effectiveTier(info: SubscriptionInfo, now: Date = new Date()): SubscriptionTier {
   return isActive(info, now) ? info.tier : "free";
 }
@@ -59,7 +59,7 @@ export function isDowngrade(info: SubscriptionInfo, target: SubscriptionTier, no
   return PLANS[target].amount < PLANS[info.tier].amount;
 }
 
-/** Tiers a user may see/buy: teachers → free + coach; parents → free/family/master. */
+/** Tiers a user may see/buy: teachers -> free + coach; parents -> free/family/master. */
 export function visibleTiers(role: "parent" | "teacher" | undefined): SubscriptionTier[] {
   return role === "teacher" ? ["free", "coach"] : ["free", "family", "master"];
 }

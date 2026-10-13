@@ -59,7 +59,7 @@ interface ExportOpts {
   language?: AppLang;
   includeImages?: boolean;
   t?: T;
-  // "save" (default) → файл татна; "bloburl" → preview-д object URL; "arraybuffer" → Node тест.
+  // "save" (default) -> файл татна; "bloburl" -> preview-д object URL; "arraybuffer" -> Node тест.
   output?: "save" | "bloburl" | "arraybuffer";
   /** Fonts as base64 (Node / tests). In the browser they are fetched from /NotoSans-*.ttf. */
   fonts?: PdfFonts;
@@ -98,7 +98,7 @@ function drawLogo(
 ) {
   setFont(doc, "bold");
   doc.setFontSize(fontSize);
-  const mark = fontSize * 0.36 * 2; // mark height ≈ 2× cap height
+  const mark = fontSize * 0.36 * 2; // mark height ~ 2× cap height
   const gap = mark * 0.3;
   const wChamp = doc.getTextWidth("Champ");
   const wStep = doc.getTextWidth("Step");
@@ -796,7 +796,7 @@ async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achieveme
       continue;
     }
 
-    // ---- image block: landscape → 100% width, portrait → 60% width, centred ----
+    // ---- image block: landscape -> 100% width, portrait -> 60% width, centred ----
     const { w: nw, h: nh } = dataUrlDims(main);
     const aspect = nw > 0 && nh > 0 ? nw / nh : 4 / 3;
     let iw: number, ih: number;
@@ -926,7 +926,7 @@ async function addAppendix(doc: jsPDF, refs: ImgRef[], t: T, opts: AppendixOpts 
     doc.link(BM - 1, by - 5, 40, 8, { pageNumber: ref.page });
   }
 
-  // Thumbnail → appendix холбоос + "томруулах" тэмдэг (зурсан, глиф биш)
+  // Thumbnail -> appendix холбоос + "томруулах" тэмдэг (зурсан, глиф биш)
   for (const ref of refs) {
     if (!ref.appendixPage) continue;
     doc.setPage(ref.page);

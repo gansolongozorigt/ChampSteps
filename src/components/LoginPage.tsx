@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { GraduationCap, Users, type LucideIcon } from "lucide-react";
 import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
+import PasswordInput from "./PasswordInput";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
 import { LOGIN_MODE_KEY } from "../lib/localStore";
@@ -28,7 +29,7 @@ export default function LoginPage() {
   });
   useEffect(() => { try { sessionStorage.removeItem(NOTICE_KEY); } catch { /* private mode */ } }, []);
 
-  // Guest banner → "sign up and keep": open the sign-up form right away. The flag is read in the
+  // Guest banner -> "sign up and keep": open the sign-up form right away. The flag is read in the
   // initializer (StrictMode runs it twice, so it must stay readable) and cleared after mount.
   const [mode, setMode] = useState<Mode>(() => {
     try { return sessionStorage.getItem(LOGIN_MODE_KEY) === "signup" ? "signup" : "signin"; } catch { return "signin"; }
@@ -158,9 +159,8 @@ export default function LoginPage() {
                 autoComplete="email"
               />
 
-              <Field
+              <PasswordInput
                 id="password"
-                type="password"
                 label={t("auth.password")}
                 value={password}
                 onChange={setPassword}

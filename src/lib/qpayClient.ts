@@ -47,7 +47,7 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
 }
 
 export interface QPayConfig { enabled: boolean; sandbox: boolean }
-/** Whether the payment provider is configured on the server (no auth). Network errors → assume enabled. */
+/** Whether the payment provider is configured on the server (no auth). Network errors -> assume enabled. */
 export async function getQPayConfig(): Promise<QPayConfig> {
   try {
     const res = await fetch("/api/qpay/config", { cache: "no-store" });

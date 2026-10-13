@@ -1,6 +1,6 @@
 /* Manrope — self-hosted static woff2 (Google Fonts v20), weights 500/600/700/800,
    subsets cyrillic-ext / cyrillic / latin / latin-ext (~130 KB total). Precached by the PWA
-   (vite.config.ts globPatterns includes woff2). docs/BRAND.md → Typography. */
+   (vite.config.ts globPatterns includes woff2). docs/BRAND.md -> Typography. */
 @font-face {
   font-family: "Manrope";
   font-style: normal;
