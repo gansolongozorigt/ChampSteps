@@ -103,6 +103,8 @@
     "defaultName": "Пользователь",
     "email": "Эл. почта",
     "password": "Пароль",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
     "signIn": "Войти",
     "signUp": "Зарегистрироваться",
     "signOut": "Выйти",

@@ -129,6 +129,8 @@
     "defaultName": "User",
     "email": "Email",
     "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "signIn": "Sign in",
     "signUp": "Sign up",
     "signOut": "Sign out",

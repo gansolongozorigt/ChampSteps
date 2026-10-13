@@ -129,6 +129,8 @@
     "defaultName": "Хэрэглэгч",
     "email": "Имэйл",
     "password": "Нууц үг",
+    "showPassword": "Нууц үг харуулах",
+    "hidePassword": "Нууц үг нуух",
     "signIn": "Нэвтрэх",
     "signUp": "Бүртгүүлэх",
     "signOut": "Гарах",

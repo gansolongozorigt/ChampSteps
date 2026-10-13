@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { GraduationCap, Users, type LucideIcon } from "lucide-react";
 import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
+import PasswordInput from "./PasswordInput";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
 import { LOGIN_MODE_KEY } from "../lib/localStore";
@@ -158,9 +159,8 @@ export default function LoginPage() {
                 autoComplete="email"
               />
 
-              <Field
+              <PasswordInput
                 id="password"
-                type="password"
                 label={t("auth.password")}
                 value={password}
                 onChange={setPassword}
