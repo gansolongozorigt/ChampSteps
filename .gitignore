@@ -15,3 +15,6 @@ test-results/
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Claude Code local state
+.claude/
