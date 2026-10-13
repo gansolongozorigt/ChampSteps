@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate,
-  dataUrlDims, exportPortfolio,
+  dataUrlDims, exportPortfolio, planPages, framedBlockHeight, FRAMED_BLOCK_GAP,
 } from "../src/lib/pdfExport.ts";
 import mn from "../src/i18n/locales/mn.json" with { type: "json" };
 
@@ -102,14 +102,21 @@ test("i18n: pdf keys the templates use exist in mn/en/ru and carry no emoji", as
 
 for (const template of PDF_TEMPLATES) {
   test(`render ${template}: no throw, multi-page, NotoSans embedded, written to scratch/pdf-3/${template}.pdf`, async () => {
-    const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z") });
+    let framedPages;
+    const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z"), onPages: (p) => { framedPages = p; } });
     assert.ok(buf instanceof ArrayBuffer && buf.byteLength > 20_000, "pdf bytes");
+    if (template === "framed") {
+      // 3 achievements (2 + 1 + 0 images) flow onto ≤ 2 content pages; the 3 appendix pages come on top
+      assert.ok(framedPages.length <= 2, `framed: ${framedPages.length} content pages`);
+      assert.deepEqual(framedPages.flat(), [0, 1, 2]);
+      console.log(`framed content pages: ${JSON.stringify(framedPages)}`);
+    }
     const bytes = Buffer.from(buf);
     const head = bytes.subarray(0, 8).toString("latin1");
     assert.ok(head.startsWith("%PDF-"), "pdf header");
     const text = bytes.toString("latin1");
     const pages = (text.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-    // official: 1 list page + 3 appendix; framed: 1 + 3; portfolio: cover + 1-2 + 3 appendix
+    // official: 1 list page + 3 appendix; framed: 1-2 + 3; portfolio: cover + 1-2 + 3 appendix
     assert.ok(pages >= 4, `${template}: expected ≥4 pages, got ${pages}`);
     assert.ok(/NotoSans/.test(text), "NotoSans font embedded");
     writeFileSync(new URL(`${template}.pdf`, OUT), bytes);
@@ -121,4 +128,36 @@ test("render without images and with an unknown legacy id falls back cleanly", a
   assert.ok(buf.byteLength > 5_000);
   const pages = (Buffer.from(buf).toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   assert.ok(pages >= 1 && pages <= 2, `no appendix without images (got ${pages})`);
+});
+
+test("framed pagination: planPages fills in order, never splits, first page has its own capacity", () => {
+  assert.deepEqual(planPages([], 100, 200, 5), []);
+  assert.deepEqual(planPages([60, 60, 60], 100, 200, 5), [[0], [1, 2]]);          // 60+5+60 > 100 → page 2 (cap 200) takes two
+  assert.deepEqual(planPages([40, 40, 40, 40], 85, 85, 5), [[0, 1], [2, 3]]);      // 40+5+40 = 85 fits exactly
+  assert.deepEqual(planPages([300, 10], 100, 200, 5), [[0], [1]]);                 // over-tall block gets its own page, not split
+  assert.equal(framedBlockHeight(0, 0), 14);
+  assert.equal(framedBlockHeight(1, 1), 11 + 4.5 + 36 + 2 + 3);
+  assert.equal(framedBlockHeight(2, 3), 11 + 9 + 28 + 2 + 3);
+  assert.equal(framedBlockHeight(5, 9), framedBlockHeight(2, 3));                  // clamped to 2 lines / 3 images
+  assert.equal(FRAMED_BLOCK_GAP, 5);
+});
+
+test("framed pagination: 10 achievements → every content page carries ≥ 2, order kept, appendix = image count", async () => {
+  const many = Array.from({ length: 10 }, (_, i) => ({
+    id: `m${i}`, childId: "c1",
+    title: `Амжилт ${i + 1}`, date: `2026-0${(i % 9) + 1}-10`, location: "Улаанбаатар",
+    category: ["Sports", "Academic", "Arts"][i % 3], awardType: ["Gold", "Silver", "Bronze", "Participant"][i % 4],
+    description: i % 2 ? "Хоёр мөрт тайлбар: " + "сургуулийн тэмцээнд амжилттай оролцож, багийн хамт шилдэг үзүүлэлт үзүүлсэн. ".repeat(2) : "Нэг мөрт тайлбар.",
+    imageURLs: [[], [fx.landscape], [fx.landscape, fx.certificate]][i % 3],
+  }));
+  let pages;
+  const buf = await exportPortfolio(child, many, { template: "framed", t, fonts, includeImages: true, output: "arraybuffer", onPages: (p) => { pages = p; } });
+  assert.ok(Array.isArray(pages) && pages.length >= 2, "flowed over several pages");
+  assert.deepEqual(pages.flat(), many.map((_, i) => i), "every achievement once, in order");
+  for (const [n, p] of pages.entries()) assert.ok(p.length >= 2, `page ${n + 1} has ${p.length} achievement(s): ${JSON.stringify(pages)}`);
+  const images = many.reduce((s, a) => s + a.imageURLs.length, 0);
+  const total = (Buffer.from(buf).toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+  assert.equal(total, pages.length + images, `content ${pages.length} + appendix ${images} pages`);
+  writeFileSync(new URL("framed-10.pdf", OUT), Buffer.from(buf)); // visual check of continuation pages
+  console.log(`framed 10 achievements: content pages ${JSON.stringify(pages)}, total ${total}`);
 });

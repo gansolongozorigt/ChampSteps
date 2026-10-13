@@ -38,8 +38,11 @@ const AWARD_COLOR: Record<string, RGB> = { Gold: GOLD, Silver: SILVER, Bronze: B
 // Templates + legacy id map live in ./pdfTemplates (no jsPDF there); re-exported for callers/tests.
 // -----------------------------------------------------------------------------
 
-import { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, type PdfTemplate } from "./pdfTemplates";
-export { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate };
+import {
+  PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, type PdfTemplate,
+  FRAMED_IMAGE_ROW, FRAMED_BLOCK_GAP, framedBlockHeight, planPages,
+} from "./pdfTemplates";
+export { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, FRAMED_IMAGE_ROW, FRAMED_BLOCK_GAP, framedBlockHeight, planPages };
 export type { PdfTemplate };
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
@@ -62,6 +65,8 @@ interface ExportOpts {
   fonts?: PdfFonts;
   /** Footer date (defaults to today). */
   now?: Date;
+  /** Framed template: achievement indices per content page, once laid out (tests / debugging). */
+  onPages?: (pages: number[][]) => void;
 }
 
 const A4 = { w: 210, h: 297 };
@@ -423,6 +428,7 @@ export async function exportPortfolio(
     output = "save",
     fonts,
     now = new Date(),
+    onPages,
   } = opts;
   const template = normalizePdfTemplate(rawTemplate);
 
@@ -437,7 +443,7 @@ export async function exportPortfolio(
     await renderOfficial(doc, child, achievements, t, includeImages, imgRefs);
     addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, imgRefs);
+    await renderFramed(doc, child, achievements, t, includeImages, imgRefs, onPages);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
   } else {
     await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs);
@@ -587,93 +593,110 @@ function drawMedalStats(doc: jsPDF, t: T, achievements: Achievement[], x: number
     return y + 6;
   }, y);
 }
-async function renderFramed(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
+async function renderFramed(
+  doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[],
+  onPages?: (pages: number[][]) => void,
+) {
   const X = FRAME.content;
   const bottomLimit = A4.h - FRAME.content - 8; // keep clear of the footer
+  const contTop = FRAME.content + 18;           // first block baseline on continuation pages (below the small label)
 
+  // ---- Page 1: profile header ----
   drawFrame(doc);
-
-  // Header: logo + label
-  drawLogo(doc, A4.w / 2, 38, 11, "color", "center");
-  drawLabel(doc, t("pdf.portfolioLabel"), A4.w / 2, 45.5, 8, INK3, "center");
+  drawLogo(doc, A4.w / 2, 31, 11, "color", "center");
+  drawLabel(doc, t("pdf.portfolioLabel"), A4.w / 2, 38.5, 8, INK3, "center");
   doc.setDrawColor(...PRIMARY);
   doc.setLineWidth(0.5);
-  doc.line(A4.w / 2 - 10, 49, A4.w / 2 + 10, 49);
+  doc.line(A4.w / 2 - 10, 42, A4.w / 2 + 10, 42);
 
   // Avatar with a green ring
-  await drawAvatar(doc, child, A4.w / 2, 68, 14);
+  await drawAvatar(doc, child, A4.w / 2, 57, 12.5);
   doc.setDrawColor(...PRIMARY);
   doc.setLineWidth(0.6);
-  doc.circle(A4.w / 2, 68, 14.8, "S");
+  doc.circle(A4.w / 2, 57, 13.3, "S");
 
   // Name (Display 28), bio, birth date
   setFont(doc, "bold");
   doc.setFontSize(28);
   doc.setTextColor(...INK);
   const nameLines = doc.splitTextToSize(child.name, FW);
-  doc.text(nameLines.slice(0, 2), A4.w / 2, 96, { align: "center" });
-  let y = 96 + (Math.min(nameLines.length, 2) - 1) * 11;
+  doc.text(nameLines.slice(0, 2), A4.w / 2, 81, { align: "center" });
+  let y = 81 + (Math.min(nameLines.length, 2) - 1) * 11;
   if (child.bio) {
     setFont(doc, "normal");
     doc.setFontSize(10);
     doc.setTextColor(...INK2);
     const bio = doc.splitTextToSize(child.bio, FW - 30);
-    doc.text(bio.slice(0, 2), A4.w / 2, y + 8, { align: "center" });
-    y += 8 + (Math.min(bio.length, 2) - 1) * 5;
+    doc.text(bio.slice(0, 2), A4.w / 2, y + 7, { align: "center" });
+    y += 7 + (Math.min(bio.length, 2) - 1) * 5;
   }
   if (child.birthDate) {
     setFont(doc, "normal");
     doc.setFontSize(9);
     doc.setTextColor(...INK3);
-    doc.text(`${t("pdf.birthDate")}: ${child.birthDate}`, A4.w / 2, y + 7, { align: "center" });
-    y += 7;
+    doc.text(`${t("pdf.birthDate")}: ${child.birthDate}`, A4.w / 2, y + 6.5, { align: "center" });
+    y += 6.5;
   }
-
-  y = drawMedalStats(doc, t, achievements, X, FW, y + 16) + 6;
+  y = drawMedalStats(doc, t, achievements, X, FW, y + 12) + 4.5;
   doc.setDrawColor(...LINE);
   doc.setLineWidth(0.3);
   doc.line(X, y, A4.w - X, y);
-  y += 10;
+  y += 8; // first block title baseline
 
-  for (const a of achievements) {
-    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
-    const descLines = a.description ? doc.splitTextToSize(a.description, FW - 8).slice(0, 2) : [];
-    const blockH = 12 + descLines.length * 4.5 + imgH + 4;
-    if (y + blockH > bottomLimit) {
+  // ---- Flow: measure every block, then fill pages (blocks never split) ----
+  const blocks = achievements.map((a) => {
+    const descLines: string[] = a.description ? doc.splitTextToSize(a.description, FW - 8).slice(0, 2) : [];
+    const images = includeImages ? (a.imageURLs ?? []).slice(0, 3) : [];
+    return { a, descLines, images, h: framedBlockHeight(descLines.length, images.length) };
+  });
+  const pages = planPages(blocks.map((b) => b.h), bottomLimit - y, bottomLimit - contTop, FRAMED_BLOCK_GAP);
+  onPages?.(pages.map((p) => [...p]));
+
+  for (let p = 0; p < pages.length; p++) {
+    if (p > 0) {
       doc.addPage();
       drawFrame(doc);
-      y = FRAME.content + 8;
+      // small "{name}'s achievements" label at the top of every continuation page
+      drawLabel(doc, t("pdf.achievementsTitle", { name: child.name }), X, FRAME.content + 6, 7.5, INK3);
+      doc.setDrawColor(...LINE);
+      doc.setLineWidth(0.3);
+      doc.line(X, FRAME.content + 9, A4.w - X, FRAME.content + 9);
+      y = contTop;
     }
-    // award-coloured tick + title
-    const award = AWARD_COLOR[a.awardType] ?? INK3;
-    doc.setFillColor(...award);
-    doc.rect(X, y - 3.8, 1, 5.2, "F");
-    setFont(doc, "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(...INK);
-    doc.text(doc.splitTextToSize(a.title, FW - 8)[0], X + 4, y);
-    // meta line with the award in its medal colour
-    setFont(doc, "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...INK3);
-    const meta = `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  `;
-    doc.text(meta, X + 4, y + 5.5);
-    setFont(doc, "bold");
-    doc.setTextColor(...award);
-    doc.text(t(`awards.${a.awardType}`), X + 4 + doc.getTextWidth(meta), y + 5.5);
-    if (descLines.length) {
+    for (const i of pages[p]) {
+      const { a, descLines, images, h } = blocks[i];
+      // award-coloured tick + title
+      const award = AWARD_COLOR[a.awardType] ?? INK3;
+      doc.setFillColor(...award);
+      doc.rect(X, y - 3.8, 1, 5.2, "F");
+      setFont(doc, "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(...INK);
+      doc.text(doc.splitTextToSize(a.title, FW - 8)[0], X + 4, y);
+      // meta line with the award in its medal colour
       setFont(doc, "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(...INK2);
-      doc.text(descLines, X + 4, y + 11);
+      doc.setFontSize(9);
+      doc.setTextColor(...INK3);
+      const meta = `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  `;
+      doc.text(meta, X + 4, y + 5.5);
+      setFont(doc, "bold");
+      doc.setTextColor(...award);
+      doc.text(t(`awards.${a.awardType}`), X + 4 + doc.getTextWidth(meta), y + 5.5);
+      if (descLines.length) {
+        setFont(doc, "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...INK2);
+        doc.text(descLines, X + 4, y + 11);
+      }
+      if (images.length) {
+        const dims = FRAMED_IMAGE_ROW[images.length as 1 | 2 | 3];
+        await drawImageRow(doc, images, X + 4, y + 11 + descLines.length * 4.5 + 2, { list: imgRefs, title: a.title, date: a.date }, dims);
+      }
+      doc.setDrawColor(...LINE);
+      doc.setLineWidth(0.3);
+      doc.line(X, y + h, A4.w - X, y + h);
+      y += h + FRAMED_BLOCK_GAP;
     }
-    if (imgH) {
-      await drawImageRow(doc, a.imageURLs, X + 4, y + 12 + descLines.length * 4.5 + 1, { list: imgRefs, title: a.title, date: a.date });
-    }
-    doc.setDrawColor(...LINE);
-    doc.setLineWidth(0.3);
-    doc.line(X, y + blockH, A4.w - X, y + blockH);
-    y += blockH + 7;
   }
 
   await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
