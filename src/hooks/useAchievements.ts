@@ -1,8 +1,8 @@
 // =============================================================================
 // useAchievements — React hook that owns a child's achievements.
 //
-//   • Firebase mode  → subscribes to Firestore via onSnapshot.
-//   • Offline mode   → reads/writes localStorage so entries persist on reload.
+//   • Firebase mode  -> subscribes to Firestore via onSnapshot.
+//   • Offline mode   -> reads/writes localStorage so entries persist on reload.
 //
 // Returned actions:
 //   addLocal(item)  — persist a new achievement in offline mode.
@@ -32,7 +32,7 @@ export function useAchievements(
   childId: string,
   /** Seed used only on first offline render when localStorage is empty. */
   fallback: Achievement[] = [],
-  /** true → localStorage only (Firebase not configured, or a guest / trial user). Firestore is never touched. */
+  /** true -> localStorage only (Firebase not configured, or a guest / trial user). Firestore is never touched. */
   local: boolean = !isFirebaseConfigured
 ): UseAchievementsResult {
   const [achievements, setAchievements] = useState<Achievement[]>(() => {
@@ -49,8 +49,8 @@ export function useAchievements(
       return;
     }
     // No child selected yet (children still loading): do not query Firestore.
-    // where("childId","==","") makes the rules' get(/children/"") fail →
-    // permission-denied → spurious "errorLoading" toast. Same guard as
+    // where("childId","==","") makes the rules' get(/children/"") fail ->
+    // permission-denied -> spurious "errorLoading" toast. Same guard as
     // usePracticeLogs / useReflections.
     if (!childId) {
       setAchievements([]);

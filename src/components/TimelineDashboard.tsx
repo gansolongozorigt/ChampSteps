@@ -100,7 +100,7 @@ export default function TimelineDashboard({
     <div className="min-h-screen bg-bg">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
 
-        {/* ── Profile header ─────────────────────────────────────────── */}
+        {/* -- Profile header ------------------------------------------- */}
         <header className="flex items-start justify-between gap-3 mb-5">
           <button
             type="button"
@@ -137,15 +137,15 @@ export default function TimelineDashboard({
           </button>
         </header>
 
-        {/* ── Achievement summary (medals) ── */}
+        {/* -- Achievement summary (medals) -- */}
         <AchievementSummary achievements={achievements} />
 
-        {/* ── AI Insight ─────────────────────────────────────────────── */}
+        {/* -- AI Insight ----------------------------------------------- */}
         {achievements.length > 0 && (
           <AIInsightCard key={child.childId} child={child} achievements={achievements} onToast={onToast} />
         )}
 
-        {/* ── Search & sort ──────────────────────────────────────────── */}
+        {/* -- Search & sort -------------------------------------------- */}
         {achievements.length > 0 && (
           <section className="mt-5 flex flex-col gap-3">
             <div className="relative">
@@ -190,7 +190,7 @@ export default function TimelineDashboard({
           </section>
         )}
 
-        {/* ── Timeline ───────────────────────────────────────────────── */}
+        {/* -- Timeline ------------------------------------------------- */}
         <section className="relative mt-6">
           {loading ? (
             <div className="space-y-3">
@@ -239,7 +239,7 @@ export default function TimelineDashboard({
   );
 }
 
-// ─── TimelineCard ─────────────────────────────────────────────────────────────
+// --- TimelineCard -------------------------------------------------------------
 
 function TimelineCard({
   achievement,

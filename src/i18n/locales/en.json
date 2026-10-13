@@ -452,7 +452,7 @@
     "demo": "Demo mode",
     "pay": "Pay",
     "premiumFeatures": "Unlimited · PDF · AI",
-    "upgrade": "⬆ Upgrade",
+    "upgrade": "Upgrade",
     "nearLimit": "{{count}}/{{max}} — approaching limit",
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",

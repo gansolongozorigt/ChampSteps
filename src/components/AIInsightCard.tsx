@@ -86,7 +86,7 @@ export default function AIInsightCard({ child, achievements, onToast }: Props) {
         const text = snap.exists() ? (snap.data()?.text as unknown) : "";
         if (typeof text === "string" && text.trim()) setInsight(text);
       })
-      .catch(() => { /* кэш уншигдахгүй (rules хараахан нээгээгүй) → хоосон эхэлнэ */ });
+      .catch(() => { /* кэш уншигдахгүй (rules хараахан нээгээгүй) -> хоосон эхэлнэ */ });
     return () => { alive = false; };
   }, [childId, hasAI]);
 

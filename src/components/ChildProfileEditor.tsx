@@ -19,7 +19,7 @@ export interface ChildProfileEditorProps {
    * download URL in your Firebase callback.
    */
   onSave: (next: Child, avatarFile?: File) => Promise<void> | void;
-  /** Rejected/undecodable avatar → parent shows a toast. */
+  /** Rejected/undecodable avatar -> parent shows a toast. */
   onError?: (message: string) => void;
   /** Parent only: opens the delete-child confirmation (Danger zone at the bottom). Omit to hide. */
   onRequestDelete?: () => void;

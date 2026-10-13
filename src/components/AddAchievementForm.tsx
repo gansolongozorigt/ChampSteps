@@ -45,7 +45,7 @@ export interface AddAchievementFormProps {
   initialDraft?: Partial<AchievementDraft>;
   onSubmit: (draft: AchievementDraft) => Promise<void> | void;
   onCancel?: () => void;
-  /** Rejected/undecodable photo → parent shows a toast. */
+  /** Rejected/undecodable photo -> parent shows a toast. */
   onError?: (message: string) => void;
   /** false (guest / trial mode): photos cannot be attached; the photo step explains why instead of an upload box. */
   allowPhotos?: boolean;

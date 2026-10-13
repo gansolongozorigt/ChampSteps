@@ -1,5 +1,5 @@
 // Амжилт нэмэхэд баярын confetti цацрах эффект (сан ашиглахгүй)
-// mega=true (алтан медаль) → брэндийн өнгө + медалийн алт, том дэлбэрэлт; үгүй → брэндийн ногоон/цагаан/graphite
+// mega=true (алтан медаль) -> брэндийн өнгө + медалийн алт, том дэлбэрэлт; үгүй -> брэндийн ногоон/цагаан/graphite
 export function celebrate(opts: { mega?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;

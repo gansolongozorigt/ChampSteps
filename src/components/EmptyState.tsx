@@ -2,8 +2,8 @@
 // EmptyState — placeholder shown when there are no entries or when filters /
 // search return nothing. No illustration (docs/BRAND.md): lucide icon 40px
 // text-ink-3 + one line + primary pill button.
-//   - "journal"  → first-run (no achievements at all)
-//   - "filtered" → filters/search wiped out results
+//   - "journal"  -> first-run (no achievements at all)
+//   - "filtered" -> filters/search wiped out results
 // =============================================================================
 
 import { useTranslation } from "react-i18next";

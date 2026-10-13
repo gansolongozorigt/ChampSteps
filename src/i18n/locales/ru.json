@@ -365,7 +365,7 @@
     "demo": "Демо-режим",
     "pay": "Оплатить",
     "premiumFeatures": "Безлимит · PDF · AI",
-    "upgrade": "⬆ Улучшить",
+    "upgrade": "Улучшить",
     "nearLimit": "{{count}}/{{max}} — приближаетесь к лимиту",
     "success": "Успешно!",
     "successMsg": "План {{name}} активирован.",

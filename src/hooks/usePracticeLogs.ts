@@ -18,7 +18,7 @@ function saveLocal(childId: string, logs: PracticeLog[]) {
   localStorage.setItem(`${KEY}.${childId}`, JSON.stringify(logs));
 }
 
-/** @param local true → localStorage only (Firebase not configured, or a guest / trial user). */
+/** @param local true -> localStorage only (Firebase not configured, or a guest / trial user). */
 export function usePracticeLogs(childId: string, local: boolean = !isFirebaseConfigured) {
   const [logs, setLogs] = useState<PracticeLog[]>(() =>
     local ? loadLocal(childId) : []

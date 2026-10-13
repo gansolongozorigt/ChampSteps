@@ -1,4 +1,4 @@
-// Logo.tsx — the ONE ChampStep logo (docs/BRAND.md → Icon).
+// Logo.tsx — the ONE ChampStep logo (docs/BRAND.md -> Icon).
 // Mark: three ascending rounded bars — first two forest green, the tallest graphite.
 // Wordmark: "Champ" ink + "Step" primary, Manrope 800. Used by the header, login,
 // PDF export (logoSvgString) and the PWA icons (scripts/brand-icons.mjs).

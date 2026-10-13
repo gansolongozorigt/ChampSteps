@@ -28,7 +28,7 @@ export default function LoginPage() {
   });
   useEffect(() => { try { sessionStorage.removeItem(NOTICE_KEY); } catch { /* private mode */ } }, []);
 
-  // Guest banner → "sign up and keep": open the sign-up form right away. The flag is read in the
+  // Guest banner -> "sign up and keep": open the sign-up form right away. The flag is read in the
   // initializer (StrictMode runs it twice, so it must stay readable) and cleared after mount.
   const [mode, setMode] = useState<Mode>(() => {
     try { return sessionStorage.getItem(LOGIN_MODE_KEY) === "signup" ? "signup" : "signin"; } catch { return "signin"; }

@@ -1,6 +1,6 @@
 // =============================================================================
 // i18next configuration — Mongolian (default) + English.
-// Language is detected from: localStorage → <html lang> → navigator.language.
+// Language is detected from: localStorage -> <html lang> -> navigator.language.
 // Components consume strings via: const { t } = useTranslation();
 // =============================================================================
 

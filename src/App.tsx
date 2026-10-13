@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
+  AlertTriangle, ArrowUp, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
   Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
@@ -82,7 +82,7 @@ function migrateAsked(uid: string): boolean {
 function markMigrateAsked(uid: string) {
   try { localStorage.setItem(MIGRATE_ASKED_KEY(uid), "1"); } catch { /* private mode */ }
 }
-/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is ≥90 % used. */
+/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is >=90 % used. */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
 const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -99,7 +99,7 @@ export default function App() {
   const { user, loading: authLoading } = useAuth();
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <LoginPage />;
-  // users/{uid}.role not read yet → keep loading; never render a parent dashboard by default
+  // users/{uid}.role not read yet -> keep loading; never render a parent dashboard by default
   if (!user.role) return <FullScreenLoader />;
   return <Dashboard />;
 }
@@ -424,7 +424,7 @@ function Dashboard() {
     setShowAddChild(true);
   }
 
-  /** Server error → translated message (empty = use the caller's generic one). */
+  /** Server error -> translated message (empty = use the caller's generic one). */
   function deleteErrorMessage(e: unknown): string {
     if (e instanceof DeleteError && e.reason === "rate_limited") return t("danger.account.rateLimited");
     return "";
@@ -453,7 +453,7 @@ function Dashboard() {
     setToast({ kind: "success", message: t("danger.child.done", { name: victim.name }) });
   }
 
-  /** Delete the signed-in account (/api/account/delete), then sign out → login page shows a notice. */
+  /** Delete the signed-in account (/api/account/delete), then sign out -> login page shows a notice. */
   async function handleDeleteAccount() {
     if (!user) return;
     if (!localMode) {
@@ -540,7 +540,7 @@ function Dashboard() {
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
-  // ≥90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
+  // >=90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
   // counts when it can actually be approached (free = 1 child would otherwise pin the bar forever).
   const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
   const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
@@ -648,10 +648,10 @@ function Dashboard() {
       )}
       {isGuest && <GuestBanner onSignUp={handleGuestSignUp} />}
 
-      {/* ── BODY: мобайл = flex-col, desktop = flex-row ── */}
+      {/* -- BODY: мобайл = flex-col, desktop = flex-row -- */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
-        {/* ══ DESKTOP SIDEBAR ══ */}
+        {/* == DESKTOP SIDEBAR == */}
         <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-line shrink-0 overflow-y-auto cs-app-sidebar">
 
           {/* Хүүхдийн жагсаалт */}
@@ -721,14 +721,14 @@ function Dashboard() {
                     style={{ width: `${Math.min(100, (achCount / maxAch) * 100)}%` }} />
                 </div>
                 <button type="button" onClick={() => setShowSubscription(true)} className="cs-btn cs-btn-primary cs-btn-sm w-full">
-                  {t("sub.upgrade")}
+                  <ArrowUp size={16} strokeWidth={2.5} aria-hidden="true" />{t("sub.upgrade")}
                 </button>
               </div>
             )}
           </div>
         </aside>
 
-        {/* ══ MAIN CONTENT ══ */}
+        {/* == MAIN CONTENT == */}
         <main ref={mainRef} className="flex-1 overflow-y-auto bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
           <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && <TeacherBanner label={t("status.teacherMode")} />}
@@ -878,7 +878,7 @@ function Dashboard() {
               <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="cs-icon-btn cs-icon-btn-sm ml-auto text-ink-3"><X size={16} /></button>
             )}
             <button type="button" onClick={() => setShowSubscription(true)} className="cs-btn cs-btn-primary cs-btn-xs shrink-0">
-              {t("sub.upgrade")}
+              <ArrowUp size={16} strokeWidth={2.5} aria-hidden="true" />{t("sub.upgrade")}
             </button>
           </div>
         )}
@@ -1055,7 +1055,7 @@ function ChildDot({ child, size = 24 }: { child: Child; size?: number }) {
   );
 }
 
-/** ≤3 children: segmented control; 4+: scrollable pills. */
+/** <=3 children: segmented control; 4+: scrollable pills. */
 function ChildSwitcher({ children, activeIdx, onSelect }: { children: Child[]; activeIdx: number; onSelect: (i: number) => void }) {
   const segmented = children.length <= 3;
   if (segmented) {
