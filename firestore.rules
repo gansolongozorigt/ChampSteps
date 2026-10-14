@@ -12,6 +12,7 @@
 //     teacher (uid in children.teacherIds) can read and may only write
 //     coachNotes. reflections are parent-only. Children docs without a
 //     teacherIds field are treated as having no teachers (see isTeacherOf).
+//   • goals/{id}: parent creates/updates/deletes for own child; invited teacher reads.
 //   • aiInsights/{childId}: server-written AI cache; parent + teacher read.
 //   • promoCodes: no client access at all (server only).
 // =============================================================================
@@ -55,6 +56,26 @@ service cloud.firestore {
     }
     // reflections: child note (content) and parent note (parentNote) are both
     // optional strings, but at least one must be non-empty.
+    // Optional number field: absent or a number.
+    function optNum(d, k) {
+      return !(k in d) || d[k] is number;
+    }
+    // goals/{id}: a planned competition / target a child is preparing for.
+    function goalOk(d) {
+      return d.title is string && d.title != ''
+        && d.date is string && d.date.size() == 10
+        && d.category in ['Sports', 'Arts', 'Academic']
+        && d.status in ['active', 'done', 'cancelled']
+        && optNum(d, 'targetSessionsPerWeek') && optNum(d, 'targetMinutes')
+        && optStr(d, 'linkedAchievementId');
+    }
+    // achievements.prep (optional): practice statistics copied from a goal when the result is recorded.
+    function prepOk(d) {
+      return !('prep' in d)
+        || (d.prep is map && d.prep.goalId is string
+            && d.prep.days is number && d.prep.sessions is number
+            && d.prep.minutes is number && d.prep.daysTotal is number);
+    }
     function reflectionNotesOk(d) {
       return optStr(d, 'content') && optStr(d, 'parentNote')
         && (('content' in d && d.content != '')
@@ -126,17 +147,34 @@ service cloud.firestore {
     // ---- achievements / practiceLogs: parent writes, teacher reads ------
     match /achievements/{docId} {
       allow get, list: if canViewChild(resource.data.childId);
-      allow create: if isChildOwner(request.resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId)
+        && prepOk(request.resource.data);
       allow update: if isChildOwner(resource.data.childId)
-        && request.resource.data.childId == resource.data.childId;
+        && request.resource.data.childId == resource.data.childId
+        && prepOk(request.resource.data);
       allow delete: if isChildOwner(resource.data.childId);
     }
 
     match /practiceLogs/{docId} {
       allow get, list: if canViewChild(resource.data.childId);
-      allow create: if isChildOwner(request.resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId)
+        && optStr(request.resource.data, 'goalId');
       allow update: if isChildOwner(resource.data.childId)
-        && request.resource.data.childId == resource.data.childId;
+        && request.resource.data.childId == resource.data.childId
+        && optStr(request.resource.data, 'goalId');
+      allow delete: if isChildOwner(resource.data.childId);
+    }
+
+    // ---- goals: parent CRUD on own child, invited teacher reads -----------
+    match /goals/{goalId} {
+      allow get, list: if canViewChild(resource.data.childId);
+      allow create: if isChildOwner(request.resource.data.childId)
+        && request.resource.data.parentId == uid()
+        && goalOk(request.resource.data);
+      allow update: if isChildOwner(resource.data.childId)
+        && request.resource.data.childId == resource.data.childId
+        && request.resource.data.parentId == resource.data.parentId
+        && goalOk(request.resource.data);
       allow delete: if isChildOwner(resource.data.childId);
     }
 

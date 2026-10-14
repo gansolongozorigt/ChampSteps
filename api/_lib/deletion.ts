@@ -7,7 +7,7 @@
 //
 // Where a child's data lives (src/lib/firebase.ts, firestore.rules, storage.rules):
 //   children/{childId}                      the profile itself (flat, no subcollections)
-//   achievements | practiceLogs | reflections | coachNotes   docs with field childId
+//   achievements | practiceLogs | reflections | coachNotes | goals   docs with field childId
 //   inviteCodes/{code}.childId              a redeemed teacher code points at the child
 //   aiInsights/{childId}                    server-written AI cache, doc id == childId
 //   Storage achievements/{childId}/**  avatars/{childId}/**
@@ -43,7 +43,7 @@ export const CHILD_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 export const FIRESTORE_BATCH = 400;
 
 /** Collections whose documents carry a `childId` field. */
-export const CHILD_COLLECTIONS = ["achievements", "practiceLogs", "reflections", "coachNotes"] as const;
+export const CHILD_COLLECTIONS = ["achievements", "practiceLogs", "reflections", "coachNotes", "goals"] as const;
 export type ChildCollection = (typeof CHILD_COLLECTIONS)[number];
 
 export const STORAGE_PREFIXES = (childId: string) => ({
@@ -96,13 +96,14 @@ export interface ChildDeleteCounts {
   practiceLogs: number;
   reflections: number;
   coachNotes: number;
+  goals: number;
   inviteCodes: number;
   aiInsights: number;
   child: number;
 }
 
 export const ZERO_COUNTS: ChildDeleteCounts = Object.freeze({
-  photos: 0, avatarFiles: 0, achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0, inviteCodes: 0, aiInsights: 0, child: 0,
+  photos: 0, avatarFiles: 0, achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0, goals: 0, inviteCodes: 0, aiInsights: 0, child: 0,
 });
 
 export function addCounts(a: ChildDeleteCounts, b: ChildDeleteCounts): ChildDeleteCounts {
@@ -122,7 +123,7 @@ export async function deleteChildData(deps: DeletionDeps, childId: string): Prom
   const prefixes = STORAGE_PREFIXES(childId);
   const photos = await deps.deleteStoragePrefix(prefixes.photos);
   const avatarFiles = await deps.deleteStoragePrefix(prefixes.avatarFiles);
-  const counts: Record<ChildCollection, number> = { achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0 };
+  const counts: Record<ChildCollection, number> = { achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0, goals: 0 };
   for (const col of CHILD_COLLECTIONS) counts[col] = await deps.deleteWhere(col, "childId", childId);
   const inviteCodes = await deps.deleteWhere("inviteCodes", "childId", childId);
   const aiInsights = (await deps.deleteDoc("aiInsights", childId)) ? 1 : 0;

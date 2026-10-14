@@ -166,7 +166,12 @@ Env солисны дараа заавал redeploy (VAPID нь build-time).
 - `system/reminderRuns/days/{YYYY-MM-DD}`: cron-ийн өдөр тутмын lock + тайлан (`status`, `users`, `notified`, `sent`,
   `failed`, `deletedTokens`, `byKind`, `skipped*`). Нэг өдөрт 2 дахь дуудлага `{ skipped: true }` буцаана.
 
-**Cron:** `vercel.json` → `/api/cron/reminders`, `0 12 * * *` (12:00 UTC = 20:00 УБ). Vercel багийн төлөвлөгөө Pro тул
+**Cron (2):** `vercel.json` → `/api/cron/reminders` `0 12 * * *` (12:00 UTC = 20:00 УБ, оройн бэлтгэлийн сануулга) ба
+`/api/cron/reminders-morning` `0 0 * * *` (00:00 UTC = 08:00 УБ, зөвхөн тэмцээний өдөр: "Өнөөдөр {зорилго}! {нэр} бэлэн.").
+Хоёулаа ижил `CRON_SECRET`, run doc нь `system/reminderRuns/days/{огноо}` ба `{огноо}-morning`. Хэрэглэгчид өдөрт max 2.
+Оройн текстийн давуу эрэмбэ (goals коллекц, status active): маргааш зорилго > маргааш огноотой амжилт > 7 хоногийн дараа
+зорилго > "{зорилго} хүртэл N өдөр — бэлтгэлээ тэмдэглэ" (тухайн өдөр бичээгүй бол) > энгийн өдрийн сануулга.
+`competition` toggle: маргааш/7 хоног/өглөөний мөрүүд; `daily` toggle: countdown ба энгийн сануулга. Тэмцээний өдрийн орой юу ч явахгүй. Vercel багийн төлөвлөгөө Pro тул
 цагийг чөлөөтэй өөрчилж болно; хэрэглэгч бүрийн өөр цаг нь дараагийн хувилбарт (reminders-д `hour` талбар + цаг тутмын cron).
 Гараар ажиллуулах (secret-ийг чатад/лог-д хэвлэхгүй):
 

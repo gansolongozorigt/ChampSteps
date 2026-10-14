@@ -278,7 +278,8 @@
       "save": "Save",
       "cancel": "Cancel",
       "removeAvatar": "Remove avatar"
-    }
+    },
+    "addGoal": "Add a competition / goal"
   },
   "practice": {
     "heading": "Practice log",
@@ -710,5 +711,75 @@
     "pending_other": "{{count}} entries waiting to sync",
     "photosLater": "Saved without photos (no internet). Add the photos once you are back online.",
     "queuedAchievement": "Saved — syncs once you are back online."
+  },
+  "goals": {
+    "title": "Goals",
+    "addCta": "Add a competition / goal",
+    "addCtaHint": "Note what the child is preparing for and when; daily practice links to it.",
+    "formTitle": "New goal",
+    "editTitle": "Edit goal",
+    "fields": {
+      "title": "Competition / goal name",
+      "titlePlaceholder": "e.g. City championship",
+      "date": "Date",
+      "category": "Category",
+      "sessionsPerWeek": "Sessions per week (optional)",
+      "minutes": "Minutes per session (optional)"
+    },
+    "validation": {
+      "future": "Pick today or a future date"
+    },
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "daysLeft_one": "{{count}} day until {{title}}",
+    "daysLeft_other": "{{count}} days until {{title}}",
+    "isToday": "Today: {{title}}",
+    "overdue": "{{title}} — date has passed",
+    "stats": "{{sessions}} sessions · {{hours}} h",
+    "statsMin": "{{sessions}} sessions · {{minutes}} min",
+    "weekProgress": "This week {{done}}/{{target}}",
+    "linkLabel": "Goal",
+    "noLink": "No goal",
+    "detail": {
+      "countdown_one": "{{count}} day left",
+      "countdown_other": "{{count}} days left",
+      "today": "Today!",
+      "past": "Date has passed",
+      "days": "Days practised",
+      "sessions": "Sessions",
+      "hours": "Hours",
+      "streak": "Longest streak",
+      "ofTotal": "of {{total}} days",
+      "logs": "Practice entries",
+      "noLogs": "No entries linked to this goal yet",
+      "edit": "Edit",
+      "cancelGoal": "Cancel goal",
+      "cancelConfirm": "Cancel it?",
+      "result": "Record the result",
+      "close": "Close",
+      "done": "Result recorded",
+      "cancelled": "Cancelled"
+    },
+    "howWasIt": "How did the competition go?",
+    "howWasItHint": "{{title}} ({{date}})",
+    "writeResult": "Record the result",
+    "notYet": "Not yet, change the date",
+    "nextCompetition": "Next competition: {{title}} · {{count}} days",
+    "nextCompetitionToday": "Next competition: {{title}} · today",
+    "limitFree": "The free plan allows 1 active goal per child. Upgrade for unlimited goals.",
+    "celebration": {
+      "headline": "{{name}}, today is {{title}}!",
+      "days": "You practised on {{days}} of {{total}} days",
+      "hours": "{{hours}} hours",
+      "minutes": "{{minutes}} minutes",
+      "ready": "You are ready.",
+      "writeResult": "Record the result",
+      "plainView": "Plain view",
+      "backToCelebration": "Competition screen"
+    },
+    "prepLine": "Preparation: {{days}} days · {{hours}} h",
+    "prepLineMin": "Preparation: {{days}} days · {{minutes}} min",
+    "resultFormHint": "Goal result: the practice statistics are attached to the achievement."
   }
 }

@@ -11,7 +11,7 @@ const parent = { email: testEmail("delete"), password: PASSWORD, name: "QA Paren
 const teacher = { email: testEmail("delete-t"), password: PASSWORD, name: "QA Teacher", role: "teacher" as const };
 test.afterAll(async () => { await cleanupTestUser(parent.email); await cleanupTestUser(teacher.email); });
 
-const EMPTY = { achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0, inviteCodes: 0, childDoc: 0, aiInsight: 0, storageFiles: 0 };
+const EMPTY = { achievements: 0, practiceLogs: 0, reflections: 0, coachNotes: 0, goals: 0, inviteCodes: 0, childDoc: 0, aiInsight: 0, storageFiles: 0 };
 
 test("parent: delete child → Firestore + Storage footprint is zero; delete account → auth user gone", async ({ context }) => {
   test.setTimeout(180_000);

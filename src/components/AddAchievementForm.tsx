@@ -49,6 +49,8 @@ export interface AddAchievementFormProps {
   onError?: (message: string) => void;
   /** false (guest / trial mode): photos cannot be attached; the photo step explains why instead of an upload box. */
   allowPhotos?: boolean;
+  /** Explicit edit mode. Default: true when initialDraft is given. false = a NEW achievement prefilled (goal result). */
+  editing?: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -61,10 +63,11 @@ export default function AddAchievementForm({
   onCancel,
   onError,
   allowPhotos = true,
+  editing,
 }: AddAchievementFormProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
-  const isEditing = !!initialDraft;
+  const isEditing = editing ?? !!initialDraft;
 
   const [step, setStep] = useState<Step>(1);
   const [draft, setDraft] = useState<AchievementDraft>({
@@ -142,6 +145,9 @@ export default function AddAchievementForm({
   return (
     <div className="w-full p-5 sm:p-6">
       <Header step={step} childName={childName} isEditing={isEditing} />
+      {draft.prep && step === 1 && (
+        <p className="t-caption text-primary-soft-ink bg-primary-soft rounded-input px-3 py-2 mb-4" data-testid="result-hint">{t("goals.resultFormHint")}</p>
+      )}
 
       <div className="mt-6 space-y-5">
         {step === 1 && (

@@ -4,6 +4,8 @@ export interface PlanDef {
   readonly amount: number;
   readonly maxChildren: number;
   readonly maxAchievements: number;
+  /** Active goals per child; -1 = unlimited */
+  readonly maxActiveGoals: number;
   readonly hasPdf: boolean;
   readonly hasAI: boolean;
   readonly label: { readonly mn: string; readonly en: string; readonly ru: string };

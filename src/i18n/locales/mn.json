@@ -278,7 +278,8 @@
       "save": "Хадгалах",
       "cancel": "Цуцлах",
       "removeAvatar": "Зургийг устгах"
-    }
+    },
+    "addGoal": "Тэмцээн / зорилго нэмэх"
   },
   "practice": {
     "heading": "Бэлтгэлийн тэмдэглэл",
@@ -710,5 +711,75 @@
     "pending_other": "{{count}} бичлэг хүлээгдэж байна",
     "photosLater": "Интернэтгүй тул амжилт зураггүй хадгалагдлаа. Интернэт орсны дараа зураг нэмээрэй.",
     "queuedAchievement": "Хадгалагдлаа — интернэт ормогц sync хийнэ."
+  },
+  "goals": {
+    "title": "Зорилго",
+    "addCta": "Тэмцээн / зорилго нэмэх",
+    "addCtaHint": "Хүүхэд хэзээ, юунд бэлдэж байгааг тэмдэглээд өдөр бүрийн бэлтгэлээ түүнд холбоно.",
+    "formTitle": "Шинэ зорилго",
+    "editTitle": "Зорилго засах",
+    "fields": {
+      "title": "Тэмцээн / зорилгын нэр",
+      "titlePlaceholder": "Жишээ: Хотын аварга шалгаруулах тэмцээн",
+      "date": "Огноо",
+      "category": "Ангилал",
+      "sessionsPerWeek": "7 хоногт хэдэн удаа (сонголтоор)",
+      "minutes": "Нэг удаад хэдэн минут (сонголтоор)"
+    },
+    "validation": {
+      "future": "Өнөөдөр эсвэл ирээдүйн огноо сонгоно уу"
+    },
+    "save": "Хадгалах",
+    "saving": "Хадгалж байна...",
+    "cancel": "Болих",
+    "daysLeft_one": "{{title}} хүртэл {{count}} өдөр",
+    "daysLeft_other": "{{title}} хүртэл {{count}} өдөр",
+    "isToday": "Өнөөдөр: {{title}}",
+    "overdue": "{{title}} — огноо өнгөрсөн",
+    "stats": "{{sessions}} бэлтгэл · {{hours}} цаг",
+    "statsMin": "{{sessions}} бэлтгэл · {{minutes}} мин",
+    "weekProgress": "Энэ 7 хоногт {{done}}/{{target}}",
+    "linkLabel": "Зорилго",
+    "noLink": "Зорилгогүй",
+    "detail": {
+      "countdown_one": "{{count}} өдөр үлдлээ",
+      "countdown_other": "{{count}} өдөр үлдлээ",
+      "today": "Өнөөдөр!",
+      "past": "Огноо өнгөрсөн",
+      "days": "Бэлтгэсэн өдөр",
+      "sessions": "Бэлтгэл",
+      "hours": "Цаг",
+      "streak": "Хамгийн урт дараалал",
+      "ofTotal": "{{total}} өдрөөс",
+      "logs": "Бэлтгэлийн бичлэгүүд",
+      "noLogs": "Энэ зорилгод холбосон бичлэг алга",
+      "edit": "Засах",
+      "cancelGoal": "Зорилго цуцлах",
+      "cancelConfirm": "Цуцлах уу?",
+      "result": "Үр дүн бичих",
+      "close": "Хаах",
+      "done": "Үр дүн бичигдсэн",
+      "cancelled": "Цуцлагдсан"
+    },
+    "howWasIt": "Тэмцээн хэрхэн болсон бэ?",
+    "howWasItHint": "{{title}} ({{date}})",
+    "writeResult": "Үр дүн бичих",
+    "notYet": "Болоогүй, огноо өөрчлөх",
+    "nextCompetition": "Дараагийн тэмцээн: {{title}} · {{count}} өдөр",
+    "nextCompetitionToday": "Дараагийн тэмцээн: {{title}} · өнөөдөр",
+    "limitFree": "Үнэгүй эрхэд хүүхэд бүрт 1 идэвхтэй зорилго. Багцаа ахиулбал хязгааргүй.",
+    "celebration": {
+      "headline": "{{name}}, өнөөдөр {{title}}!",
+      "days": "Чи {{total}} өдрийн {{days}}-д нь бэлтгэл хийсэн",
+      "hours": "{{hours}} цаг",
+      "minutes": "{{minutes}} минут",
+      "ready": "Чи бэлэн.",
+      "writeResult": "Үр дүн бичих",
+      "plainView": "Энгийн харагдац",
+      "backToCelebration": "Тэмцээний дэлгэц"
+    },
+    "prepLine": "Бэлтгэл: {{days}} өдөр · {{hours}} цаг",
+    "prepLineMin": "Бэлтгэл: {{days}} өдөр · {{minutes}} мин",
+    "resultFormHint": "Зорилгын үр дүн: бэлтгэлийн статистик амжилтад хавсарна."
   }
 }

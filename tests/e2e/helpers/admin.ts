@@ -72,7 +72,7 @@ export async function cleanupTestUser(email: string) {
   try { uid = await uidByEmail(email); } catch { return; }
   const kids = await db().collection("children").where("parentId", "==", uid).get();
   for (const k of kids.docs) {
-    for (const col of ["achievements", "practiceLogs", "reflections", "coachNotes"]) {
+    for (const col of ["achievements", "practiceLogs", "reflections", "coachNotes", "goals"]) {
       await deleteQuery(db().collection(col).where("childId", "==", k.id));
     }
     await db().collection("aiInsights").doc(k.id).delete().catch(() => {});
@@ -192,7 +192,7 @@ export async function childIdsOf(email: string): Promise<string[]> {
 /** Everything still pointing at a childId after deletion — expected to be all zeros. */
 export async function childFootprint(childId: string): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
-  for (const col of ["achievements", "practiceLogs", "reflections", "coachNotes", "inviteCodes"]) {
+  for (const col of ["achievements", "practiceLogs", "reflections", "coachNotes", "goals", "inviteCodes"]) {
     out[col] = (await db().collection(col).where("childId", "==", childId).count().get()).data().count;
   }
   out.childDoc = (await db().collection("children").doc(childId).get()).exists ? 1 : 0;

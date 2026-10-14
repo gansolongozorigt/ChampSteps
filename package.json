@@ -9,13 +9,14 @@
     "preview": "vite preview",
     "lint": "tsc -b",
     "lint:api": "tsc -p tsconfig.api.json --noEmit",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs tests/rules/legacy-user.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project champstep-rules-test \"node --test --test-concurrency=1 tests/rules/firestore.test.mjs tests/rules/storage.test.mjs tests/rules/legacy-user.test.mjs tests/rules/goals.test.mjs\"",
     "test:rules:api": "node tests/rules/api-runner.mjs",
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
     "test:plans": "node --test tests/plans.test.mjs",
     "test:pdf": "node --import tsx --test tests/pdf-templates.test.mjs",
     "test:export": "node --import tsx --test tests/export-data.test.mjs",
+    "test:goals": "node --import tsx --test tests/goals.test.mjs",
     "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs tests/push.test.mjs tests/streak.test.mjs"
   },
   "dependencies": {

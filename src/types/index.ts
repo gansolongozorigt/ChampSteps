@@ -40,19 +40,22 @@ export interface AppUser {
 }
 
 // Subscription-н хязгаар
-export const TIER_LIMITS: Record<SubscriptionTier, {
+export interface TierLimits {
   maxChildren: number;
   maxAchievements: number; // -1 = хязгааргүй
+  maxActiveGoals: number;  // хүүхэд бүрт идэвхтэй зорилго; -1 = хязгааргүй
   hasPdf: boolean;
   hasAI: boolean;
-}> = Object.fromEntries(
+}
+export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = Object.fromEntries(
   PLAN_IDS.map((id) => [id, {
     maxChildren: PLANS[id].maxChildren,
     maxAchievements: PLANS[id].maxAchievements,
+    maxActiveGoals: PLANS[id].maxActiveGoals,
     hasPdf: PLANS[id].hasPdf,
     hasAI: PLANS[id].hasAI,
   }])
-) as Record<SubscriptionTier, { maxChildren: number; maxAchievements: number; hasPdf: boolean; hasAI: boolean }>;
+) as Record<SubscriptionTier, TierLimits>;
 
 // -----------------------------------------------------------------------------
 // Хүүхэд
@@ -110,8 +113,21 @@ export interface Achievement {
   description: string;
   awardType: AwardType;
   imageURLs: string[];
+  /** Practice statistics copied from the goal when the result was recorded. */
+  prep?: AchievementPrep;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** achievements.prep */
+export interface AchievementPrep {
+  goalId: string;
+  /** distinct days with a practice log */
+  days: number;
+  sessions: number;
+  minutes: number;
+  /** days from the goal's creation to the competition, inclusive */
+  daysTotal: number;
 }
 
 /** Form draft */
@@ -139,8 +155,37 @@ export interface PracticeLog {
   date: string;              // YYYY-MM-DD
   duration: number;          // минутаар
   content: string;
+  /** goals/{id} this session prepares for (optional; old logs have none) */
+  goalId?: string;
   createdAt?: string;
 }
+
+// -----------------------------------------------------------------------------
+// Goals — a competition / target the child prepares for
+// -----------------------------------------------------------------------------
+
+export type GoalStatus = "active" | "done" | "cancelled";
+
+/**
+ * /goals/{id}
+ * A child may have several active goals at once (plan limit: TIER_LIMITS.maxActiveGoals).
+ */
+export interface Goal {
+  id: string;
+  childId: string;
+  parentId: string;
+  title: string;
+  date: string;              // YYYY-MM-DD, the competition day
+  category: AchievementCategory;
+  targetSessionsPerWeek?: number;
+  targetMinutes?: number;
+  status: GoalStatus;
+  linkedAchievementId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type GoalDraft = Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes">;
 
 // -----------------------------------------------------------------------------
 // Reflection (сэтгэлзүйн тэмдэглэл) — НУУЦ

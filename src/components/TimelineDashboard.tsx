@@ -5,7 +5,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, CalendarCheck, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Trash2, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarCheck, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Target, Trash2, type LucideIcon } from "lucide-react";
+import { hoursLabel } from "../lib/goals";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
   awardStyles,
@@ -30,6 +31,8 @@ export interface TimelineDashboardProps {
   onAddClick?: () => void;
   /** "Log today's practice" — opens the Today screen (/today). */
   onTodayClick?: () => void;
+  /** Soonest active goal: "Next competition: {title} · N days" under the child's name. */
+  nextGoal?: { title: string; daysLeft: number } | null;
   onEditProfile?: () => void;
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
@@ -46,6 +49,7 @@ export default function TimelineDashboard({
   achievements,
   onAddClick,
   onTodayClick,
+  nextGoal,
   onEditProfile,
   onEditAchievement,
   onDeleteAchievement,
@@ -129,6 +133,12 @@ export default function TimelineDashboard({
               </h1>
               {child.bio && (
                 <p className="t-caption mt-0.5 leading-snug">{child.bio}</p>
+              )}
+              {nextGoal && (
+                <p className="t-caption mt-1 inline-flex items-center gap-1 text-primary-soft-ink" data-testid="next-goal-line">
+                  <Target size={12} strokeWidth={2.4} aria-hidden />
+                  {nextGoal.daysLeft === 0 ? t("goals.nextCompetitionToday", { title: nextGoal.title }) : t("goals.nextCompetition", { title: nextGoal.title, count: nextGoal.daysLeft })}
+                </p>
               )}
               {!readOnly && (
                 <span className="inline-flex items-center gap-1 t-caption text-primary mt-1 opacity-70 group-hover:opacity-100 transition-opacity">
@@ -295,6 +305,14 @@ function TimelineCard({
               <h3 className="t-h2">
                 {achievement.title}
               </h3>
+              {achievement.prep && (
+                <p className="t-caption mt-1 inline-flex items-center gap-1" data-testid="prep-line">
+                  <Target size={12} strokeWidth={2.4} aria-hidden />
+                  {hoursLabel(achievement.prep.minutes).hours > 0
+                    ? t("goals.prepLine", { days: achievement.prep.days, hours: hoursLabel(achievement.prep.minutes).hours })
+                    : t("goals.prepLineMin", { days: achievement.prep.days, minutes: achievement.prep.minutes })}
+                </p>
+              )}
             </div>
             {/* Edit/Delete — hover-д гарна (багшийн горимд байхгүй) */}
             {!readOnly && (

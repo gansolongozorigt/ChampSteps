@@ -7,7 +7,11 @@
 //
 // Data (server-written only; firestore.rules keeps both closed to clients):
 //   pushTokens/{token}            uid, platform, lang, createdAt, lastSeenAt
-//   system/reminderRuns/days/{YYYY-MM-DD}  one doc per calendar day (Ulaanbaatar) = idempotent cron
+//   system/reminderRuns/days/{YYYY-MM-DD}          evening run (20:00 UB) = idempotent cron
+//   system/reminderRuns/days/{YYYY-MM-DD}-morning  morning run (08:00 UB, competition day only)
+// Goals (goals/{id}, status active) make the texts specific: "{goal} in N days — log today's
+// practice"; 7 days / 1 day before: a special line; on the day: a morning push. Goal texts win
+// over the plain practice reminder; a user gets at most one push per run (max 2 per day).
 // Client-written (users/{uid}.reminders, allowed by the users update rule):
 //   reminders: { daily: boolean, competition: boolean, updatedAt }
 
@@ -118,6 +122,44 @@ export function dailyText(lang: Lang, childNames: string[]): ReminderText {
   return { title: t.title, body: t.daily(childNames.join(", ")) };
 }
 
+const GOAL_TEXTS: Record<Lang, {
+  today: (title: string, name: string) => string;
+  tomorrow: (title: string, days: number) => string;
+  week: (title: string, sessions: number) => string;
+  daily: (title: string, n: number) => string;
+}> = {
+  mn: {
+    today: (title, name) => `Өнөөдөр ${title}! ${name} бэлэн.`,
+    tomorrow: (title, days) => `Маргааш ${title}! ${days} өдөр бэлтгэсэн — амжилт хүсье.`,
+    week: (title, sessions) => `7 хоногийн дараа ${title}. Одоогоор ${sessions} бэлтгэл.`,
+    daily: (title, n) => `${title} хүртэл ${n} өдөр — өнөөдрийн бэлтгэлээ тэмдэглэ`,
+  },
+  en: {
+    today: (title, name) => `Today: ${title}! ${name} is ready.`,
+    tomorrow: (title, days) => `Tomorrow: ${title}! ${days} days of practice — good luck.`,
+    week: (title, sessions) => `${title} in 7 days. ${sessions} sessions so far.`,
+    daily: (title, n) => `${n} days until ${title} — log today's practice`,
+  },
+  ru: {
+    today: (title, name) => `Сегодня ${title}! ${name} готов(а).`,
+    tomorrow: (title, days) => `Завтра ${title}! ${days} дней подготовки — удачи.`,
+    week: (title, sessions) => `Через 7 дней ${title}. Пока ${sessions} тренировок.`,
+    daily: (title, n) => `${n} дн. до ${title} — отметь сегодняшнюю тренировку`,
+  },
+};
+
+export type GoalKind = "goalToday" | "goalTomorrow" | "goalWeek" | "goalDaily";
+
+export function goalText(lang: Lang, kind: GoalKind, g: { title: string; childName: string; days: number; sessions: number; daysLeft: number }): ReminderText {
+  const t = GOAL_TEXTS[lang] ?? GOAL_TEXTS.mn;
+  const title = TEXTS[lang]?.title ?? "ChampStep";
+  const body = kind === "goalToday" ? t.today(g.title, g.childName)
+    : kind === "goalTomorrow" ? t.tomorrow(g.title, g.days)
+    : kind === "goalWeek" ? t.week(g.title, g.sessions)
+    : t.daily(g.title, g.daysLeft);
+  return { title, body };
+}
+
 export function competitionText(lang: Lang, title: string, childName: string): ReminderText {
   const t = TEXTS[lang] ?? TEXTS.mn;
   return { title: t.title, body: t.competition(title, childName) };
@@ -149,6 +191,33 @@ export interface TokenLike {
   lang: Lang;
 }
 
+/** goals/{id} with status active, as the cron sees it. */
+export interface GoalLike {
+  id: string;
+  childId: string;
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+}
+
+export interface GoalStatsLike {
+  sessions: number;
+  /** distinct practice days */
+  days: number;
+}
+
+export type RunSlot = "evening" | "morning";
+
+/** Document id of a run: evening = the day, morning = the day + "-morning". */
+export function runKey(dateKey: string, slot: RunSlot): string {
+  return slot === "morning" ? `${dateKey}-morning` : dateKey;
+}
+
+/** YYYY-MM-DD plus n days (UTC arithmetic on a date-only key). */
+export function plusDays(dateKey: string, n: number): string {
+  return new Date(Date.parse(dateKey + "T00:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
+}
+
 export interface OutgoingMessage {
   token: string;
   title: string;
@@ -174,6 +243,10 @@ export interface ReminderDeps {
   childrenWithLogOn(childIds: string[], date: string): Promise<Set<string>>;
   /** Achievements whose `date` equals the given day (a future date = a planned competition). */
   achievementsOn(childIds: string[], date: string): Promise<Array<{ childId: string; title: string }>>;
+  /** goals with status "active" for these children. */
+  activeGoalsOf(childIds: string[]): Promise<GoalLike[]>;
+  /** practiceLogs tagged with goalId: session count + distinct days. */
+  goalStatsOf(goalId: string): Promise<GoalStatsLike>;
   tokensOf(uid: string): Promise<TokenLike[]>;
   send(messages: OutgoingMessage[]): Promise<SendResult[]>;
   deleteTokens(tokens: string[]): Promise<void>;
@@ -184,12 +257,13 @@ export interface ReminderDeps {
 
 export interface RunSummary {
   date: string;
+  slot: RunSlot;
   users: number;
   notified: number;
   sent: number;
   failed: number;
   deletedTokens: number;
-  byKind: { daily: number; competition: number };
+  byKind: Record<"daily" | "competition" | GoalKind, number>;
   skippedAlreadyLogged: number;
   skippedNoTokens: number;
   skippedNoChildren: number;
@@ -199,7 +273,69 @@ export interface RunSummary {
 export type Decision =
   | { kind: "competition"; childName: string; title: string }
   | { kind: "daily"; childNames: string[] }
-  | { kind: "none"; reason: "no-children" | "all-logged" | "disabled" };
+  | { kind: GoalKind; title: string; childName: string; days: number; sessions: number; daysLeft: number; url: string }
+  | { kind: "none"; reason: "no-children" | "all-logged" | "disabled" | "competition-day" | "no-goal-today" };
+
+export interface GoalContext {
+  goals: GoalLike[];
+  /** stats of the goal dated tomorrow / in 7 days (fetched by runReminders only when such a goal exists) */
+  stats: GoalStatsLike | null;
+  today: string;
+}
+
+const ZERO_BY_KIND = (): RunSummary["byKind"] => ({ daily: 0, competition: 0, goalToday: 0, goalTomorrow: 0, goalWeek: 0, goalDaily: 0 });
+
+function nameOf(children: ChildLike[], childId: string): string {
+  return children.find((c) => c.childId === childId)?.name ?? "";
+}
+
+/** Morning run (08:00 UB): only users with an active goal dated today, any reminder toggle on. */
+export function decideMorning(user: ReminderUser, children: ChildLike[], goals: GoalLike[], today: string): Decision {
+  if (!user.daily && !user.competition) return { kind: "none", reason: "disabled" };
+  if (children.length === 0) return { kind: "none", reason: "no-children" };
+  const g = goals.filter((x) => x.date === today).sort((a, b) => a.title.localeCompare(b.title))[0];
+  if (!g) return { kind: "none", reason: "no-goal-today" };
+  return { kind: "goalToday", title: g.title, childName: nameOf(children, g.childId), days: 0, sessions: 0, daysLeft: 0, url: "/today" };
+}
+
+/**
+ * Evening run: goal-specific texts win over the plain practice reminder.
+ *   competition on: goal tomorrow > achievement tomorrow > goal in 7 days
+ *   daily on:       goal countdown for an unlogged child > plain daily
+ * Competition day itself gets nothing in the evening (the morning push covered it).
+ */
+export function decideEvening(user: ReminderUser, children: ChildLike[], loggedToday: Set<string>, tomorrowEvents: Array<{ childId: string; title: string }>, ctx: GoalContext): Decision {
+  if (!user.daily && !user.competition) return { kind: "none", reason: "disabled" };
+  if (children.length === 0) return { kind: "none", reason: "no-children" };
+  const tomorrow = plusDays(ctx.today, 1);
+  const inWeek = plusDays(ctx.today, 7);
+  const byDate = (d: string) => ctx.goals.filter((g) => g.date === d).sort((a, b) => a.title.localeCompare(b.title))[0];
+  const stats = ctx.stats ?? { sessions: 0, days: 0 };
+  if (user.competition) {
+    const gt = byDate(tomorrow);
+    if (gt) return { kind: "goalTomorrow", title: gt.title, childName: nameOf(children, gt.childId), days: stats.days, sessions: stats.sessions, daysLeft: 1, url: "/today" };
+    if (tomorrowEvents.length > 0) {
+      const ev = tomorrowEvents[0];
+      return { kind: "competition", childName: nameOf(children, ev.childId), title: ev.title };
+    }
+    const gw = byDate(inWeek);
+    if (gw) return { kind: "goalWeek", title: gw.title, childName: nameOf(children, gw.childId), days: stats.days, sessions: stats.sessions, daysLeft: 7, url: "/today" };
+  }
+  if (user.daily) {
+    if (ctx.goals.some((g) => g.date === ctx.today)) return { kind: "none", reason: "competition-day" };
+    const missing = children.filter((c) => !loggedToday.has(c.childId));
+    if (missing.length === 0) return { kind: "none", reason: "all-logged" };
+    const upcoming = ctx.goals
+      .filter((g) => g.date > ctx.today && missing.some((c) => c.childId === g.childId))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.title.localeCompare(b.title)))[0];
+    if (upcoming) {
+      const daysLeft = Math.round((Date.parse(upcoming.date + "T00:00:00Z") - Date.parse(ctx.today + "T00:00:00Z")) / 86_400_000);
+      return { kind: "goalDaily", title: upcoming.title, childName: nameOf(children, upcoming.childId), days: 0, sessions: 0, daysLeft, url: "/today" };
+    }
+    return { kind: "daily", childNames: missing.map((c) => c.name) };
+  }
+  return { kind: "none", reason: "disabled" };
+}
 
 /**
  * What (if anything) one user gets today. At most one notification: the
@@ -231,26 +367,29 @@ export function messagesFor(decision: Decision, tokens: TokenLike[], dateKey: st
   return tokens.map((tk) => {
     const text = decision.kind === "competition"
       ? competitionText(tk.lang, decision.title, decision.childName)
-      : dailyText(tk.lang, decision.childNames);
+      : decision.kind === "daily"
+      ? dailyText(tk.lang, decision.childNames)
+      : goalText(tk.lang, decision.kind, decision);
     return {
       token: tk.token,
       title: text.title,
       body: text.body,
-      url: decision.kind === "competition" ? "/" : "/today",
+      url: decision.kind === "competition" ? "/" : decision.kind === "daily" ? "/today" : decision.url,
       tag: `reminder-${dateKey}`,
     };
   });
 }
 
-export async function runReminders(deps: ReminderDeps): Promise<{ claimed: boolean; summary: RunSummary }> {
+export async function runReminders(deps: ReminderDeps, slot: RunSlot = "evening"): Promise<{ claimed: boolean; summary: RunSummary }> {
   const now = deps.now();
   const today = ubDateKey(now);
   const tomorrow = ubDateKey(now + 24 * 60 * 60 * 1000);
+  const inWeek = plusDays(today, 7);
   const summary: RunSummary = {
-    date: today, users: 0, notified: 0, sent: 0, failed: 0, deletedTokens: 0,
-    byKind: { daily: 0, competition: 0 }, skippedAlreadyLogged: 0, skippedNoTokens: 0, skippedNoChildren: 0,
+    date: today, slot, users: 0, notified: 0, sent: 0, failed: 0, deletedTokens: 0,
+    byKind: ZERO_BY_KIND(), skippedAlreadyLogged: 0, skippedNoTokens: 0, skippedNoChildren: 0,
   };
-  const claimed = await deps.claimRun(today, now);
+  const claimed = await deps.claimRun(runKey(today, slot), now);
   if (!claimed) return { claimed: false, summary };
 
   const users = await deps.listReminderUsers();
@@ -260,9 +399,18 @@ export async function runReminders(deps: ReminderDeps): Promise<{ claimed: boole
   for (const user of users) {
     const children = await deps.childrenOf(user.uid);
     const ids = children.map((c) => c.childId);
-    const logged = user.daily && ids.length ? await deps.childrenWithLogOn(ids, today) : new Set<string>();
-    const events = user.competition && ids.length ? await deps.achievementsOn(ids, tomorrow) : [];
-    const decision = decide(user, children, logged, events);
+    const goals = ids.length ? await deps.activeGoalsOf(ids) : [];
+    let decision: Decision;
+    if (slot === "morning") {
+      decision = decideMorning(user, children, goals, today);
+    } else {
+      const logged = user.daily && ids.length ? await deps.childrenWithLogOn(ids, today) : new Set<string>();
+      const events = user.competition && ids.length ? await deps.achievementsOn(ids, tomorrow) : [];
+      // Stats are only needed for the "tomorrow" / "in 7 days" lines.
+      const special = user.competition ? goals.find((g) => g.date === tomorrow) ?? goals.find((g) => g.date === inWeek) : undefined;
+      const stats = special ? await deps.goalStatsOf(special.id) : null;
+      decision = decideEvening(user, children, logged, events, { goals, stats, today });
+    }
     if (decision.kind === "none") {
       if (decision.reason === "all-logged") summary.skippedAlreadyLogged++;
       if (decision.reason === "no-children") summary.skippedNoChildren++;
@@ -285,6 +433,6 @@ export async function runReminders(deps: ReminderDeps): Promise<{ claimed: boole
     summary.deletedTokens = dead.length;
   }
   summary.finishedAt = deps.now();
-  await deps.finishRun(today, summary);
+  await deps.finishRun(runKey(today, slot), summary);
   return { claimed: true, summary };
 }
