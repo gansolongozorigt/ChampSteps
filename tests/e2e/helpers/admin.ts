@@ -90,6 +90,7 @@ export async function cleanupTestUser(email: string) {
     await c.ref.update({ teacherIds: ids });
   }
   await deleteQuery(db().collection("payments").where("uid", "==", uid));
+  await deleteQuery(db().collection("pushTokens").where("uid", "==", uid));
   await db().collection("aiUsage").doc(uid).delete().catch(() => {});
   await db().collection("users").doc(uid).delete().catch(() => {});
   await auth().deleteUser(uid).catch(() => {});

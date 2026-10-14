@@ -66,8 +66,9 @@ export async function signIn(page: Page, a: Pick<Account, "email" | "password">)
 }
 
 export async function openUserMenu(page: Page) {
-  // App top bar is the FIRST <header> (TimelineDashboard has its own); avatar button is its last visible button.
-  await page.locator("header").first().getByRole("button").last().click();
+  // App top bar is the FIRST <header> (TimelineDashboard has its own); the avatar button is the
+  // only one with aria-expanded (on phones the child switcher adds more buttons after it).
+  await page.locator("header").first().locator("button[aria-expanded]").last().click();
 }
 
 export async function signOut(page: Page) {
@@ -80,7 +81,7 @@ export async function waitForDashboard(page: Page) {
   await expect(page.getByRole("button", { name: tr("app.addAchievement"), exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
-export async function nav(page: Page, section: "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms") {
+export async function nav(page: Page, section: "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms") {
   const label = tr(`nav.${section}`);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   const scope = isMobile ? page.locator("nav").last() : page.locator("aside");

@@ -13,6 +13,7 @@ import { exportFilename } from "../lib/exportData";
 import type { AppUser } from "../lib/auth";
 import { daysLeft, isActive, type SubscriptionInfo } from "../lib/subscription";
 import { PLANS } from "../../shared/plans.js";
+import ReminderSettings from "./ReminderSettings";
 
 interface Props {
   user: AppUser;
@@ -21,9 +22,11 @@ interface Props {
   onClose: () => void;
   /** Resolves once the account is gone (caller signs out); rejects with a message to show. */
   onDeleteAccount: () => Promise<void>;
+  /** Opens the iOS "Add to Home Screen" guide (reminders need the installed app on iOS). */
+  onShowInstall?: () => void;
 }
 
-export default function AccountSettingsModal({ user, subscriptionInfo, childrenCount, onClose, onDeleteAccount }: Props) {
+export default function AccountSettingsModal({ user, subscriptionInfo, childrenCount, onClose, onDeleteAccount, onShowInstall }: Props) {
   const { t, i18n } = useTranslation();
   const [step, setStep] = useState<"settings" | "confirm">("settings");
   const [typed, setTyped] = useState("");
@@ -108,6 +111,8 @@ export default function AccountSettingsModal({ user, subscriptionInfo, childrenC
                   </dd>
                 </div>
               </dl>
+
+              <ReminderSettings user={user} onShowInstall={() => onShowInstall?.()} />
 
               <section className="mt-6 border-t border-line pt-5" aria-labelledby="account-mydata" data-testid="my-data">
                 <h3 id="account-mydata" className="t-h2">{t("myData.title")}</h3>

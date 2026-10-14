@@ -140,3 +140,53 @@ Access token `system/qpayToken` доктод кэшлэгдэнэ (бүх instan
 ## 7. Сар бүрийн нөөцлөлт (2026-10-13-наас)
 
 Сарын 1-нд `node scripts/admin/payments-report.mjs 31`-тэй хамт `bash scripts/admin/monthly-backup.sh` ажиллуулна (Firestore export + Storage rsync + Auth export; дэлгэрэнгүй, сэргээх заавар: docs/BACKUP.md). Firestore-ийн өдөр тутмын/долоо хоногийн scheduled backup Google талд автоматаар явна.
+
+## 8. Push сануулга (daily-habit, 2026-10-14-нөөс)
+
+**Юу:** эцэг эхэд өдөр бүр 20:00 (УБ) "өнөөдрийн бэлтгэлээ тэмдэглэх үү?" (тухайн өдөр practiceLog бичээгүй бол) эсвэл
+"маргааш тэмцээн" (achievements-д маргаашийн огноотой бүртгэл байвал) гэсэн web push. Хэрэглэгч бүрт өдөрт хамгийн ихдээ 1.
+Маркетингийн push хэзээ ч автоматаар явахгүй. Зөвшөөрлийг зөвхөн хэрэглэгчийн товшилтоор асууна
+(Бүртгэлийн тохиргоо → Сануулга, 2 toggle). iOS дээр зөвхөн нүүр дэлгэцэнд суулгасан апп мэдэгдэл авна.
+
+**Env (утгыг энд хэзээ ч бичихгүй):**
+
+| Нэр | Хаана | Юу |
+|---|---|---|
+| `VITE_FIREBASE_VAPID_KEY` | Vercel Production + Preview, локал `.env` | Firebase Console → Project settings → Cloud Messaging → Web Push certificates → key pair (public key; build-д орно) |
+| `CRON_SECRET` | Vercel Production (Preview-д тавьсан ч болно) | `openssl rand -hex 32`; Vercel Cron `Authorization: Bearer <CRON_SECRET>` толгойгоор дуудна |
+| `FIREBASE_SERVICE_ACCOUNT_B64` | байгаа | admin SDK: pushTokens бичих/унших, FCM илгээх |
+
+Env солисны дараа заавал redeploy (VAPID нь build-time).
+
+**Өгөгдөл (firestore.rules хөндөөгүй — хоёулаа клиентэд хаалттай, зөвхөн admin SDK):**
+
+- `pushTokens/{token}`: `uid`, `platform` (`ios-pwa` / `android` / `desktop`), `lang`, `createdAt`, `lastSeenAt`.
+  Клиент `/api/push/register` (Firebase ID token-оор) → бүртгэнэ; `/api/push/unregister` → устгана; апп нээх бүрт refresh.
+- `users/{uid}.reminders`: `{ daily, competition, updatedAt }` — клиент өөрөө бичдэг (users update rule зөвшөөрнө).
+- `system/reminderRuns/days/{YYYY-MM-DD}`: cron-ийн өдөр тутмын lock + тайлан (`status`, `users`, `notified`, `sent`,
+  `failed`, `deletedTokens`, `byKind`, `skipped*`). Нэг өдөрт 2 дахь дуудлага `{ skipped: true }` буцаана.
+
+**Cron:** `vercel.json` → `/api/cron/reminders`, `0 12 * * *` (12:00 UTC = 20:00 УБ). Vercel багийн төлөвлөгөө Pro тул
+цагийг чөлөөтэй өөрчилж болно; хэрэглэгч бүрийн өөр цаг нь дараагийн хувилбарт (reminders-д `hour` талбар + цаг тутмын cron).
+Гараар ажиллуулах (secret-ийг чатад/лог-д хэвлэхгүй):
+
+```bash
+curl -s -H "Authorization: Bearer $(cat scratch/cron-secret.txt)" https://www.champstep.mn/api/cron/reminders
+# preview дээр: https://<preview-url>/api/cron/reminders (Vercel Authentication-тай бол `vercel curl` ашигла)
+```
+
+Хариу: `{ skipped:false, date, users, notified, sent, failed, deletedTokens, byKind:{daily,competition} }`.
+Тухайн өдөр аль хэдийн ажилласан бол `{ skipped:true }` — дахин туршихын тулд `system/reminderRuns/days/<огноо>` докыг устга.
+
+**Token устгах:** FCM `messaging/registration-token-not-registered` (апп устгасан, зөвшөөрөл хураасан) ирвэл cron өөрөө
+`pushTokens/{token}`-ийг устгана. Хэрэглэгч хоёр toggle-оо унтраавал клиент өөрөө unregister хийнэ. Гараар: Firestore
+console → `pushTokens` → uid-ээр хайгаад устга (эсвэл account delete — `api/_lib/deletion.ts`-д pushTokens одоохондоо
+ороогүй; дараагийн хувилбар).
+
+**Алдаа шалгах:** `vercel logs --no-follow | grep reminders` → `[reminders] <огноо>: users=… notified=… sent=… failed=…
+deadTokens=…` (uid, нэр хэзээ ч логлохгүй). `failed` их бол `system/reminderRuns/days/<огноо>` докыг хар; `401` бол
+`CRON_SECRET` таарахгүй; `503 cron_not_configured` бол env байхгүй. Клиент талд: Тохиргоо → Сануулга toggle дарахад
+"тохируулаагүй" гэвэл `VITE_FIREBASE_VAPID_KEY` тухайн орчинд байхгүй; "хаалттай" гэвэл хөтчийн зөвшөөрөл denied.
+Push ирэхгүй бол: (1) pushTokens-д тухайн uid-ийн token байгаа эсэх, (2) users doc-ийн `reminders.daily` true эсэх,
+(3) тухайн өдөр practiceLog бичсэн бол санаатайгаар ирэхгүй, (4) iOS: апп нүүр дэлгэцээс нээгдсэн байх ёстой.
+Тест: `npm run test:api` (register/unregister/cron, FCM mock — `tests/push.test.mjs`).

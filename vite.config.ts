@@ -30,6 +30,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Custom worker (src/sw.ts): Workbox precache + FCM background messages in ONE file.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       // Single source of truth for the web app manifest. Do not add a
       // hand-written public/manifest.webmanifest or a manual <link rel="manifest">
       // in index.html — the plugin emits and injects both.
@@ -43,6 +47,11 @@ export default defineConfig({
         orientation: 'portrait',
         theme_color: '#FFFFFF',
         background_color: '#FFFFFF',
+        // Long-press / right-click shortcuts (Android, desktop). iOS ignores them.
+        shortcuts: [
+          { name: 'Бэлтгэл тэмдэглэх', short_name: 'Өнөөдөр', url: '/today', icons: [{ src: '/shortcut-today.png', sizes: '96x96', type: 'image/png' }] },
+          { name: 'Амжилт нэмэх', short_name: 'Амжилт', url: '/?action=add-achievement', icons: [{ src: '/shortcut-add.png', sizes: '96x96', type: 'image/png' }] },
+        ],
         icons: [
           {
             src: '/icon-192.png',
@@ -64,30 +73,12 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
+      injectManifest: {
         // ttf keeps the NotoSans fonts (PDF export) in the precache.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,ttf,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-stylesheets',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          }
-        ]
-      }
+        // firebase/messaging + workbox live in the worker bundle
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
     })
   ],
 })
