@@ -504,6 +504,7 @@ function toAchievement(snap: QueryDocumentSnapshot<DocumentData>): Achievement {
     description: d.description ?? "",
     awardType: d.awardType ?? "Participant",
     imageURLs: Array.isArray(d.imageURLs) ? d.imageURLs : [],
+    ...(d.prep && typeof d.prep === "object" ? { prep: { goalId: String(d.prep.goalId ?? ""), days: Number(d.prep.days) || 0, sessions: Number(d.prep.sessions) || 0, minutes: Number(d.prep.minutes) || 0, daysTotal: Number(d.prep.daysTotal) || 0 } } : {}),
     createdAt: tsToIso(d.createdAt),
     updatedAt: tsToIso(d.updatedAt),
   };
