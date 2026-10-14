@@ -46,60 +46,71 @@ export function groupByMonth(
 }
 
 // -----------------------------------------------------------------------------
-// Category styles
+// Category styles — BRAND.md: categories share one colour (primary-soft); the
+// lucide icon (Dumbbell / Palette / BookOpen) tells them apart. `icon` is the
+// lucide icon name for consumers that render icons.
 // -----------------------------------------------------------------------------
 
 export const categoryStyles: Record<
   AchievementCategory,
-  { chip: string; dot: string; border: string }
+  { chip: string; dot: string; border: string; icon: "dumbbell" | "palette" | "book-open" }
 > = {
   Sports: {
-    chip: "bg-blue-50 text-blue-700 ring-blue-200",
-    dot: "bg-blue-400",
-    border: "border-blue-100",
+    chip: "bg-primary-soft text-primary-soft-ink ring-primary-soft",
+    dot: "bg-primary",
+    border: "border-line",
+    icon: "dumbbell",
   },
   Arts: {
-    chip: "bg-purple-50 text-purple-700 ring-purple-200",
-    dot: "bg-purple-400",
-    border: "border-purple-100",
+    chip: "bg-primary-soft text-primary-soft-ink ring-primary-soft",
+    dot: "bg-primary",
+    border: "border-line",
+    icon: "palette",
   },
   Academic: {
-    chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    dot: "bg-emerald-400",
-    border: "border-emerald-100",
+    chip: "bg-primary-soft text-primary-soft-ink ring-primary-soft",
+    dot: "bg-primary",
+    border: "border-line",
+    icon: "book-open",
   },
 };
 
 // -----------------------------------------------------------------------------
-// Award styles
+// Award styles — medal tokens (gold / silver / bronze / participant).
+// `chip` / `badge` are the index.css component classes; bg/text/ring are kept
+// for callers that compose their own element. The legacy `emoji` field is gone; the UI uses lucide icons.
 // -----------------------------------------------------------------------------
 
 export const awardStyles: Record<
   AwardType,
-  { emoji: string; bg: string; text: string; ring: string }
+  { bg: string; text: string; ring: string; chip: string; badge: string }
 > = {
   Gold: {
-    emoji: "🥇",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-300",
+    bg: "bg-gold-soft",
+    text: "text-ink",
+    ring: "ring-gold",
+    chip: "cs-chip-gold",
+    badge: "cs-badge-gold",
   },
   Silver: {
-    emoji: "🥈",
-    bg: "bg-slate-50",
-    text: "text-slate-700",
-    ring: "ring-slate-300",
+    bg: "bg-silver-soft",
+    text: "text-ink-2",
+    ring: "ring-silver",
+    chip: "cs-chip-silver",
+    badge: "cs-badge-silver",
   },
   Bronze: {
-    emoji: "🥉",
-    bg: "bg-orange-50",
-    text: "text-orange-800",
-    ring: "ring-orange-300",
+    bg: "bg-bronze-soft",
+    text: "text-bronze",
+    ring: "ring-bronze",
+    chip: "cs-chip-bronze",
+    badge: "cs-badge-bronze",
   },
   Participant: {
-    emoji: "🎖️",
-    bg: "bg-stone-50",
-    text: "text-stone-600",
-    ring: "ring-stone-200",
+    bg: "bg-surface-muted",
+    text: "text-ink-2",
+    ring: "ring-line",
+    chip: "cs-chip-participant",
+    badge: "cs-badge-participant",
   },
 };

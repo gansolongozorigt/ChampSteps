@@ -4,9 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { isFirebaseConfigured, subscribePracticeLogs } from "../lib/firebase";
+import { KEY_PRACTICE as KEY } from "../lib/localStore";
 import type { PracticeLog } from "../types";
-
-const KEY = "champstep.practiceLogs.v1";
 
 function loadLocal(childId: string): PracticeLog[] {
   try {
@@ -19,26 +18,30 @@ function saveLocal(childId: string, logs: PracticeLog[]) {
   localStorage.setItem(`${KEY}.${childId}`, JSON.stringify(logs));
 }
 
-export function usePracticeLogs(childId: string) {
+/** @param local true -> localStorage only (Firebase not configured, or a guest / trial user). */
+export function usePracticeLogs(childId: string, local: boolean = !isFirebaseConfigured) {
   const [logs, setLogs] = useState<PracticeLog[]>(() =>
-    isFirebaseConfigured ? [] : loadLocal(childId)
+    local ? loadLocal(childId) : []
   );
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [loading, setLoading] = useState(!local);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
-    if (!isFirebaseConfigured) {
+    if (local) {
       setLogs(loadLocal(childId));
       setLoading(false);
       return;
     }
     setLoading(true);
-    const unsub = subscribePracticeLogs(childId, (items) => {
-      setLogs(items);
-      setLoading(false);
-    });
+    setError(null);
+    const unsub = subscribePracticeLogs(
+      childId,
+      (items) => { setLogs(items); setLoading(false); setError(null); },
+      (err) => { setError(err instanceof Error ? err.message : "Failed to load practice logs"); setLoading(false); }
+    );
     return unsub;
-  }, [childId]);
+  }, [childId, local]);
 
   function addLocal(log: PracticeLog) {
     setLogs((prev) => {
@@ -56,5 +59,5 @@ export function usePracticeLogs(childId: string) {
     });
   }
 
-  return { logs, loading, addLocal, removeLocal };
+  return { logs, loading, error, addLocal, removeLocal };
 }

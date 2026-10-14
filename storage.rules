@@ -1,31 +1,55 @@
 // =============================================================================
-// ChampStep — Cloud Storage rules (DEMO ONLY).
-// Deploy with:  firebase deploy --only storage
+// ChampStep — Cloud Storage rules (PRODUCTION)
+// Deploy with:  npx firebase-tools deploy --only storage
+//
+// achievements/{childId}/**  and  avatars/{childId}/**
+//   read : parent of the child, or a teacher listed in children.teacherIds
+//   write: parent only, images only, size-capped
+// Ownership is checked against Firestore children/{childId}.
 // =============================================================================
-
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // ---- DEMO rules: open access ----------------------------------------
-    match /achievements/{childId}/{filename} {
-      allow read, write: if true;
+    function signedIn() {
+      return request.auth != null;
     }
-    match /avatars/{childId}/{filename} {
-      allow read, write: if true;
+    function childData(childId) {
+      return firestore.get(/databases/(default)/documents/children/$(childId)).data;
+    }
+    function isChildOwner(childId) {
+      return signedIn() && childData(childId).parentId == request.auth.uid;
+    }
+    // Tolerate legacy children docs without teacherIds (missing → no teachers).
+    function isTeacherOf(d) {
+      return 'teacherIds' in d && d.teacherIds is list && request.auth.uid in d.teacherIds;
+    }
+    function canViewChild(childId) {
+      return signedIn()
+        && (childData(childId).parentId == request.auth.uid
+            || isTeacherOf(childData(childId)));
+    }
+    function isImageUnder(maxBytes) {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < maxBytes;
     }
 
-    // ---- PRODUCTION rules (uncomment once auth is wired) ----------------
-    //
-    // match /achievements/{childId}/{filename} {
-    //   allow read, write: if request.auth != null
-    //     && request.resource.size < 5 * 1024 * 1024  // 5 MB cap
-    //     && request.resource.contentType.matches('image/.*');
-    // }
-    // match /avatars/{childId}/{filename} {
-    //   allow read, write: if request.auth != null
-    //     && request.resource.size < 2 * 1024 * 1024
-    //     && request.resource.contentType.matches('image/.*');
-    // }
+    // delete has no request.resource, so it gets its own clause
+    match /achievements/{childId}/{allPaths=**} {
+      allow read: if canViewChild(childId);
+      allow create, update: if isChildOwner(childId) && isImageUnder(5 * 1024 * 1024);
+      allow delete: if isChildOwner(childId);
+    }
+
+    match /avatars/{childId}/{allPaths=**} {
+      allow read: if canViewChild(childId);
+      allow create, update: if isChildOwner(childId) && isImageUnder(2 * 1024 * 1024);
+      allow delete: if isChildOwner(childId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
   }
 }

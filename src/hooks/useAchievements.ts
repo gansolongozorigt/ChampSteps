@@ -1,8 +1,8 @@
 // =============================================================================
 // useAchievements — React hook that owns a child's achievements.
 //
-//   • Firebase mode  → subscribes to Firestore via onSnapshot.
-//   • Offline mode   → reads/writes localStorage so entries persist on reload.
+//   • Firebase mode  -> subscribes to Firestore via onSnapshot.
+//   • Offline mode   -> reads/writes localStorage so entries persist on reload.
 //
 // Returned actions:
 //   addLocal(item)  — persist a new achievement in offline mode.
@@ -20,28 +20,47 @@ export interface UseAchievementsResult {
   achievements: Achievement[];
   loading: boolean;
   error: string | null;
-  /** Offline-only: insert a new achievement and persist to localStorage. */
+  /** Local-only: insert a new achievement and persist to localStorage. */
   addLocal: (item: Achievement) => void;
+  /** Local-only: replace an achievement (edit) and persist. */
+  replaceLocal: (item: Achievement) => void;
+  /** Local-only: delete an achievement and persist. */
+  removeLocal: (id: string) => void;
 }
 
 export function useAchievements(
   childId: string,
   /** Seed used only on first offline render when localStorage is empty. */
-  fallback: Achievement[] = []
+  fallback: Achievement[] = [],
+  /** true -> localStorage only (Firebase not configured, or a guest / trial user). Firestore is never touched. */
+  local: boolean = !isFirebaseConfigured
 ): UseAchievementsResult {
   const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    if (isFirebaseConfigured) return [];
+    if (!local) return [];
     return loadLocalAchievements(fallback);
   });
-  const [loading, setLoading] = useState<boolean>(isFirebaseConfigured);
+  const [loading, setLoading] = useState<boolean>(!local);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (local) {
       setAchievements(loadLocalAchievements(fallback));
       setLoading(false);
       return;
     }
+    // No child selected yet (children still loading): do not query Firestore.
+    // where("childId","==","") makes the rules' get(/children/"") fail ->
+    // permission-denied -> spurious "errorLoading" toast. Same guard as
+    // usePracticeLogs / useReflections.
+    if (!childId) {
+      setAchievements([]);
+      setError(null);
+      return;
+    }
+    // Clear the previous child's list right away so a child switch never shows
+    // (or sends) child A's achievements under child B's name while the new
+    // snapshot is loading.
+    setAchievements([]);
     setLoading(true);
     const unsubscribe = subscribeAchievements(
       childId,
@@ -57,7 +76,7 @@ export function useAchievements(
     );
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [childId]);
+  }, [childId, local]);
 
   function addLocal(item: Achievement) {
     setAchievements((prev) => {
@@ -67,5 +86,21 @@ export function useAchievements(
     });
   }
 
-  return { achievements, loading, error, addLocal };
+  function replaceLocal(item: Achievement) {
+    setAchievements((prev) => {
+      const next = prev.map((a) => (a.id === item.id ? item : a));
+      saveLocalAchievements(next);
+      return next;
+    });
+  }
+
+  function removeLocal(id: string) {
+    setAchievements((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      saveLocalAchievements(next);
+      return next;
+    });
+  }
+
+  return { achievements, loading, error, addLocal, replaceLocal, removeLocal };
 }

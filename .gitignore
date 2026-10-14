@@ -1,2 +1,20 @@
 node_modules/
-.env
+.env*
+!.env.example
+dist
+src/**/*.js
+src/**/*.js.map
+api/**/*.js
+.DS_Store
+.vercel
+*-debug.log
+firebase-export-*
+scratch/
+playwright-report/
+test-results/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+
+# Claude Code local state
+.claude/
