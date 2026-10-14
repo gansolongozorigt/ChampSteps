@@ -101,7 +101,7 @@ export default function TermsPage() {
 
       {/* Footer */}
       <p className="text-center t-caption py-2">
-        {t("terms.footer")}
+        {t("terms.footer")} · <a href="/privacy" className="text-primary font-bold">{t("privacy.title")}</a>
       </p>
     </div>
   );

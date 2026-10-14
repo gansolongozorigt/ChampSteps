@@ -153,7 +153,8 @@
       "popupClosed": "Sign-in popup was closed.",
       "generic": "Something went wrong. Please try again.",
       "notSignedIn": "Please sign in first."
-    }
+    },
+    "signInApple": "Sign in with Apple"
   },
   "subscription": {
     "heading": "ChampStep Premium",
@@ -461,7 +462,8 @@
     "success": "Success!",
     "successMsg": "{{name}} plan activated.",
     "close": "Close",
-    "processing": "Processing…"
+    "processing": "Processing…",
+    "nativeNote": "Your plan. Purchases are not available in this version."
   },
   "promo": {
     "applying": "Checking…",
@@ -691,7 +693,8 @@
     "timeNote": "Time: 20:00 (Ulaanbaatar). At most one notification per day.",
     "guestNote": "Available for signed-in accounts only.",
     "working": "Please wait...",
-    "installApp": "Install as an app"
+    "installApp": "Install as an app",
+    "iosPushLater": "Push reminders on iOS arrive in a later version."
   },
   "install": {
     "bannerTitle": "Add to your home screen",
@@ -781,5 +784,27 @@
     "prepLine": "Preparation: {{days}} days · {{hours}} h",
     "prepLineMin": "Preparation: {{days}} days · {{minutes}} min",
     "resultFormHint": "Goal result: the practice statistics are attached to the achievement."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last updated: 2026-10-14",
+    "company": "Champ Step LLC (ChampStep)",
+    "intro": "ChampStep is an app for parents and teachers to record a child's achievements and practice. This policy applies to the web app (champstep.mn) and the iOS/Android apps alike.",
+    "s1Title": "1. Data we collect",
+    "s1": "Account: e-mail, name, role (parent / teacher); with Google or Apple sign-in the name and e-mail they provide. Child data (entered by the parent): name, birth date, avatar photo, achievements (title, date, place, description, photos), practice entries, reflection notes, goals, teacher notes. Technical: push notification token, language, device type. Payments: plan payment records (order id, plan, amount, status). We never store card details — payments are processed by QPay.",
+    "s2Title": "2. How we use it",
+    "s2": "To run the app (records, portfolio PDF, practice statistics), the reminders you opt into (push), plan entitlements and support. No automatic marketing notifications. No advertising to children.",
+    "s3Title": "3. Third parties",
+    "s3": "Google Firebase (authentication, database, file storage, push — US data centres), Vercel (web/API hosting), QPay (payments), Anthropic (AI insight: only achievement titles, categories and dates are sent; never the child's name or photos). We do not sell data.",
+    "s4Title": "4. Retention",
+    "s4": "Until you delete your account. Payment records are kept as required by financial law. Backups up to 14 days.",
+    "s5Title": "5. Your rights",
+    "s5": "In the app: Account settings → \"My data\" (JSON/ZIP export), delete a child, delete the whole account (photos, entries and push tokens included). Reminders can be switched off at any time.",
+    "s6Title": "6. Children's privacy",
+    "s6": "The app is made for parents and teachers (age rating 4+). Child data is entered and managed by the parent only; an invited teacher can view it.",
+    "s7Title": "7. Contact",
+    "s7": "info@champstep.mn — Champ Step LLC. Changes to this policy are posted here with a new date.",
+    "linkTerms": "Terms of service",
+    "backToApp": "Back to the app"
   }
 }

@@ -195,3 +195,9 @@ deadTokens=…` (uid, нэр хэзээ ч логлохгүй). `failed` их б
 Push ирэхгүй бол: (1) pushTokens-д тухайн uid-ийн token байгаа эсэх, (2) users doc-ийн `reminders.daily` true эсэх,
 (3) тухайн өдөр practiceLog бичсэн бол санаатайгаар ирэхгүй, (4) iOS: апп нүүр дэлгэцээс нээгдсэн байх ёстой.
 Тест: `npm run test:api` (register/unregister/cron, FCM mock — `tests/push.test.mjs`).
+
+**Native апп (Capacitor, 2026-10-14-нөөс):** iOS/Android апп token-оо `@capacitor-firebase/messaging`-ээр авч ижил
+`/api/push/register`-т `platform: ios-native | android-native` гэж бүртгэнэ; cron, текст, устгал өөрчлөгдөхгүй
+(`pushTokens.platform` утгаар ялгана). Android: FCM шууд (google-services.json). iOS: APNs түлхүүр (Developer аккаунт)
+Firebase Console → Cloud Messaging → Apple app configuration-д оруулах хүртэл iOS build `VITE_IOS_PUSH=0`-тэй — toggle
+"дараагийн хувилбарт" гэж харуулна. Firebase Console → Messaging → "Send test message" → token-оор нэг төхөөрөмжид турших боломжтой.

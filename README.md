@@ -60,3 +60,26 @@ src/
 - 2026-10-13: PDF 3 загвар (Албан ёсны / Хүрээтэй / Портфолио), UI-д emoji байхгүй.
 - 2026-10-12: Хүүхдийн бүртгэл болон өөрийн бүртгэлийг аппаас устгах боломж (сервер талын бүрэн устгал: `/api/child/delete`, `/api/account/delete`). Шинэ эцэг эхэд "Хүүхэд" нэртэй default хүүхэд автоматаар үүсгэхээ больсон: хоосон төлөв + анхны удаа "Хүүхэд нэмэх" модал (нэр, төрсөн огноо заавал).
 - 2026-10-12: Ногоон брэндийн дизайн шинэчлэл production-д (docs/BRAND.md).
+
+## Native build (Capacitor, branch capacitor)
+
+iOS / Android store app = the same Vite build in a Capacitor shell (`capacitor.config.ts`, App ID `mn.champstep.app`).
+Web assets are bundled; nothing loads from a remote URL.
+
+Requirements: Xcode 16+ (iOS, Swift Package Manager — no CocoaPods), Temurin JDK 17 (`~/.jdks`), Android SDK
+(`~/Library/Android/sdk`: platform-tools, platforms;android-36, build-tools;36.0.0, emulator, AVD `champstep-pixel`).
+`JAVA_HOME` / `ANDROID_HOME` in `~/.zshrc`. Firebase native config files: `ios/App/App/GoogleService-Info.plist`,
+`android/app/google-services.json` (client config, not secrets).
+
+| Script | What |
+|---|---|
+| `npm run cap:sync` | `vite build --mode native` (no service worker / PWA registration) + `cap sync` |
+| `npm run cap:ios` / `cap:android` | sync + run on the simulator / emulator / connected device |
+| `npm run cap:assets` | icons + splash from `resources/icon.png`, `resources/splash.png` |
+| `npm run cap:bump` | package.json version → MARKETING_VERSION / versionName, build numbers +1 |
+
+Store rules in code: `src/lib/platform.ts` `isNative` hides every purchase entry point (prices, upgrade, promo, QPay);
+only the current plan and expiry show. Google sign-in goes through `@capacitor-firebase/authentication`;
+Sign in with Apple is behind `VITE_APPLE_SIGNIN=1`. Push: `@capacitor-firebase/messaging` → `/api/push/register`
+(platform `ios-native` / `android-native`); iOS push behind `VITE_IOS_PUSH=0` until the Developer account exists.
+Store listing material: `docs/STORE.md`. Privacy policy: https://www.champstep.mn/privacy.
