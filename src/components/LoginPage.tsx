@@ -4,7 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GraduationCap, Users, type LucideIcon } from "lucide-react";
+import { isIOSNative } from "../lib/platform";
+import { GraduationCap, Users, type LucideIcon, Apple } from "lucide-react";
 import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
 import PasswordInput from "./PasswordInput";
@@ -20,7 +21,9 @@ type Mode = "signin" | "signup";
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
-  const { signIn, signUp, signInWithGoogle, signInOffline } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithApple, signInOffline } = useAuth();
+  // Sign in with Apple: native iOS, behind VITE_APPLE_SIGNIN=1 (Developer account pending).
+  const showApple = isIOSNative && import.meta.env.VITE_APPLE_SIGNIN === "1";
   // One-shot notice left by the app before signing out (e.g. account deleted).
   // Read in the initializer, cleared in an effect (StrictMode runs initializers twice).
   const [info, setInfo] = useState<string | null>(() => {
@@ -64,6 +67,18 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signInWithGoogle(role);
+    } catch (err) {
+      setError(mapAuthError(err, t));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleApple() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await signInWithApple(role);
     } catch (err) {
       setError(mapAuthError(err, t));
     } finally {
@@ -212,6 +227,12 @@ export default function LoginPage() {
               <GoogleIcon />
               {t("auth.signInGoogle")}
             </button>
+            {showApple && (
+              <button type="button" onClick={handleApple} disabled={submitting} className="cs-btn cs-btn-ink w-full mt-2" data-testid="apple-signin">
+                <Apple size={18} strokeWidth={2.2} aria-hidden />
+                {t("auth.signInApple")}
+              </button>
+            )}
 
             <button
               type="button"
@@ -235,6 +256,9 @@ export default function LoginPage() {
               {t("auth.continueOffline")}
             </button>
           </div>
+          <p className="mt-4 text-center t-caption">
+            <a href="/privacy" className="text-ink-3 hover:text-primary">{t("privacy.title")}</a>
+          </p>
         </div>
       </main>
 

@@ -17,7 +17,7 @@
 
 export const LANGS = ["mn", "en", "ru"] as const;
 export type Lang = (typeof LANGS)[number];
-export const PLATFORMS = ["ios-pwa", "android", "desktop"] as const;
+export const PLATFORMS = ["ios-pwa", "android", "desktop", "ios-native", "android-native"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 /** FCM registration tokens are URL-safe strings; anything else is rejected before touching Firestore. */

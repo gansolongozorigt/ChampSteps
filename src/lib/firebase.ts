@@ -71,6 +71,7 @@ import type {
 import { compressImage } from "../utils/image";
 import { infoFromDoc, toDate, type SubscriptionInfo } from "./subscription";
 import { reportPending } from "./pendingWrites";
+import { isNative } from "./platform";
 
 // -----------------------------------------------------------------------------
 // Init
@@ -148,14 +149,30 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 export async function signInWithGoogle(role?: UserRole) {
-  const provider = new GoogleAuthProvider();
-  const cred = await signInWithPopup(requireAuth(), provider);
-  await ensureUserDoc(cred.user, role ?? "parent");
-  return cred.user;
+  let user: FirebaseUser;
+  if (isNative) {
+    // Native SDK → ID token → JS SDK credential (src/lib/nativeAuth.ts); the rest is identical.
+    const { nativeSignInWithGoogle } = await import("./nativeAuth");
+    user = await nativeSignInWithGoogle(requireAuth());
+  } else {
+    const provider = new GoogleAuthProvider();
+    user = (await signInWithPopup(requireAuth(), provider)).user;
+  }
+  await ensureUserDoc(user, role ?? "parent");
+  return user;
+}
+
+/** Sign in with Apple (native only, behind VITE_APPLE_SIGNIN=1). */
+export async function signInWithApple(role?: UserRole) {
+  const { nativeSignInWithApple } = await import("./nativeAuth");
+  const user = await nativeSignInWithApple(requireAuth());
+  await ensureUserDoc(user, role ?? "parent");
+  return user;
 }
 
 export async function signOut() {
   await fbSignOut(requireAuth());
+  if (isNative) { const { nativeSignOut } = await import("./nativeAuth"); await nativeSignOut(); }
 }
 
 export function onAuthChange(cb: (user: FirebaseUser | null) => void) {

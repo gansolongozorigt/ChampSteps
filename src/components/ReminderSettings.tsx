@@ -13,6 +13,8 @@ import type { AppUser } from "../lib/auth";
 import { currentIdToken, getReminderPrefs, setReminderPrefs, type ReminderPrefs } from "../lib/firebase";
 import { disablePush, enablePush, pushState, storedPushToken } from "../lib/push";
 import { canPromptInstall, onInstallPromptChange, promptInstall } from "../lib/install";
+import { isNative } from "../lib/platform";
+import { nativeDisablePush, nativeEnablePush, nativePushState, storedNativeToken } from "../lib/nativePush";
 
 interface Props {
   user: AppUser;
@@ -45,10 +47,11 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
     setNote(null);
     setBusy(key);
     try {
-      if (next[key] && !storedPushToken()) {
-        const r = await enablePush(currentIdToken, i18n.language);
+      if (next[key] && !(isNative ? storedNativeToken() : storedPushToken())) {
+        const r = isNative ? await nativeEnablePush(currentIdToken, i18n.language) : await enablePush(currentIdToken, i18n.language);
         if (!r.ok) {
-          if (r.reason === "ios-not-installed") setNote({ kind: "info", text: t("reminders.installFirst"), install: true });
+          if (r.reason === "not-configured" && isNative) setNote({ kind: "info", text: t("reminders.iosPushLater") });
+          else if (r.reason === "ios-not-installed") setNote({ kind: "info", text: t("reminders.installFirst"), install: true });
           else if (r.reason === "denied") setNote({ kind: "error", text: t("reminders.denied") });
           else if (r.reason === "unsupported") setNote({ kind: "error", text: t("reminders.unsupported") });
           else if (r.reason === "not-configured") setNote({ kind: "error", text: t("reminders.notConfigured") });
@@ -59,7 +62,7 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
       }
       await setReminderPrefs(user.uid, next);
       setPrefs(next);
-      if (!next.daily && !next.competition) await disablePush(currentIdToken);
+      if (!next.daily && !next.competition) await (isNative ? nativeDisablePush(currentIdToken) : disablePush(currentIdToken));
     } catch (e) {
       console.warn("[reminders] toggle failed:", e);
       setNote({ kind: "error", text: t("reminders.error") });
@@ -68,7 +71,7 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
     }
   }
 
-  const state = pushState();
+  const state = isNative ? nativePushState() : pushState();
 
   return (
     <section className="mt-6 border-t border-line pt-5" aria-labelledby="account-reminders" data-testid="reminder-settings">
@@ -83,7 +86,7 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
             <ToggleRow id="rem-competition" label={t("reminders.competition")} hint={t("reminders.competitionHint")} checked={!!prefs?.competition} busy={busy === "competition"} disabled={!prefs || !!busy} onChange={() => void toggle("competition")} />
           </div>
           <p className="t-caption mt-2">{t("reminders.timeNote")}</p>
-          {state === "not-configured" && !note && <p className="t-caption mt-1 text-warn">{t("reminders.notConfigured")}</p>}
+          {state === "not-configured" && !note && <p className="t-caption mt-1 text-warn">{isNative ? t("reminders.iosPushLater") : t("reminders.notConfigured")}</p>}
           {note && (
             <div role="status" className={`mt-3 rounded-input px-3 py-2 t-caption ${note.kind === "error" ? "bg-error-soft text-error" : "bg-bg-soft text-ink-2"}`} data-testid="reminder-note">
               <p>{note.text}</p>
@@ -92,7 +95,7 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
               )}
             </div>
           )}
-          {canInstall && (
+          {canInstall && !isNative && (
             <button type="button" onClick={() => void promptInstall().then(() => setCanInstall(canPromptInstall()))} className="cs-btn cs-btn-outline cs-btn-sm mt-3">
               <Download size={16} aria-hidden />{t("reminders.installApp")}
             </button>

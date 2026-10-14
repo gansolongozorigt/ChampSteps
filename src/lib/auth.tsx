@@ -19,6 +19,7 @@ import {
   onAuthChange,
   signInWithEmail,
   signInWithGoogle as fbSignInWithGoogle,
+  signInWithApple as fbSignInWithApple,
   signOut as fbSignOut,
   signUpWithEmail,
   getUserDoc,
@@ -57,6 +58,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, role: UserRole) => Promise<void>;
   signInWithGoogle: (role?: UserRole) => Promise<void>;
+  /** Native iOS only (VITE_APPLE_SIGNIN=1). */
+  signInWithApple: (role?: UserRole) => Promise<void>;
   signInOffline: (displayName?: string, role?: UserRole) => void;
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
@@ -193,6 +196,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signingUp.current = true;
         try {
           const u = await fbSignInWithGoogle(role);
+          const data = await getUserDoc(u.uid);
+          const r = data?.role;
+          applyRole(u.uid, r === "parent" || r === "teacher" ? r : role);
+        } finally {
+          signingUp.current = false;
+        }
+      },
+      async signInWithApple(role = "parent") {
+        if (!isFirebaseConfigured) throw new Error("auth.errors.notConfigured");
+        signingUp.current = true;
+        try {
+          const u = await fbSignInWithApple(role);
           const data = await getUserDoc(u.uid);
           const r = data?.role;
           applyRole(u.uid, r === "parent" || r === "teacher" ? r : role);

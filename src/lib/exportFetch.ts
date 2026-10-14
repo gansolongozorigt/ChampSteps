@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { isNative } from "./platform";
 import type { AppUser } from "./auth";
 import { db, getChildrenForParent, getChildrenForTeacher, getUserDoc } from "./firebase";
 import { loadLocalData } from "./localStore";
@@ -62,7 +63,22 @@ export async function buildUserExport(user: AppUser, now = new Date()): Promise<
   return buildExport(await fetchExportInput(user, now));
 }
 
+/** Native app: write to the app's Documents folder and open the share sheet (no <a download> in a WebView). */
+async function saveBlobNative(blob: Blob, filename: string) {
+  const { Filesystem, Directory } = await import("@capacitor/filesystem");
+  const { Share } = await import("@capacitor/share");
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+  const written = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Documents, recursive: true });
+  await Share.share({ title: filename, url: written.uri });
+}
+
 function saveBlob(blob: Blob, filename: string) {
+  if (isNative) { void saveBlobNative(blob, filename).catch((e) => console.error("[champstep] native save failed:", e)); return; }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
