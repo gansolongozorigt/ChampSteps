@@ -5,10 +5,10 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { adminDb, verifyIdTokenFull } from "./firebaseAdmin.js";
-import type { ChildLike, Lang, OutgoingMessage, PushDeps, ReminderDeps, ReminderUser, RunSummary, SendResult, TokenLike } from "./push.js";
+import type { ChildLike, GoalLike, GoalStatsLike, Lang, OutgoingMessage, PushDeps, ReminderDeps, ReminderUser, RunSummary, SendResult, TokenLike } from "./push.js";
 
 const TOKENS = "pushTokens";
-// system/reminderRuns/days/{YYYY-MM-DD} — one doc per Ulaanbaatar calendar day.
+// system/reminderRuns/days/{YYYY-MM-DD} (evening) and {YYYY-MM-DD}-morning — one doc per run.
 const RUNS = adminDb.collection("system").doc("reminderRuns").collection("days");
 
 /** Firestore `in` accepts up to 30 values. */
@@ -84,6 +84,22 @@ export const adminReminderDeps: ReminderDeps = {
       for (const d of snap.docs) out.push({ childId: String(d.data().childId), title: String(d.data().title ?? "") });
     }
     return out;
+  },
+
+  async activeGoalsOf(childIds) {
+    const out: GoalLike[] = [];
+    for (const ids of chunk(childIds)) {
+      const snap = await adminDb.collection("goals").where("childId", "in", ids).where("status", "==", "active").get();
+      for (const d of snap.docs) out.push({ id: d.id, childId: String(d.data().childId), title: String(d.data().title ?? ""), date: String(d.data().date ?? "") });
+    }
+    return out;
+  },
+
+  async goalStatsOf(goalId): Promise<GoalStatsLike> {
+    const snap = await adminDb.collection("practiceLogs").where("goalId", "==", goalId).get();
+    const days = new Set<string>();
+    for (const d of snap.docs) days.add(String(d.data().date ?? ""));
+    return { sessions: snap.size, days: days.size };
   },
 
   async tokensOf(uid) {

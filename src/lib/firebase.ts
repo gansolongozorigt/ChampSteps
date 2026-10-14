@@ -5,7 +5,8 @@
 //   /children/{childId}         — хүүхдийн профайл
 //   /inviteCodes/{code}         — багшийн урилгын код
 //   /achievements/{id}          — тэмцээний бүртгэл
-//   /practiceLogs/{id}          — бэлтгэлийн тэмдэглэл
+//   /practiceLogs/{id}          — бэлтгэлийн тэмдэглэл (goalId? → /goals)
+//   /goals/{id}                 — тэмцээн / зорилго (эцэг эх бичнэ, багш уншина)
 //   /reflections/{id}           — нууц сэтгэлзүйн тэмдэглэл
 //   /coachNotes/{id}            — багшийн зөвлөгөө
 // =============================================================================
@@ -59,6 +60,8 @@ import type {
   Achievement,
   AchievementDraft,
   Child,
+  Goal,
+  GoalDraft,
   InviteCode,
   PracticeLog,
   Reflection,
@@ -411,6 +414,7 @@ export async function createAchievement(childId: string, draft: AchievementDraft
     description: draft.description.trim(),
     awardType: draft.awardType,
     imageURLs,
+    ...(draft.prep ? { prep: draft.prep } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -500,6 +504,7 @@ function toAchievement(snap: QueryDocumentSnapshot<DocumentData>): Achievement {
     description: d.description ?? "",
     awardType: d.awardType ?? "Participant",
     imageURLs: Array.isArray(d.imageURLs) ? d.imageURLs : [],
+    ...(d.prep && typeof d.prep === "object" ? { prep: { goalId: String(d.prep.goalId ?? ""), days: Number(d.prep.days) || 0, sessions: Number(d.prep.sessions) || 0, minutes: Number(d.prep.minutes) || 0, daysTotal: Number(d.prep.daysTotal) || 0 } } : {}),
     createdAt: tsToIso(d.createdAt),
     updatedAt: tsToIso(d.updatedAt),
   };
@@ -543,6 +548,55 @@ export function subscribePracticeLogs(
       cb(items);
     },
     (err) => { console.error("[champstep] practiceLogs error:", err); onError?.(err); }
+  );
+  return () => { unsub(); reportPending(key, 0); };
+}
+
+// -----------------------------------------------------------------------------
+// Goals
+// -----------------------------------------------------------------------------
+
+export async function createGoal(childId: string, parentId: string, draft: GoalDraft): Promise<string> {
+  const db = requireDb();
+  const docRef = await addDoc(collection(db, "goals"), {
+    childId,
+    parentId,
+    ...omitUndefined({
+      title: draft.title.trim(),
+      date: draft.date,
+      category: draft.category,
+      targetSessionsPerWeek: draft.targetSessionsPerWeek,
+      targetMinutes: draft.targetMinutes,
+    }),
+    status: "active",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function updateGoal(id: string, patch: Partial<Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes" | "status" | "linkedAchievementId">>): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "goals", id), { ...omitUndefined(patch as Record<string, unknown>), updatedAt: serverTimestamp() });
+}
+
+export async function deleteGoal(id: string): Promise<void> {
+  const db = requireDb();
+  await deleteDoc(doc(db, "goals", id));
+}
+
+export function subscribeGoals(childId: string, cb: (items: Goal[]) => void, onError?: (err: unknown) => void) {
+  const db = requireDb();
+  const q = query(collection(db, "goals"), where("childId", "==", childId));
+  const key = `goals:${childId}`;
+  const unsub = onSnapshot(
+    q,
+    { includeMetadataChanges: true },
+    (snap) => {
+      reportPending(key, snap.docs.filter((d) => d.metadata.hasPendingWrites).length);
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Goal)));
+    },
+    (err) => { console.error("[champstep] goals error:", err); onError?.(err); }
   );
   return () => { unsub(); reportPending(key, 0); };
 }

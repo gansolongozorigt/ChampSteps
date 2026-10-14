@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate,
-  dataUrlDims, exportPortfolio, planPages, framedBlockHeight, FRAMED_BLOCK_GAP,
+  dataUrlDims, exportPortfolio, planPages, framedBlockHeight, FRAMED_BLOCK_GAP, prepLine,
 } from "../src/lib/pdfExport.ts";
 import mn from "../src/i18n/locales/mn.json" with { type: "json" };
 
@@ -57,8 +57,14 @@ const child = {
 const achievements = [
   { id: "a1", childId: "c1", title: "Хотын аварга шалгаруулах тэмцээн — 1-р байр", date: "2026-05-14", location: "Улаанбаатар", category: "Sports", awardType: "Gold", description: "U-11 насны ангилалд баг тамирчдын хамт түрүүлж, шилдэг довтлогчоор шалгарсан.", imageURLs: [fx.landscape, fx.certificate] },
   { id: "a2", childId: "c1", title: "Математикийн олимпиад", date: "2026-03-02", location: "Сургууль", category: "Academic", awardType: "Silver", description: "Сургуулийн 5-р ангийн олимпиадад 2-р байр.", imageURLs: [fx.certificate] },
-  { id: "a3", childId: "c1", title: "Зургийн уралдаан — оролцогч", date: "2026-01-20", location: "Соёлын төв", category: "Arts", awardType: "Participant", description: "Зураггүй амжилт: энгийн карт хэлбэрээр харагдана.", imageURLs: [] },
+  { id: "a3", childId: "c1", title: "Зургийн уралдаан — оролцогч", date: "2026-01-20", location: "Соёлын төв", category: "Arts", awardType: "Participant", description: "Зураггүй амжилт: энгийн карт хэлбэрээр харагдана.", imageURLs: [], prep: { goalId: "g1", days: 43, sessions: 50, minutes: 1860, daysTotal: 61 } },
 ];
+
+test("prepLine: goal preparation stats in hours, or minutes under one hour; empty without prep", () => {
+  assert.equal(prepLine({ prep: { goalId: "g", days: 43, sessions: 50, minutes: 1860, daysTotal: 61 } }, t), "Бэлтгэл: 43 өдөр · 31 цаг");
+  assert.equal(prepLine({ prep: { goalId: "g", days: 2, sessions: 2, minutes: 45, daysTotal: 7 } }, t), "Бэлтгэл: 2 өдөр · 45 мин");
+  assert.equal(prepLine({}, t), "");
+});
 
 test("template ids: exactly 3, official is free, framed/portfolio paid", () => {
   assert.deepEqual([...PDF_TEMPLATES], ["official", "framed", "portfolio"]);

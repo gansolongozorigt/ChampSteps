@@ -38,6 +38,8 @@ function makeWorld() {
   for (let i = 0; i < 2; i++) put("achievements", `b${i}`, { childId: KID2 });
   put("achievements", "o1", { childId: OTHER_KID });
   for (let i = 0; i < 56; i++) put("practiceLogs", `p${i}`, { childId: KID });
+  put("goals", "g1", { childId: KID, parentId: PARENT, title: "Cup", status: "active" });
+  put("goals", "g_other", { childId: OTHER_KID, parentId: OTHER, title: "Other", status: "active" });
   for (let i = 0; i < 8; i++) put("reflections", `r${i}`, { childId: KID });
   put("reflections", "ro", { childId: OTHER_KID });
   put("coachNotes", "n1", { childId: KID, teacherId: TEACHER });
@@ -119,10 +121,11 @@ test("processChildDelete: owner → every piece of the child is gone, counts are
   const r = await processChildDelete({ token: PARENT, body: { childId: KID } }, w.deps);
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.deleted, {
-    photos: 34, avatarFiles: 1, achievements: 12, practiceLogs: 56, reflections: 8, coachNotes: 1, inviteCodes: 1, aiInsights: 1, child: 1,
+    photos: 34, avatarFiles: 1, achievements: 12, practiceLogs: 56, reflections: 8, coachNotes: 1, goals: 1, inviteCodes: 1, aiInsights: 1, child: 1,
   });
   assert.equal(r.body.alreadyGone, false);
   for (const c of CHILD_COLLECTIONS) assert.equal(count(w, c, "childId", KID), 0, c);
+  assert.ok(w.col("goals").has("g_other"), "other child's goals untouched");
   assert.equal(count(w, "inviteCodes", "childId", KID), 0);
   assert.ok(w.col("inviteCodes").has("FRESH1"), "teacher's unused code stays");
   assert.ok(!w.col("aiInsights").has(KID));

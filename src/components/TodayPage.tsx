@@ -8,11 +8,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, ChevronRight, Clock, Flame } from "lucide-react";
-import type { Child, PracticeLog } from "../types";
+import { Check, ChevronLeft, ChevronRight, Clock, Flame, Plus, Target, Trophy } from "lucide-react";
+import type { Child, Goal, PracticeLog } from "../types";
 import { addDays, currentStreak, dayLabel, lastNDays, localDateKey, loggedDays, weekdayShort } from "../lib/streak";
+import { activeGoals, goalStats, goalsToday, overdueGoals } from "../lib/goals";
+import GoalCard from "./GoalCard";
+import CelebrationScreen from "./CelebrationScreen";
 
 const LAST_CHILD_KEY = "champstep.today.childId";
+const LAST_GOAL_KEY = (childId: string) => `champstep.today.goalId.${childId}`;
 const DURATIONS = [15, 30, 45, 60] as const;
 
 export type SaveOutcome = "saved" | "queued";
@@ -23,10 +27,17 @@ export interface TodayPageProps {
   onSelectChild: (i: number) => void;
   /** All practice logs of the active child (any date). */
   logs: PracticeLog[];
-  onAdd: (log: { date: string; duration: number; content: string }) => Promise<SaveOutcome>;
+  onAdd: (log: { date: string; duration: number; content: string; goalId?: string }) => Promise<SaveOutcome>;
   onDelete: (id: string) => Promise<void>;
   /** Teacher: view only. */
   readOnly?: boolean;
+  /** All goals of the active child (any status). */
+  goals?: Goal[];
+  onAddGoal?: () => void;
+  onOpenGoal?: (goal: Goal) => void;
+  onEditGoal?: (goal: Goal) => void;
+  /** "Record the result" → achievement form prefilled (App.tsx). */
+  onGoalResult?: (goal: Goal) => void;
 }
 
 function readLastChild(): string | null {
@@ -35,8 +46,14 @@ function readLastChild(): string | null {
 function writeLastChild(id: string) {
   try { localStorage.setItem(LAST_CHILD_KEY, id); } catch { /* private mode */ }
 }
+function readLastGoal(childId: string): string | null {
+  try { return localStorage.getItem(LAST_GOAL_KEY(childId)); } catch { return null; }
+}
+function writeLastGoal(childId: string, goalId: string) {
+  try { localStorage.setItem(LAST_GOAL_KEY(childId), goalId); } catch { /* private mode */ }
+}
 
-export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd, onDelete, readOnly = false }: TodayPageProps) {
+export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd, onDelete, readOnly = false, goals = [], onAddGoal, onOpenGoal, onEditGoal, onGoalResult }: TodayPageProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language ?? "mn";
   const today = localDateKey(new Date());
@@ -47,6 +64,25 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState<SaveOutcome | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const child = kids[activeIdx];
+  const childId = child?.childId ?? "";
+
+  // Goals: active ones drive the cards, the goal chips and the competition-day screen.
+  const active = useMemo(() => activeGoals(goals), [goals]);
+  const todayGoals = useMemo(() => goalsToday(goals, today), [goals, today]);
+  const overdue = useMemo(() => overdueGoals(goals, today), [goals, today]);
+  const [goalId, setGoalId] = useState<string | undefined>(undefined);
+  // Celebration can be switched to the plain view for this child until the page is reopened.
+  const [plainView, setPlainView] = useState(false);
+  useEffect(() => { setPlainView(false); }, [childId]);
+  useEffect(() => {
+    if (active.length === 0) { setGoalId(undefined); return; }
+    const last = readLastGoal(childId);
+    const keep = active.find((g) => g.id === goalId) ? goalId : active.find((g) => g.id === last)?.id ?? active[0].id;
+    setGoalId(keep);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId, active.map((g) => g.id).join(",")]);
+  function pickGoal(id: string) { writeLastGoal(childId, id); setGoalId(id); }
 
   // Last chosen child on this device wins on first mount (manifest shortcut / notification open).
   useEffect(() => {
@@ -78,7 +114,7 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
     if (!text || saving) return;
     setSaving(true);
     try {
-      const outcome = await onAdd({ date, duration, content: text });
+      const outcome = await onAdd({ date, duration, content: text, goalId: active.some((g) => g.id === goalId) ? goalId : undefined });
       setContent("");
       setFlash(outcome);
     } catch {
@@ -117,6 +153,55 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
           })}
         </div>
       )}
+
+      {/* Competition day: full-screen celebration for the child (first goal dated today). */}
+      {todayGoals.length > 0 && !plainView && child && (
+        <CelebrationScreen
+          child={child}
+          goal={todayGoals[0]}
+          stats={goalStats(todayGoals[0], logs, today)}
+          readOnly={readOnly}
+          onResult={() => onGoalResult?.(todayGoals[0])}
+          onPlainView={() => setPlainView(true)}
+        />
+      )}
+      {todayGoals.length > 0 && plainView && (
+        <button type="button" onClick={() => setPlainView(false)} className="cs-btn cs-btn-soft cs-btn-sm mb-4" data-testid="back-to-celebration">
+          <Trophy size={16} aria-hidden />{t("goals.celebration.backToCelebration")}
+        </button>
+      )}
+
+      {/* Past competition still active: ask for the result. */}
+      {!readOnly && overdue.map((g) => (
+        <div key={g.id} className="cs-card p-4 mb-4 border-primary" data-testid="goal-overdue">
+          <p className="t-body-strong text-ink">{t("goals.howWasIt")}</p>
+          <p className="t-caption mt-0.5">{t("goals.howWasItHint", { title: g.title, date: dayLabel(g.date, lang) })}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => onGoalResult?.(g)} className="cs-btn cs-btn-primary cs-btn-sm"><Trophy size={16} aria-hidden />{t("goals.writeResult")}</button>
+            <button type="button" onClick={() => onEditGoal?.(g)} className="cs-btn cs-btn-outline cs-btn-sm">{t("goals.notYet")}</button>
+          </div>
+        </div>
+      ))}
+
+      {/* Goals: cards (horizontal scroll when several) or the "add a goal" card. */}
+      {active.length > 0 ? (
+        <div className={`mb-4 ${active.length > 1 ? "flex gap-3 overflow-x-auto snap-x scrollbar-hide -mx-4 px-4 pb-1" : ""}`} data-testid="goal-cards">
+          {active.map((g) => (
+            <div key={g.id} className={active.length > 1 ? "shrink-0 w-[85%] max-w-sm" : ""}>
+              <GoalCard goal={g} stats={goalStats(g, logs, today)} onOpen={() => onOpenGoal?.(g)} />
+            </div>
+          ))}
+        </div>
+      ) : (!readOnly && onAddGoal && (
+        <button type="button" onClick={onAddGoal} className="cs-card border-dashed p-4 mb-4 w-full text-left flex items-center gap-3 hover:border-primary transition-colors" data-testid="goal-add-card">
+          <span className="w-10 h-10 rounded-full bg-primary-soft text-primary-soft-ink flex items-center justify-center shrink-0"><Target size={20} strokeWidth={2.2} aria-hidden /></span>
+          <span className="min-w-0">
+            <span className="t-body-strong text-ink block">{t("goals.addCta")}</span>
+            <span className="t-caption block">{t("goals.addCtaHint")}</span>
+          </span>
+          <Plus size={18} className="ml-auto text-ink-3 shrink-0" aria-hidden />
+        </button>
+      ))}
 
       {/* Date + streak */}
       <div className="cs-card p-4 mb-4">
@@ -199,6 +284,16 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
               </button>
             ))}
           </div>
+          {active.length > 1 && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap" data-testid="goal-chips">
+              <span className="t-caption mr-1 inline-flex items-center gap-1"><Target size={14} aria-hidden />{t("goals.linkLabel")}</span>
+              {active.map((g) => (
+                <button key={g.id} type="button" onClick={() => pickGoal(g.id)} aria-pressed={goalId === g.id} className={`cs-chip h-10 px-3.5 text-[13px] max-w-[60%] truncate ${goalId === g.id ? "bg-primary text-white" : "cs-chip-outline"}`}>
+                  {g.title}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => void save()}

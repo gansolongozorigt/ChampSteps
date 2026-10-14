@@ -45,6 +45,8 @@ export async function seed(env) {
     await setDoc(doc(db, "reflections", "ref_legacy"), { childId: LEGACY_CHILD, date: "2026-01-01", mood: 2, content: "secret" });
     await setDoc(doc(db, "achievements", "ach1"), { childId: CHILD, title: "Gold", date: "2026-01-01" });
     await setDoc(doc(db, "practiceLogs", "log1"), { childId: CHILD, date: "2026-01-01", duration: 30, content: "x" });
+    await setDoc(doc(db, "goals", "goal1"), { childId: CHILD, parentId: PARENT, title: "City cup", date: "2026-03-01", category: "Sports", status: "active" });
+    await setDoc(doc(db, "goals", "goal_other"), { childId: STRANGER_CHILD, parentId: OTHER, title: "Other cup", date: "2026-03-01", category: "Arts", status: "active" });
     await setDoc(doc(db, "reflections", "ref1"), { childId: CHILD, date: "2026-01-01", mood: 4, content: "secret" });
     await setDoc(doc(db, "coachNotes", "note1"), { childId: CHILD, teacherId: TEACHER, teacherName: "T", content: "note" });
     await setDoc(doc(db, "inviteCodes", "ABC123"), { code: "ABC123", teacherId: TEACHER, teacherName: "T", used: false, expiresAt: "2099-01-01", createdAt: "2026-01-01" });

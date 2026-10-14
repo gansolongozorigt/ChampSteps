@@ -28,6 +28,11 @@ import TimelineDashboard from "./components/TimelineDashboard";
 import Toast, { type ToastKind } from "./components/Toast";
 import { useAchievements } from "./hooks/useAchievements";
 import { usePracticeLogs } from "./hooks/usePracticeLogs";
+import { useGoals } from "./hooks/useGoals";
+import GoalForm from "./components/GoalForm";
+import GoalDetailModal from "./components/GoalDetailModal";
+import { activeGoals, goalStats, nextGoal as pickNextGoal, prepFromStats } from "./lib/goals";
+import { localDateKey } from "./lib/streak";
 import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
 import TodayPage, { type SaveOutcome } from "./components/TodayPage";
@@ -42,6 +47,8 @@ import {
   createAchievement,
   createChild,
   createPracticeLog,
+  createGoal,
+  updateGoal,
   currentIdToken,
   createReflection,
   deletePracticeLog,
@@ -64,7 +71,7 @@ import {
 } from "./lib/localStore";
 import { celebrate } from "./lib/celebrate";
 import { DeleteError, deleteAccountRemote, deleteChildRemote } from "./lib/deleteClient";
-import type { Achievement, AchievementDraft, Child, SubscriptionTier } from "./types";
+import type { Achievement, AchievementDraft, Child, Goal, GoalDraft, SubscriptionTier } from "./types";
 import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "./lib/pdfTemplates";
 import { TIER_LIMITS } from "./types";
 
@@ -178,6 +185,10 @@ function Dashboard() {
   const [pdfTemplate, setPdfTemplate] = useState<PdfTemplate>("official");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
+  // Goals: form (create / edit), detail modal, and the goal whose result is being recorded.
+  const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal }>({ open: false });
+  const [goalDetail, setGoalDetail] = useState<Goal | null>(null);
+  const [resultGoal, setResultGoal] = useState<Goal | null>(null);
   // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
   const child = children[activeChildIdx];
@@ -189,6 +200,7 @@ function Dashboard() {
     usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
+  const { goals, upsertLocal: upsertLocalGoal } = useGoals(child?.childId ?? "", localMode);
 
   // Install nudge (iOS guide / Android prompt) from the 2nd open on; see src/lib/install.ts.
   useEffect(() => {
@@ -290,6 +302,17 @@ function Dashboard() {
     return () => document.removeEventListener("mousedown", handle);
   }, [showUserMenu]);
 
+  /** Goal result saved as an achievement: close the goal and link the two. */
+  async function finishGoal(goalId: string, achievementId: string) {
+    if (localMode) {
+      const g = goals.find((x) => x.id === goalId);
+      if (g) upsertLocalGoal({ ...g, status: "done", linkedAchievementId: achievementId, updatedAt: new Date().toISOString() });
+      return;
+    }
+    try { await updateGoal(goalId, { status: "done", linkedAchievementId: achievementId }); }
+    catch (e) { console.warn("[goals] could not close goal:", e); }
+  }
+
   async function handleAddAchievement(draft: AchievementDraft) {
     if (!child) return;
     if (tierLimits.maxAchievements !== -1 && achievements.length >= tierLimits.maxAchievements) {
@@ -297,14 +320,18 @@ function Dashboard() {
       setToast({ kind: "info", message: t("status.freeLimit", { max: tierLimits.maxAchievements }) });
       return;
     }
+    const goalId = draft.prep?.goalId;
     if (!localMode) {
       // Offline v1: photos cannot be uploaded, so the achievement is saved without them
       // (an IndexedDB upload queue is a later version). Text is queued by Firestore.
       const offline = !navigator.onLine;
       const payload = offline && draft.images.length > 0 ? { ...draft, images: [] } : draft;
       try {
-        const outcome = await raceWrite(createAchievement(child.childId, payload), () => setToast({ kind: "error", message: t("status.errorSaving") }));
+        const write = createAchievement(child.childId, payload);
+        if (goalId) void write.then((id) => finishGoal(goalId, id));
+        const outcome = await raceWrite(write, () => setToast({ kind: "error", message: t("status.errorSaving") }));
         setShowForm(false);
+        setResultGoal(null);
         if (outcome === "queued" || offline) {
           setToast({ kind: "info", message: t(draft.images.length > 0 && offline ? "offline.photosLater" : "offline.queuedAchievement") });
           return;
@@ -328,10 +355,13 @@ function Dashboard() {
       description: draft.description,
       awardType: draft.awardType,
       imageURLs: [], // local mode: photos are not stored (blob: URLs would not survive a reload)
+      ...(draft.prep ? { prep: draft.prep } : {}),
       createdAt: new Date().toISOString(),
     };
     addLocal(newItem);
+    if (goalId) void finishGoal(goalId, newItem.id);
     setShowForm(false);
+    setResultGoal(null);
     setToast({ kind: "success", message: t("status.saved") });
     celebrate({ mega: draft.awardType === "Gold" });
     // setChampMood("excited");
@@ -406,7 +436,7 @@ function Dashboard() {
     setToast({ kind: "success", message: t("status.deleted") });
   }
 
-  async function handleAddPracticeLog(log: { date: string; duration: number; content: string }): Promise<SaveOutcome> {
+  async function handleAddPracticeLog(log: { date: string; duration: number; content: string; goalId?: string }): Promise<SaveOutcome> {
     if (!child) return "saved";
     if (!localMode) {
       // Offline (or a stalled connection): the write sits in Firestore's queue and the
@@ -444,6 +474,54 @@ function Dashboard() {
       return;
     }
     removeLocalLog(id);
+  }
+
+  // ---- goals -----------------------------------------------------------------
+  const todayKey = localDateKey(new Date());
+  const activeGoalCount = activeGoals(goals).length;
+  const goalLimitReached = tierLimits.maxActiveGoals !== -1 && activeGoalCount >= tierLimits.maxActiveGoals;
+
+  async function handleSaveGoal(draft: GoalDraft) {
+    if (!child || !user) return;
+    const editing = goalForm.goal;
+    try {
+      if (localMode) {
+        const now = new Date().toISOString();
+        upsertLocalGoal(editing
+          ? { ...editing, ...draft, updatedAt: now }
+          : { id: crypto.randomUUID(), childId: child.childId, parentId: user.uid, ...draft, status: "active", createdAt: now, updatedAt: now });
+      } else if (editing) {
+        await updateGoal(editing.id, draft);
+      } else {
+        await createGoal(child.childId, user.uid, draft);
+      }
+      setGoalForm({ open: false });
+      setGoalDetail(null);
+      setToast({ kind: "success", message: t("status.saved") });
+    } catch {
+      setToast({ kind: "error", message: t("status.errorSaving") });
+    }
+  }
+
+  async function handleCancelGoal(goal: Goal) {
+    try {
+      if (localMode) upsertLocalGoal({ ...goal, status: "cancelled", updatedAt: new Date().toISOString() });
+      else await updateGoal(goal.id, { status: "cancelled" });
+      setGoalDetail(null);
+    } catch {
+      setToast({ kind: "error", message: t("status.errorSaving") });
+    }
+  }
+
+  /** "Record the result": the achievement form opens prefilled with the goal + its practice stats. */
+  function openGoalResult(goal: Goal) {
+    setGoalDetail(null);
+    setResultGoal(goal);
+  }
+  function openGoalForm(goal?: Goal) {
+    setGoalDetail(null);
+    setShowProfile(false);
+    setGoalForm({ open: true, goal });
   }
 
   // "official" is open to every plan; "framed" / "portfolio" need hasPdf (Family+).
@@ -489,6 +567,7 @@ function Dashboard() {
         await createAchievement(newChild.childId, { title: a.title, date: a.date, location: a.location, category: a.category, description: a.description, awardType: a.awardType, images: [] });
       }
       for (const l of [...data.practiceLogs].reverse()) await createPracticeLog(newChild.childId, { date: l.date, duration: l.duration, content: l.content });
+      for (const g of data.goals ?? []) if (g.status === "active") await createGoal(newChild.childId, user!.uid, { title: g.title, date: g.date, category: g.category, targetSessionsPerWeek: g.targetSessionsPerWeek, targetMinutes: g.targetMinutes });
       for (const r of [...data.reflections].reverse()) await createReflection(newChild.childId, { date: r.date, mood: r.mood, content: r.content, parentNote: r.parentNote });
       clearLocalData();
       setChildren([newChild]);
@@ -829,6 +908,11 @@ function Dashboard() {
                 onAdd={handleAddPracticeLog}
                 onDelete={handleDeletePracticeLog}
                 readOnly={isTeacher}
+                goals={goals}
+                onAddGoal={() => openGoalForm()}
+                onOpenGoal={(g) => setGoalDetail(g)}
+                onEditGoal={(g) => openGoalForm(g)}
+                onGoalResult={openGoalResult}
               />
             </div>
           )}
@@ -840,6 +924,7 @@ function Dashboard() {
               readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
               onTodayClick={() => setActiveSection("today")}
+              nextGoal={(() => { const g = pickNextGoal(goals, todayKey); return g ? { title: g.title, daysLeft: goalStats(g, practiceLogs, todayKey).daysLeft } : null; })()}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
@@ -1069,7 +1154,53 @@ function Dashboard() {
           onSave={handleUpdateChild}
           onError={(m) => setToast({ kind: "error", message: m })}
           onRequestDelete={isTeacher ? undefined : () => setShowDeleteChild(true)}
+          onAddGoal={isTeacher ? undefined : () => openGoalForm()}
         />
+      )}
+      {goalForm.open && (
+        <GoalForm
+          childName={child.name}
+          initial={goalForm.goal}
+          limitReached={goalLimitReached}
+          onUpgrade={() => { setGoalForm({ open: false }); setShowSubscription(true); }}
+          onSubmit={handleSaveGoal}
+          onCancel={() => setGoalForm({ open: false })}
+        />
+      )}
+      {goalDetail && (
+        <GoalDetailModal
+          goal={goals.find((g) => g.id === goalDetail.id) ?? goalDetail}
+          logs={practiceLogs}
+          today={todayKey}
+          readOnly={isTeacher}
+          onClose={() => setGoalDetail(null)}
+          onEdit={() => openGoalForm(goals.find((g) => g.id === goalDetail.id) ?? goalDetail)}
+          onCancelGoal={() => handleCancelGoal(goals.find((g) => g.id === goalDetail.id) ?? goalDetail)}
+          onResult={() => openGoalResult(goals.find((g) => g.id === goalDetail.id) ?? goalDetail)}
+        />
+      )}
+      {resultGoal && (
+        <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={() => setResultGoal(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-2xl">
+            <div className="cs-handle" />
+            <AddAchievementForm
+              childId={child.childId}
+              childName={child.name}
+              allowPhotos={!localMode}
+              editing={false}
+              initialDraft={{
+                title: resultGoal.title,
+                date: resultGoal.date,
+                category: resultGoal.category,
+                awardType: "Participant",
+                prep: prepFromStats(resultGoal.id, goalStats(resultGoal, practiceLogs, todayKey)),
+              }}
+              onCancel={() => setResultGoal(null)}
+              onSubmit={handleAddAchievement}
+              onError={(m) => setToast({ kind: "error", message: m })}
+            />
+          </div>
+        </div>
       )}
       {showDeleteChild && !isTeacher && (
         <DeleteChildModal

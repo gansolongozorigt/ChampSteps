@@ -4,7 +4,7 @@
 // Reading happens in exportFetch.ts under the normal client rules.
 // =============================================================================
 
-import type { Achievement, Child, PracticeLog, Reflection } from "../types";
+import type { Achievement, Child, Goal, PracticeLog, Reflection } from "../types";
 
 export const EXPORT_SCHEMA_VERSION = 1;
 
@@ -29,6 +29,8 @@ export interface ExportInput {
   achievements: Achievement[];
   practiceLogs: PracticeLog[];
   reflections: Reflection[];
+  /** goals/{id} (competitions the child prepared for); optional for older callers. */
+  goals?: Goal[];
   /** aiInsights/{childId} docs that exist. */
   aiInsights: Array<{ childId: string; text: string; updatedAt?: unknown; [k: string]: unknown }>;
   coachNotes: CoachNoteLike[];
@@ -51,6 +53,7 @@ export interface ExportChild extends Omit<Child, "teacherIds"> {
   achievements: Achievement[];
   practiceLogs: PracticeLog[];
   reflections: Reflection[];
+  goals: Goal[];
   aiInsight: { text: string; updatedAt?: string } | null;
   coachNotes: CoachNoteLike[];
 }
@@ -138,6 +141,7 @@ export function buildExport(input: ExportInput): ExportFile {
         achievements: byChild(input.achievements, c.childId),
         practiceLogs: byChild(input.practiceLogs, c.childId),
         reflections: byChild(input.reflections, c.childId),
+        goals: byChild(input.goals ?? [], c.childId),
         aiInsight: ai ? { text: ai.text, updatedAt: toIsoDeep(ai.updatedAt) as string | undefined } : null,
         coachNotes: byChild(input.coachNotes, c.childId),
       };

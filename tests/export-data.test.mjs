@@ -24,7 +24,8 @@ const notes = [
 ];
 const userDoc = { uid: "p1", email: "p@x.mn", displayName: "P", role: "parent", createdAt: ts("2026-01-01T00:00:00Z"), subscriptionTier: "family", subscriptionExpiresAt: ts("2026-11-12T00:00:00Z"), subscription: { provider: "qpay", lastOrderId: "CS-1" }, expiredFrom: "family", subscriptionActivatedAt: ts("2026-10-13T00:00:00Z") };
 
-const parentInput = { scope: "parent", uid: "p1", user: userDoc, children: [child, child2], achievements: ach, practiceLogs: logs, reflections: refl, aiInsights: ai, coachNotes: notes, appVersion: "0.2.0", now: NOW };
+const goals = [{ id: "g1", childId: "child_a", parentId: "p1", title: "Cup", date: "2026-12-13", category: "Sports", status: "active", createdAt: ts("2026-10-14T00:00:00Z") }];
+const parentInput = { scope: "parent", uid: "p1", user: userDoc, children: [child, child2], achievements: ach, practiceLogs: logs, reflections: refl, goals, aiInsights: ai, coachNotes: notes, appVersion: "0.2.0", now: NOW };
 
 test("toIsoDeep: Timestamp-like, Date, nested arrays/objects → ISO strings; scalars untouched", () => {
   assert.equal(toIsoDeep(ts("2026-01-02T03:04:05Z")), "2026-01-02T03:04:05.000Z");
@@ -57,6 +58,8 @@ test("parent export: header, nested children, only own children's records, times
   assert.deepEqual(a.achievements.map((x) => x.id), ["a1"]);
   assert.equal(a.achievements[0].createdAt, "2026-03-02T10:00:00.000Z");
   assert.deepEqual(a.practiceLogs.map((x) => x.id), ["l1"]);
+  assert.deepEqual(a.goals.map((x) => x.id), ["g1"], "goals nest under their child");
+  assert.equal(f.children[1].goals.length, 0);
   assert.equal(a.reflections[0].createdAt, "2026-05-02T00:00:00.000Z");
   assert.deepEqual(a.aiInsight, { text: "AI текст", updatedAt: "2026-06-01T00:00:00.000Z" });
   assert.equal(a.coachNotes.length, 2, "parent sees every teacher's notes on their child");

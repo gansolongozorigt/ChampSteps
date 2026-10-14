@@ -280,7 +280,8 @@
       "save": "Сохранить",
       "cancel": "Отмена",
       "removeAvatar": "Удалить аватар"
-    }
+    },
+    "addGoal": "Добавить соревнование / цель"
   },
   "practice": {
     "heading": "Журнал тренировок",
@@ -716,5 +717,79 @@
     "pending_other": "{{count}} записей ожидают синхронизации",
     "photosLater": "Сохранено без фото (нет интернета). Добавьте фото, когда появится связь.",
     "queuedAchievement": "Сохранено — синхронизируется при подключении."
+  },
+  "goals": {
+    "title": "Цели",
+    "addCta": "Добавить соревнование / цель",
+    "addCtaHint": "Отметьте, к чему и когда готовится ребёнок; ежедневные тренировки привяжутся к цели.",
+    "formTitle": "Новая цель",
+    "editTitle": "Изменить цель",
+    "fields": {
+      "title": "Название соревнования / цели",
+      "titlePlaceholder": "напр. Чемпионат города",
+      "date": "Дата",
+      "category": "Категория",
+      "sessionsPerWeek": "Тренировок в неделю (необязательно)",
+      "minutes": "Минут за тренировку (необязательно)"
+    },
+    "validation": {
+      "future": "Выберите сегодняшнюю или будущую дату"
+    },
+    "save": "Сохранить",
+    "saving": "Сохраняем...",
+    "cancel": "Отмена",
+    "daysLeft_one": "{{count}} день до {{title}}",
+    "daysLeft_few": "{{count}} дня до {{title}}",
+    "daysLeft_many": "{{count}} дней до {{title}}",
+    "daysLeft_other": "{{count}} дней до {{title}}",
+    "isToday": "Сегодня: {{title}}",
+    "overdue": "{{title}} — дата прошла",
+    "stats": "{{sessions}} тренировок · {{hours}} ч",
+    "statsMin": "{{sessions}} тренировок · {{minutes}} мин",
+    "weekProgress": "На этой неделе {{done}}/{{target}}",
+    "linkLabel": "Цель",
+    "noLink": "Без цели",
+    "detail": {
+      "countdown_one": "Остался {{count}} день",
+      "countdown_few": "Осталось {{count}} дня",
+      "countdown_many": "Осталось {{count}} дней",
+      "countdown_other": "Осталось {{count}} дней",
+      "today": "Сегодня!",
+      "past": "Дата прошла",
+      "days": "Дней с тренировкой",
+      "sessions": "Тренировок",
+      "hours": "Часов",
+      "streak": "Самая длинная серия",
+      "ofTotal": "из {{total}} дней",
+      "logs": "Записи тренировок",
+      "noLogs": "К этой цели пока нет записей",
+      "edit": "Изменить",
+      "cancelGoal": "Отменить цель",
+      "cancelConfirm": "Отменить?",
+      "result": "Записать результат",
+      "close": "Закрыть",
+      "done": "Результат записан",
+      "cancelled": "Отменена"
+    },
+    "howWasIt": "Как прошло соревнование?",
+    "howWasItHint": "{{title}} ({{date}})",
+    "writeResult": "Записать результат",
+    "notYet": "Ещё не было, изменить дату",
+    "nextCompetition": "Следующее соревнование: {{title}} · {{count}} дн.",
+    "nextCompetitionToday": "Следующее соревнование: {{title}} · сегодня",
+    "limitFree": "Бесплатный план: 1 активная цель на ребёнка. С платным планом — без ограничений.",
+    "celebration": {
+      "headline": "{{name}}, сегодня {{title}}!",
+      "days": "Ты тренировался {{days}} из {{total}} дней",
+      "hours": "{{hours}} часов",
+      "minutes": "{{minutes}} минут",
+      "ready": "Ты готов.",
+      "writeResult": "Записать результат",
+      "plainView": "Обычный вид",
+      "backToCelebration": "Экран соревнования"
+    },
+    "prepLine": "Подготовка: {{days}} дн. · {{hours}} ч",
+    "prepLineMin": "Подготовка: {{days}} дн. · {{minutes}} мин",
+    "resultFormHint": "Результат цели: статистика тренировок прикрепится к достижению."
   }
 }

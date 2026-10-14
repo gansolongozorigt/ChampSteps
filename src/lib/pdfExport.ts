@@ -21,6 +21,13 @@ type RGB = [number, number, number];
 const INK: RGB = [24, 37, 29];            // #18251D graphite
 const INK2: RGB = [62, 79, 70];           // #3E4F46
 const INK3: RGB = [110, 125, 116];        // #6E7D74
+
+/** "Бэлтгэл: 43 өдөр · 31 цаг" for achievements that came out of a goal (achievements.prep); "" otherwise. */
+export function prepLine(a: { prep?: { days: number; minutes: number } }, t: (k: string, o?: Record<string, unknown>) => string): string {
+  if (!a.prep) return "";
+  const hours = Math.floor(a.prep.minutes / 60);
+  return hours > 0 ? t("goals.prepLine", { days: a.prep.days, hours }) : t("goals.prepLineMin", { days: a.prep.days, minutes: a.prep.minutes });
+}
 const LINE: RGB = [220, 229, 221];        // #DCE5DD
 const PRIMARY: RGB = [47, 125, 91];       // #2F7D5B forest green
 const PRIMARY_SOFT: RGB = [221, 243, 230]; // #DDF3E6
@@ -529,7 +536,7 @@ async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievemen
     doc.setFontSize(9);
     doc.setTextColor(...INK3);
     doc.text(
-      `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`,
+      `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`,
       M, y + 6
     );
 
@@ -682,6 +689,13 @@ async function renderFramed(
       setFont(doc, "bold");
       doc.setTextColor(...award);
       doc.text(t(`awards.${a.awardType}`), X + 4 + doc.getTextWidth(meta), y + 5.5);
+      if (prepLine(a, t)) {
+        const awardW = doc.getTextWidth(t(`awards.${a.awardType}`));
+        setFont(doc, "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...INK2);
+        doc.text(`  ·  ${prepLine(a, t)}`, X + 4 + doc.getTextWidth(meta) + awardW, y + 5.5);
+      }
       if (descLines.length) {
         setFont(doc, "normal");
         doc.setFontSize(9.5);
@@ -789,7 +803,7 @@ async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achieveme
       doc.text(titleLines, M + 13, ty);
       ty += titleLines.length * 6;
       setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
-      doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M + 13, ty);
+      doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`, M + 13, ty);
       ty += 6;
       if (descLines.length) { doc.setFontSize(9.5); doc.setTextColor(...INK2); doc.text(descLines, M + 13, ty); }
       y += cardH + 8;
@@ -830,7 +844,7 @@ async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achieveme
     doc.text(titleLines, M + 8, y);
     y += titleLines.length * 6;
     setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}`, M + 8, y);
+    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`, M + 8, y);
     y += 6;
     if (descLines.length) {
       doc.setFontSize(9.5); doc.setTextColor(...INK2);

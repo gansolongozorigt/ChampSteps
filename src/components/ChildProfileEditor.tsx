@@ -6,13 +6,15 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Trash2, Target } from "lucide-react";
 import type { Child } from "../types";
 import { compressImage, validateImageFile } from "../utils/image";
 
 export interface ChildProfileEditorProps {
   child: Child;
   onClose: () => void;
+  /** Opens the goal form for this child (closes the editor first). */
+  onAddGoal?: () => void;
   /**
    * Fired with the updated Child record. `avatarFile` is the raw (already
    * compressed) File — upload it to Storage and swap `avatarUrl` with the
@@ -25,7 +27,7 @@ export interface ChildProfileEditorProps {
   onRequestDelete?: () => void;
 }
 
-export default function ChildProfileEditor({ child, onClose, onSave, onError, onRequestDelete }: ChildProfileEditorProps) {
+export default function ChildProfileEditor({ child, onClose, onSave, onError, onRequestDelete, onAddGoal }: ChildProfileEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Child>(child);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
@@ -149,6 +151,12 @@ export default function ChildProfileEditor({ child, onClose, onSave, onError, on
               />
             </Field>
           </div>
+
+          {onAddGoal && (
+            <button type="button" onClick={onAddGoal} className="cs-btn cs-btn-outline mt-6 w-full" data-testid="profile-add-goal">
+              <Target size={18} strokeWidth={2.2} aria-hidden />{t("profile.addGoal")}
+            </button>
+          )}
 
           <div className="mt-8 flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">

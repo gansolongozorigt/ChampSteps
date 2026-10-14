@@ -15,7 +15,14 @@ import {
   runReminders,
   isCronAuthorized as isAuthorized,
   ubDateKey,
+  decideEvening,
+  decideMorning,
+  goalText,
+  plusDays,
+  runKey,
 } from "../api/_lib/push.ts";
+
+const KINDS = { daily: 0, competition: 0, goalToday: 0, goalTomorrow: 0, goalWeek: 0, goalDaily: 0 };
 
 const TOKEN_A = "fcm-token-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:APA91b";
 const TOKEN_B = "fcm-token-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB:APA91b";
@@ -163,6 +170,8 @@ function makeReminderWorld() {
   const logs = [];              // { childId, date }
   const achievements = [];      // { childId, title, date }
   const tokens = new Map();     // token -> { uid, lang }
+  const goals = [];             // { id, childId, title, date, status }
+  const goalLogs = [];          // { goalId, date }
   const runs = new Map();       // dateKey -> doc
   const sent = [];              // every message handed to FCM
   const failWith = new Map();   // token -> errorCode
@@ -175,6 +184,8 @@ function makeReminderWorld() {
     async childrenOf(uid) { return [...children.entries()].filter(([, c]) => c.parentId === uid).map(([childId, c]) => ({ childId, name: c.name })); },
     async childrenWithLogOn(ids, date) { return new Set(logs.filter((l) => ids.includes(l.childId) && l.date === date).map((l) => l.childId)); },
     async achievementsOn(ids, date) { return achievements.filter((a) => ids.includes(a.childId) && a.date === date).map(({ childId, title }) => ({ childId, title })); },
+    async activeGoalsOf(ids) { return goals.filter((g) => ids.includes(g.childId) && g.status === "active").map(({ id, childId, title, date }) => ({ id, childId, title, date })); },
+    async goalStatsOf(goalId) { const mine = goalLogs.filter((l) => l.goalId === goalId); return { sessions: mine.length, days: new Set(mine.map((l) => l.date)).size }; },
     async tokensOf(uid) { return [...tokens.entries()].filter(([, t]) => t.uid === uid).map(([token, t]) => ({ token, lang: t.lang })); },
     async send(messages) {
       sent.push(...messages);
@@ -184,7 +195,7 @@ function makeReminderWorld() {
     async claimRun(dateKey, nowMs) { if (runs.has(dateKey)) return false; runs.set(dateKey, { status: "running", startedAt: nowMs }); return true; },
     async finishRun(dateKey, summary) { runs.set(dateKey, { ...runs.get(dateKey), status: "done", ...summary }); },
   };
-  return { users, children, logs, achievements, tokens, runs, sent, failWith, deps, tick: (ms) => { clock += ms; } };
+  return { users, children, logs, achievements, tokens, goals, goalLogs, runs, sent, failWith, deps, tick: (ms) => { clock += ms; } };
 }
 
 test("cron: daily reminder to a parent with no log today, in each token's language", async () => {
@@ -199,7 +210,7 @@ test("cron: daily reminder to a parent with no log today, in each token's langua
   assert.equal(summary.users, 1);
   assert.equal(summary.notified, 1);
   assert.equal(summary.sent, 2);
-  assert.deepEqual(summary.byKind, { daily: 1, competition: 0 });
+  assert.deepEqual(summary.byKind, { ...KINDS, daily: 1 });
   assert.equal(w.sent.length, 2);
   assert.equal(w.sent[0].body, "Анар: өнөөдрийн бэлтгэлээ тэмдэглэх үү?");
   assert.equal(w.sent[1].body, "Анар: log today's practice?");
@@ -227,7 +238,7 @@ test("cron: competition tomorrow → one competition message, not two notificati
   w.achievements.push({ childId: "k1", title: "Хуучин", date: "2026-10-01" });
   const { summary } = await runReminders(w.deps);
   assert.equal(summary.notified, 1);
-  assert.deepEqual(summary.byKind, { daily: 0, competition: 1 });
+  assert.deepEqual(summary.byKind, { ...KINDS, competition: 1 });
   assert.equal(w.sent.length, 1);
   assert.equal(w.sent[0].body, "Маргааш: Хотын аварга (Анар). Амжилт хүсье!");
   assert.equal(w.sent[0].url, "/");
@@ -281,4 +292,109 @@ test("cron: users without tokens or children are skipped; teachers (no children)
   assert.equal(summary.skippedNoTokens, 1);
   assert.equal(summary.skippedNoChildren, 1);
   assert.equal(w.sent.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// goals
+// ---------------------------------------------------------------------------
+
+const KIDS = [{ childId: "k1", name: "Анар" }];
+const U = { uid: "u", daily: true, competition: true };
+const ctx = (goals, stats = null, today = "2026-10-14") => ({ goals, stats, today });
+
+test("plusDays / runKey", () => {
+  assert.equal(plusDays("2026-10-14", 7), "2026-10-21");
+  assert.equal(plusDays("2026-12-31", 1), "2027-01-01");
+  assert.equal(runKey("2026-10-14", "evening"), "2026-10-14");
+  assert.equal(runKey("2026-10-14", "morning"), "2026-10-14-morning");
+});
+
+test("goal texts in three languages", () => {
+  const g = { title: "Хотын аварга", childName: "Анар", days: 43, sessions: 50, daysLeft: 12 };
+  assert.equal(goalText("mn", "goalToday", g).body, "Өнөөдөр Хотын аварга! Анар бэлэн.");
+  assert.equal(goalText("mn", "goalTomorrow", g).body, "Маргааш Хотын аварга! 43 өдөр бэлтгэсэн — амжилт хүсье.");
+  assert.equal(goalText("mn", "goalWeek", g).body, "7 хоногийн дараа Хотын аварга. Одоогоор 50 бэлтгэл.");
+  assert.equal(goalText("mn", "goalDaily", g).body, "Хотын аварга хүртэл 12 өдөр — өнөөдрийн бэлтгэлээ тэмдэглэ");
+  assert.equal(goalText("en", "goalDaily", g).body, "12 days until Хотын аварга — log today's practice");
+  assert.equal(goalText("ru", "goalTomorrow", g).body, "Завтра Хотын аварга! 43 дней подготовки — удачи.");
+  assert.equal(goalText("xx", "goalWeek", g).title, "ChampStep");
+});
+
+test("evening priority: goal tomorrow > achievement tomorrow > goal in 7 days > goal countdown > plain daily", () => {
+  const ev = [{ childId: "k1", title: "Ach" }];
+  const gT = { id: "a", childId: "k1", title: "Tomorrow cup", date: "2026-10-15" };
+  const gW = { id: "b", childId: "k1", title: "Week cup", date: "2026-10-21" };
+  const gL = { id: "c", childId: "k1", title: "Later cup", date: "2026-12-13" };
+  assert.equal(decideEvening(U, KIDS, new Set(), ev, ctx([gT, gW, gL], { sessions: 9, days: 7 })).kind, "goalTomorrow");
+  const dT = decideEvening(U, KIDS, new Set(), [], ctx([gT], { sessions: 9, days: 7 }));
+  assert.equal(dT.days, 7, "tomorrow line carries the practised days");
+  assert.equal(decideEvening(U, KIDS, new Set(), ev, ctx([gW, gL], { sessions: 9, days: 7 })).kind, "competition");
+  const dW = decideEvening(U, KIDS, new Set(), [], ctx([gW, gL], { sessions: 9, days: 7 }));
+  assert.equal(dW.kind, "goalWeek");
+  assert.equal(dW.sessions, 9);
+  const dD = decideEvening(U, KIDS, new Set(), [], ctx([gL]));
+  assert.deepEqual([dD.kind, dD.daysLeft, dD.url], ["goalDaily", 60, "/today"]);
+  assert.equal(decideEvening(U, KIDS, new Set(), [], ctx([])).kind, "daily");
+});
+
+test("evening: logged today → nothing even with a goal; competition day → nothing; toggles respected", () => {
+  const gL = { id: "c", childId: "k1", title: "Later cup", date: "2026-12-13" };
+  assert.deepEqual(decideEvening(U, KIDS, new Set(["k1"]), [], ctx([gL])), { kind: "none", reason: "all-logged" });
+  assert.deepEqual(decideEvening(U, KIDS, new Set(), [], ctx([{ ...gL, date: "2026-10-14" }])), { kind: "none", reason: "competition-day" });
+  // competition off: tomorrow/week lines never fire, countdown still does (daily on)
+  assert.equal(decideEvening({ ...U, competition: false }, KIDS, new Set(), [], ctx([{ ...gL, date: "2026-10-15" }, gL])).kind, "goalDaily");
+  // daily off: no countdown, no plain daily
+  assert.deepEqual(decideEvening({ ...U, daily: false }, KIDS, new Set(), [], ctx([gL])), { kind: "none", reason: "disabled" });
+  assert.deepEqual(decideEvening({ uid: "u", daily: false, competition: false }, KIDS, new Set(), [], ctx([gL])), { kind: "none", reason: "disabled" });
+});
+
+test("morning: only a goal dated today; any toggle on; nothing otherwise", () => {
+  const gToday = { id: "t", childId: "k1", title: "Хотын аварга", date: "2026-10-14" };
+  const d = decideMorning({ uid: "u", daily: true, competition: false }, KIDS, [gToday], "2026-10-14");
+  assert.deepEqual([d.kind, d.title, d.childName, d.url], ["goalToday", "Хотын аварга", "Анар", "/today"]);
+  assert.deepEqual(decideMorning(U, KIDS, [{ ...gToday, date: "2026-10-15" }], "2026-10-14"), { kind: "none", reason: "no-goal-today" });
+  assert.deepEqual(decideMorning({ uid: "u", daily: false, competition: false }, KIDS, [gToday], "2026-10-14"), { kind: "none", reason: "disabled" });
+  assert.deepEqual(decideMorning(U, [], [gToday], "2026-10-14"), { kind: "none", reason: "no-children" });
+});
+
+test("cron: morning slot sends the competition-day push once, evening the same day stays separate (max 2/day)", async () => {
+  const w = makeReminderWorld();
+  w.users.set("u1", { daily: true, competition: true });
+  w.children.set("k1", { parentId: "u1", name: "Анар" });
+  w.tokens.set(TOKEN_A, { uid: "u1", lang: "mn" });
+  w.goals.push({ id: "g", childId: "k1", title: "Хотын аварга", date: "2026-10-14", status: "active" });
+  const m = await runReminders(w.deps, "morning");
+  assert.ok(m.claimed);
+  assert.equal(m.summary.slot, "morning");
+  assert.deepEqual(m.summary.byKind, { ...KINDS, goalToday: 1 });
+  assert.equal(w.sent[0].body, "Өнөөдөр Хотын аварга! Анар бэлэн.");
+  assert.equal(w.sent[0].url, "/today");
+  assert.equal((await runReminders(w.deps, "morning")).claimed, false, "morning is idempotent");
+  const e = await runReminders(w.deps, "evening");
+  assert.ok(e.claimed, "evening run doc is a different key");
+  assert.equal(e.summary.notified, 0, "competition day: no evening nudge");
+  assert.equal(w.sent.length, 1);
+  assert.ok(w.runs.has("2026-10-14-morning") && w.runs.has("2026-10-14"));
+});
+
+test("cron: goal tomorrow uses the goal's own log stats; goal countdown replaces the plain daily", async () => {
+  const w = makeReminderWorld();
+  w.users.set("u1", { daily: true, competition: true });
+  w.children.set("k1", { parentId: "u1", name: "Анар" });
+  w.tokens.set(TOKEN_A, { uid: "u1", lang: "mn" });
+  w.goals.push({ id: "g", childId: "k1", title: "Хотын аварга", date: "2026-10-15", status: "active" });
+  w.goals.push({ id: "done", childId: "k1", title: "Old", date: "2026-10-15", status: "done" });
+  w.goalLogs.push({ goalId: "g", date: "2026-10-10" }, { goalId: "g", date: "2026-10-10" }, { goalId: "g", date: "2026-10-12" });
+  const r = await runReminders(w.deps);
+  assert.deepEqual(r.summary.byKind, { ...KINDS, goalTomorrow: 1 });
+  assert.equal(w.sent[0].body, "Маргааш Хотын аварга! 2 өдөр бэлтгэсэн — амжилт хүсье.");
+
+  const w2 = makeReminderWorld();
+  w2.users.set("u1", { daily: true, competition: false });
+  w2.children.set("k1", { parentId: "u1", name: "Анар" });
+  w2.tokens.set(TOKEN_A, { uid: "u1", lang: "en" });
+  w2.goals.push({ id: "g", childId: "k1", title: "City cup", date: "2026-12-13", status: "active" });
+  const r2 = await runReminders(w2.deps);
+  assert.deepEqual(r2.summary.byKind, { ...KINDS, goalDaily: 1 });
+  assert.equal(w2.sent[0].body, "60 days until City cup — log today's practice");
 });

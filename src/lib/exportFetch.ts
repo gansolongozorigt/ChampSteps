@@ -7,7 +7,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import type { AppUser } from "./auth";
 import { db, getChildrenForParent, getChildrenForTeacher, getUserDoc } from "./firebase";
 import { loadLocalData } from "./localStore";
-import type { Achievement, Child, PracticeLog, Reflection } from "../types";
+import type { Achievement, Child, PracticeLog, Reflection, Goal } from "../types";
 import { buildExport, exportFilename, zipTooBig, type CoachNoteLike, type ExportFile, type ExportInput } from "./exportData";
 
 const APP_VERSION: string = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";
@@ -29,7 +29,7 @@ export async function fetchExportInput(user: AppUser, now = new Date()): Promise
     return {
       scope: "guest", uid: user.uid, user: { uid: user.uid, displayName: user.displayName, role: user.role },
       children: local ? [local.child] : [], achievements: local?.achievements ?? [], practiceLogs: local?.practiceLogs ?? [],
-      reflections: local?.reflections ?? [], aiInsights: [], coachNotes: [], appVersion: APP_VERSION, now,
+      reflections: local?.reflections ?? [], goals: local?.goals ?? [], aiInsights: [], coachNotes: [], appVersion: APP_VERSION, now,
     };
   }
   const userDoc = (await getUserDoc(user.uid)) as Record<string, unknown> | null;
@@ -41,18 +41,21 @@ export async function fetchExportInput(user: AppUser, now = new Date()): Promise
   }
   const children: Child[] = await getChildrenForParent(user.uid);
   const achievements: Achievement[] = [], practiceLogs: PracticeLog[] = [], reflections: Reflection[] = [], coachNotes: CoachNoteLike[] = [];
+  const goals: Goal[] = [];
   const aiInsights: ExportInput["aiInsights"] = [];
   for (const c of children) {
     achievements.push(...(await listByChild<Achievement>("achievements", c.childId)));
     practiceLogs.push(...(await listByChild<PracticeLog>("practiceLogs", c.childId)));
     reflections.push(...(await listByChild<Reflection>("reflections", c.childId)));
+    // goals: tolerate a rules lag (older deployments) — the export must never fail on it.
+    try { goals.push(...(await listByChild<Goal>("goals", c.childId))); } catch { /* not readable yet */ }
     coachNotes.push(...(await listByChild<CoachNoteLike>("coachNotes", c.childId)));
     try {
       const ai = await getDoc(doc(requireDb(), "aiInsights", c.childId));
       if (ai.exists()) aiInsights.push({ childId: c.childId, ...(ai.data() as { text: string }) });
     } catch { /* no cached insight, or not readable: skipped */ }
   }
-  return { scope: "parent", uid: user.uid, user: userDoc, children, achievements, practiceLogs, reflections, aiInsights, coachNotes, appVersion: APP_VERSION, now };
+  return { scope: "parent", uid: user.uid, user: userDoc, children, achievements, practiceLogs, reflections, goals, aiInsights, coachNotes, appVersion: APP_VERSION, now };
 }
 
 export async function buildUserExport(user: AppUser, now = new Date()): Promise<ExportFile> {

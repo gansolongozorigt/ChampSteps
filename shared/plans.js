@@ -5,12 +5,12 @@
 
 /** @typedef {"free" | "family" | "master" | "coach"} PlanId */
 
-/** amount = MNT per 30 days; maxAchievements -1 = unlimited */
+/** amount = MNT per 30 days; maxAchievements / maxActiveGoals -1 = unlimited (goals: active per child) */
 export const PLANS = Object.freeze({
-  free:   Object.freeze({ amount: 0,     maxChildren: 1,  maxAchievements: 30, hasPdf: false, hasAI: false, label: { mn: "Үнэгүй",  en: "Free",   ru: "Бесплатно" } }),
-  family: Object.freeze({ amount: 9900,  maxChildren: 3,  maxAchievements: -1, hasPdf: true,  hasAI: false, label: { mn: "Гэр бүл", en: "Family", ru: "Семья" } }),
-  master: Object.freeze({ amount: 24900, maxChildren: 10, maxAchievements: -1, hasPdf: true,  hasAI: true,  label: { mn: "Мастер",  en: "Master", ru: "Мастер" } }),
-  coach:  Object.freeze({ amount: 49900, maxChildren: 30, maxAchievements: -1, hasPdf: true,  hasAI: true,  label: { mn: "Багш",    en: "Coach",  ru: "Тренер" } }),
+  free:   Object.freeze({ amount: 0,     maxChildren: 1,  maxAchievements: 30, maxActiveGoals: 1,  hasPdf: false, hasAI: false, label: { mn: "Үнэгүй",  en: "Free",   ru: "Бесплатно" } }),
+  family: Object.freeze({ amount: 9900,  maxChildren: 3,  maxAchievements: -1, maxActiveGoals: -1, hasPdf: true,  hasAI: false, label: { mn: "Гэр бүл", en: "Family", ru: "Семья" } }),
+  master: Object.freeze({ amount: 24900, maxChildren: 10, maxAchievements: -1, maxActiveGoals: -1, hasPdf: true,  hasAI: true,  label: { mn: "Мастер",  en: "Master", ru: "Мастер" } }),
+  coach:  Object.freeze({ amount: 49900, maxChildren: 30, maxAchievements: -1, maxActiveGoals: -1, hasPdf: true,  hasAI: true,  label: { mn: "Багш",    en: "Coach",  ru: "Тренер" } }),
 });
 
 export const PLAN_IDS = /** @type {const} */ (["free", "family", "master", "coach"]);
