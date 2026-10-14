@@ -66,7 +66,7 @@ src/
 iOS / Android store app = the same Vite build in a Capacitor shell (`capacitor.config.ts`, App ID `mn.champstep.app`).
 Web assets are bundled; nothing loads from a remote URL.
 
-Requirements: Xcode 16+ (iOS, Swift Package Manager — no CocoaPods), Temurin JDK 17 (`~/.jdks`), Android SDK
+Requirements: Xcode 16+ (iOS, Swift Package Manager — no CocoaPods), JDK 21 (`~/.jdks/amazon-corretto-21.jdk`; Capacitor 8 Android plugins need a 21 toolchain), Android SDK
 (`~/Library/Android/sdk`: platform-tools, platforms;android-36, build-tools;36.0.0, emulator, AVD `champstep-pixel`).
 `JAVA_HOME` / `ANDROID_HOME` in `~/.zshrc`. Firebase native config files: `ios/App/App/GoogleService-Info.plist`,
 `android/app/google-services.json` (client config, not secrets).
