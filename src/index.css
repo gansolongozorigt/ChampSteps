@@ -199,3 +199,6 @@ body { font-weight: 500; font-size: 15px; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) {
   .cs-rise-bar { animation: none; }
 }
+
+/* Native shell: the software keyboard covers the bottom nav on iOS — hide it while typing (src/lib/native.ts). */
+html[data-keyboard="open"] .cs-bottom-nav { display: none; }

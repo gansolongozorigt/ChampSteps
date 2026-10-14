@@ -7,6 +7,8 @@
 // localStorage only — per device conveniences, never user data.
 // =============================================================================
 
+import { isNative } from "./platform";
+
 const OPEN_COUNT_KEY = "champstep.openCount";
 const SNOOZE_KEY = "champstep.installSnoozedAt";
 export const INSTALL_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -102,7 +104,7 @@ export type InstallKind = "ios" | "android" | "none";
  * on this page load; the first visit never shows a banner.
  */
 export function installBannerKind(openCount: number): InstallKind {
-  if (isStandalone() || openCount < 2 || isInstallSnoozed()) return "none";
+  if (isNative || isStandalone() || openCount < 2 || isInstallSnoozed()) return "none";
   if (isIOS()) return "ios";
   if (canPromptInstall()) return "android";
   return "none";

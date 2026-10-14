@@ -5,7 +5,9 @@ import { readFileSync } from 'node:fs'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
-export default defineConfig({
+// `vite build --mode native` (npm run cap:sync): the same app for the Capacitor shell, but
+// without the service worker / PWA registration (native push + splash replace them).
+export default defineConfig(({ mode }) => ({
   // Shown in the user's data export (exportFetch.ts) as appVersion.
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // E2E only: proxy /api/* to a deployed backend (Vite dev has no serverless functions).
@@ -29,6 +31,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      disable: mode === 'native',
       registerType: 'autoUpdate',
       // Custom worker (src/sw.ts): Workbox precache + FCM background messages in ONE file.
       strategies: 'injectManifest',
@@ -81,4 +84,4 @@ export default defineConfig({
       },
     })
   ],
-})
+}))
