@@ -1,6 +1,7 @@
 // SubscriptionPage — current plan, expiry, renew / change / check, payment history.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isNative } from "../lib/platform";
 import { useAuth } from "../lib/auth";
 import { getPaymentsForUser, type PaymentRecord } from "../lib/firebase";
 import { daysLeft, isActive } from "../lib/subscription";
@@ -55,16 +56,17 @@ export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal
         {paymentsEnabled === false && (
           <p className="mt-3 cs-card-soft px-4 py-3 t-body text-ink-2" role="status" data-testid="payments-disabled">{t("pay.disabledInfo")}</p>
         )}
+        {isNative && <p className="mt-3 t-caption">{t("sub.nativeNote")}</p>}
         <div className="mt-5 flex flex-wrap gap-2">
-          {active && paymentsEnabled !== false && (
+          {!isNative && active && paymentsEnabled !== false && (
             <button type="button" onClick={() => onOpenModal(subscriptionInfo.tier)} className="cs-btn cs-btn-primary">{t("sub.renew")}</button>
           )}
-          <button type="button" onClick={() => onOpenModal()} className="cs-btn cs-btn-outline">{t("sub.changePlan")}</button>
+          {!isNative && <button type="button" onClick={() => onOpenModal()} className="cs-btn cs-btn-outline">{t("sub.changePlan")}</button>}
           <button type="button" onClick={check} disabled={checking} className="cs-btn cs-btn-outline">{checking ? t("sub.processing") : t("sub.checkStatus")}</button>
         </div>
       </section>
 
-      <section className="cs-card p-5">
+      {!isNative && <section className="cs-card p-5">
         <h4 className="t-h2">{t("sub.paymentsTitle")}</h4>
         {payments === null ? (
           <p className="mt-2 t-body text-ink-3">…</p>
@@ -85,7 +87,7 @@ export default function SubscriptionPage({ onOpenModal, onToast }: { onOpenModal
             ))}
           </ul>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

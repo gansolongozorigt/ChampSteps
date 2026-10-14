@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isNative } from "../lib/platform";
 import { CircleCheck, FileText, Loader2, Sparkles, Trophy, Users, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured } from "../lib/firebase";
@@ -219,6 +220,31 @@ export default function SubscriptionModal({ onClose, initialTier }: { onClose: (
   }
 
   const tierInfo = TIERS.find((t) => t.id === selectedTier);
+
+  // Store app (iOS / Android): no purchases, no prices, no promo, no link to the web (Apple 3.1.1).
+  // Only the current plan and its expiry are shown.
+  if (isNative) {
+    return (
+      <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={onClose}>
+        <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-lg" data-testid="sub-native">
+          <div className="cs-handle" />
+          <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+            <h2 className="t-h1">{t("sub.currentPlan")}</h2>
+            <button type="button" onClick={onClose} className="cs-icon-btn -mr-2" aria-label={t("sub.close")}><X size={20} /></button>
+          </header>
+          <div className="px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-2">
+              <span className="t-display">{t(`sub.tierNames.${subscription}`)}</span>
+              <span className={`cs-badge-tier ${subscription === "free" ? "cs-badge-tier-free" : "cs-badge-tier-paid"}`}>{t(`sub.tierNames.${subscription}`)}</span>
+            </div>
+            {subscription !== "free" && <p className="t-body text-ink-2 mt-2">{t("sub.expiresOn")}: {untilText}</p>}
+            <p className="t-caption mt-4">{t("sub.nativeNote")}</p>
+            <button type="button" onClick={onClose} className="cs-btn cs-btn-primary w-full mt-5">{t("sub.close")}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cs-modal-backdrop cs-backdrop-in print:hidden" onClick={onClose}>

@@ -20,6 +20,7 @@ import CoachNotes from "./components/CoachNotes";
 import TermsPage from "./components/TermsPage";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import SubscriptionModal from "./components/SubscriptionModal";
 import SubscriptionPage from "./components/SubscriptionPage";
 import ExpiryBanner from "./components/ExpiryBanner";
@@ -40,6 +41,7 @@ import OfflineBanner from "./components/OfflineBanner";
 import { InstallBanner, InstallGuideModal } from "./components/InstallBanner";
 import { bumpOpenCount, installBannerKind, onInstallPromptChange, promptInstall, snoozeInstall, type InstallKind } from "./lib/install";
 import { onForegroundPush, refreshPushToken } from "./lib/push";
+import { isNative } from "./lib/platform";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
 import { useAuth } from "./lib/auth";
@@ -134,6 +136,8 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
+  // Public pages (no sign-in): the store listing links to /privacy.
+  if (typeof window !== "undefined" && window.location.pathname === "/privacy") return <PrivacyPage />;
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <LoginPage />;
   // users/{uid}.role not read yet -> keep loading; never render a parent dashboard by default
@@ -221,8 +225,19 @@ function Dashboard() {
   }, []);
 
   // Push: refresh an existing token at start (lastSeenAt) and show foreground pushes as a toast.
+  // Native push (FCM via the Capacitor plugin): token refresh + notification taps → Today.
   useEffect(() => {
-    if (!user || localMode) return;
+    if (!user || localMode || !isNative) return;
+    let off: (() => void) | undefined;
+    void import("./lib/nativePush").then((m) => m.initNativePush(currentIdToken, i18n.language)).then((fn) => { off = fn; });
+    const onNav = (e: Event) => { if ((e as CustomEvent<{ url?: string }>).detail?.url === "/today") setActiveSection("today"); };
+    window.addEventListener("champstep:navigate", onNav);
+    return () => { off?.(); window.removeEventListener("champstep:navigate", onNav); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, localMode]);
+
+  useEffect(() => {
+    if (!user || localMode || isNative) return; // native push: src/lib/nativePush.ts
     void refreshPushToken(currentIdToken, i18n.language);
     let off: (() => void) | undefined;
     void onForegroundPush((d) => { if (d.body) setToast({ kind: "info", message: d.body }); }).then((fn) => { off = fn; });
@@ -237,6 +252,40 @@ function Dashboard() {
     try { window.history.replaceState(null, "", "/"); } catch { /* sandboxed */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child?.childId, user?.role]);
+
+  // Android back button (src/lib/native.ts): close the top-most modal, else back to the home tab.
+  useEffect(() => {
+    if (!isNative) return;
+    let dispose: (() => void) | undefined;
+    void import("./lib/native").then((m) => {
+      m.setBackHandlers({
+        closeTopModal: () => {
+          if (showInstallGuide) { setShowInstallGuide(false); return true; }
+          if (resultGoal) { setResultGoal(null); return true; }
+          if (goalDetail) { setGoalDetail(null); return true; }
+          if (goalForm.open) { setGoalForm({ open: false }); return true; }
+          if (previewOpen) { setPreviewOpen(false); return true; }
+          if (showAccount) { setShowAccount(false); return true; }
+          if (showAdmin) { setShowAdmin(false); return true; }
+          if (showDeleteChild) { setShowDeleteChild(false); return true; }
+          if (showAddChild) { setShowAddChild(false); return true; }
+          if (showProfile) { setShowProfile(false); return true; }
+          if (showSubscription) { setShowSubscription(false); return true; }
+          if (editingAchievement) { setEditingAchievement(null); return true; }
+          if (showForm) { setShowForm(false); return true; }
+          if (showUserMenu) { setShowUserMenu(false); return true; }
+          return false;
+        },
+        goBack: () => {
+          if (activeSection !== "achievements") { setActiveSection("achievements"); return true; }
+          return false;
+        },
+      });
+      dispose = () => m.setBackHandlers(null);
+    });
+    return () => dispose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
 
   useEffect(() => {
     if (user && !localMode && user.role === "teacher") {
@@ -707,7 +756,7 @@ function Dashboard() {
   const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
   const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
   const nearLimit = achNear || childNear;
-  const showUpgradeBar = !isPremium && (!upgradeBarDismissed || nearLimit);
+  const showUpgradeBar = !isNative && !isPremium && (!upgradeBarDismissed || nearLimit);
   function dismissUpgradeBar() {
     try { localStorage.setItem(UPGRADE_BAR_KEY, String(Date.now())); } catch { /* private mode */ }
     setUpgradeBarDismissed(true);
@@ -743,6 +792,7 @@ function Dashboard() {
           </div>
           <div className="flex items-center gap-1">
             <LanguageChip />
+            {!isNative && (
             <button
               type="button"
               onClick={() => setShowSubscription(true)}
@@ -752,6 +802,7 @@ function Dashboard() {
             >
               <Star size={18} strokeWidth={2.2} fill="currentColor" />
             </button>
+            )}
             <div ref={userMenuRef} className="relative">
               <button
                 type="button"
@@ -870,7 +921,7 @@ function Dashboard() {
 
           {/* Sidebar доод хэсэг — subscription */}
           <div className="px-3 pb-4 pt-3 border-t border-line">
-            {isPremium ? (
+            {isPremium || isNative ? (
               <div className="cs-card-soft px-3 py-3">
                 <p className="t-label text-primary-soft-ink mb-1">{tierLabel}</p>
                 <p className="t-caption">{t("sub.premiumFeatures")}</p>
@@ -1049,7 +1100,7 @@ function Dashboard() {
       </div>
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav className="cs-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {showUpgradeBar && (
           <div className="bg-bg-soft border-b border-line px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="t-caption text-ink-2 min-w-0 truncate">
