@@ -11,7 +11,7 @@ import type { PracticeLog } from "../types";
 export interface PracticeLogSectionProps {
   childId: string;
   logs: PracticeLog[];
-  onAdd: (log: Omit<PracticeLog, "id" | "childId" | "createdAt">) => Promise<void>;
+  onAdd: (log: Omit<PracticeLog, "id" | "childId" | "createdAt">) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   /** Багшийн горим: нэмэх/устгах товч нуугдана */
   readOnly?: boolean;

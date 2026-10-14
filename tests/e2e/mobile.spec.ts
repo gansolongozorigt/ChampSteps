@@ -5,24 +5,24 @@ import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav } from "./helpers/
 const acc = { email: testEmail("mobile"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
 test.afterAll(async () => { await cleanupTestUser(acc.email); });
 
-test("390×844: bottom nav has 5 tabs; modal scrolls; save buttons reachable", async ({ context }) => {
+test("390×844: bottom nav has 6 tabs; modal scrolls; save buttons reachable", async ({ context }) => {
   const page = await newPage(context);
   await signUp(page, acc);
   await waitForDashboard(page);
 
   const bottomNav = page.locator("nav").last();
-  for (const s of ["achievements", "practice", "reflection", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
+  for (const s of ["today", "achievements", "practice", "reflection", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
 
   // upgrade bar (free tier): dismiss → hidden, stays hidden after reload (7-day snooze)
   const bar = page.getByTestId("upgrade-bar");
   await expect(bar).toBeVisible();
-  await expect(bottomNav.getByRole("button")).toHaveCount(7); // 5 tabs + dismiss + upgrade
+  await expect(bottomNav.getByRole("button")).toHaveCount(8); // 6 tabs + dismiss + upgrade
   await bar.getByRole("button", { name: tr("sub.upgradeBarDismiss") }).click();
   await expect(bar).toBeHidden();
   await page.reload();
   await waitForDashboard(page);
   await expect(page.getByTestId("upgrade-bar")).toBeHidden();
-  await expect(bottomNav.getByRole("button")).toHaveCount(5);
+  await expect(bottomNav.getByRole("button")).toHaveCount(6);
 
   // iOS safe areas: header/nav carry env(safe-area-inset-*) padding; computed value is 0 outside iOS
   const header = page.locator("header").first();

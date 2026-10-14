@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Trash2, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarCheck, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Trash2, type LucideIcon } from "lucide-react";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
   awardStyles,
@@ -28,6 +28,8 @@ export interface TimelineDashboardProps {
   child: Child;
   achievements: Achievement[];
   onAddClick?: () => void;
+  /** "Log today's practice" — opens the Today screen (/today). */
+  onTodayClick?: () => void;
   onEditProfile?: () => void;
   onEditAchievement?: (a: Achievement) => void;
   onDeleteAchievement?: (id: string) => void;
@@ -43,6 +45,7 @@ export default function TimelineDashboard({
   child,
   achievements,
   onAddClick,
+  onTodayClick,
   onEditProfile,
   onEditAchievement,
   onDeleteAchievement,
@@ -136,6 +139,14 @@ export default function TimelineDashboard({
             </div>
           </button>
         </header>
+
+        {/* -- Today (daily habit) ----------------------------------------- */}
+        {!readOnly && onTodayClick && (
+          <button type="button" onClick={onTodayClick} className="cs-btn cs-btn-primary w-full mb-5" data-testid="today-cta">
+            <CalendarCheck size={20} strokeWidth={2.2} aria-hidden />
+            {t("today.dashboardButton")}
+          </button>
+        )}
 
         {/* -- Achievement summary (medals) -- */}
         <AchievementSummary achievements={achievements} />

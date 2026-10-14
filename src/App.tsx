@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, ArrowUp, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
+  AlertTriangle, ArrowUp, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
   Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
@@ -30,6 +30,11 @@ import { useAchievements } from "./hooks/useAchievements";
 import { usePracticeLogs } from "./hooks/usePracticeLogs";
 import { useReflections } from "./hooks/useReflections";
 import PracticeLogSection from "./components/PracticeLogSection";
+import TodayPage, { type SaveOutcome } from "./components/TodayPage";
+import OfflineBanner from "./components/OfflineBanner";
+import { InstallBanner, InstallGuideModal } from "./components/InstallBanner";
+import { bumpOpenCount, installBannerKind, onInstallPromptChange, promptInstall, snoozeInstall, type InstallKind } from "./lib/install";
+import { onForegroundPush, refreshPushToken } from "./lib/push";
 import ReflectionSection from "./components/ReflectionSection";
 import { TeacherInvitePanel, ParentLinkPanel } from "./components/InviteCode";
 import { useAuth } from "./lib/auth";
@@ -37,6 +42,7 @@ import {
   createAchievement,
   createChild,
   createPracticeLog,
+  currentIdToken,
   createReflection,
   deletePracticeLog,
   deleteReflection,
@@ -63,7 +69,31 @@ import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "./lib/pdfTempla
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
+type NavSection = "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
+
+/** Deep links: /today (manifest shortcut, notification click) opens the Today screen. */
+function initialSection(): NavSection {
+  try { return window.location.pathname === "/today" ? "today" : "achievements"; } catch { return "achievements"; }
+}
+/** ?action=add-achievement (manifest shortcut) opens the add form once the dashboard is ready. */
+function pendingAction(): string | null {
+  try { return new URLSearchParams(window.location.search).get("action"); } catch { return null; }
+}
+/** Firestore write promises resolve only after the server acknowledges: offline we must not wait. */
+const WRITE_WAIT_MS = 8000;
+function raceWrite<T>(write: Promise<T>, onLateError: (e: unknown) => void): Promise<SaveOutcome> {
+  if (!navigator.onLine) {
+    // Queued in the persistent cache; a later rejection (e.g. rules) still surfaces as a toast.
+    write.catch(onLateError);
+    return Promise.resolve("queued");
+  }
+  let timedOut = false;
+  write.catch((e) => { if (timedOut) onLateError(e); });
+  return Promise.race([
+    write.then((): SaveOutcome => "saved"),
+    new Promise<SaveOutcome>((resolve) => window.setTimeout(() => { timedOut = true; resolve("queued"); }, WRITE_WAIT_MS)),
+  ]);
+}
 
 const seedAchievements: Achievement[] = [];
 /** First run: the "add child" modal opens by itself once per parent (per device) when they have no child yet. */
@@ -115,7 +145,14 @@ function Dashboard() {
   const [children, setChildren] = useState<Child[]>([]);
   const [activeChildIdx, setActiveChildIdx] = useState(0);
   const [loadingChildren, setLoadingChildren] = useState(true);
-  const [activeSection, setActiveSection] = useState<NavSection>("achievements");
+  const [activeSection, setActiveSectionState] = useState<NavSection>(initialSection);
+  // Keep the URL in step so a reload / "add to home screen" of /today stays on the Today screen.
+  function setActiveSection(id: NavSection) {
+    setActiveSectionState(id);
+    try { window.history.replaceState(null, "", id === "today" ? "/today" : "/"); } catch { /* sandboxed */ }
+  }
+  const [installKind, setInstallKind] = useState<InstallKind>("none");
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -152,6 +189,42 @@ function Dashboard() {
     usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
+
+  // Install nudge (iOS guide / Android prompt) from the 2nd open on; see src/lib/install.ts.
+  useEffect(() => {
+    const n = bumpOpenCount();
+    setInstallKind(installBannerKind(n));
+    return onInstallPromptChange(() => setInstallKind(installBannerKind(n)));
+  }, []);
+
+  // Notification click while the app is already open: the service worker posts { type: "navigate" }.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "navigate" && e.data.url === "/today") setActiveSection("today");
+    };
+    navigator.serviceWorker.addEventListener("message", onMsg);
+    return () => navigator.serviceWorker.removeEventListener("message", onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push: refresh an existing token at start (lastSeenAt) and show foreground pushes as a toast.
+  useEffect(() => {
+    if (!user || localMode) return;
+    void refreshPushToken(currentIdToken, i18n.language);
+    let off: (() => void) | undefined;
+    void onForegroundPush((d) => { if (d.body) setToast({ kind: "info", message: d.body }); }).then((fn) => { off = fn; });
+    return () => { off?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, localMode]);
+
+  // Manifest shortcut "Амжилт нэмэх": open the add form once a child is ready (parents only).
+  useEffect(() => {
+    if (!child || pendingAction() !== "add-achievement" || user?.role === "teacher") return;
+    setShowForm(true);
+    try { window.history.replaceState(null, "", "/"); } catch { /* sandboxed */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [child?.childId, user?.role]);
 
   useEffect(() => {
     if (user && !localMode && user.role === "teacher") {
@@ -225,9 +298,17 @@ function Dashboard() {
       return;
     }
     if (!localMode) {
+      // Offline v1: photos cannot be uploaded, so the achievement is saved without them
+      // (an IndexedDB upload queue is a later version). Text is queued by Firestore.
+      const offline = !navigator.onLine;
+      const payload = offline && draft.images.length > 0 ? { ...draft, images: [] } : draft;
       try {
-        await createAchievement(child.childId, draft);
+        const outcome = await raceWrite(createAchievement(child.childId, payload), () => setToast({ kind: "error", message: t("status.errorSaving") }));
         setShowForm(false);
+        if (outcome === "queued" || offline) {
+          setToast({ kind: "info", message: t(draft.images.length > 0 && offline ? "offline.photosLater" : "offline.queuedAchievement") });
+          return;
+        }
         setToast({ kind: "success", message: t("status.saved") });
         celebrate({ mega: draft.awardType === "Gold" });
         // setChampMood("excited");
@@ -325,14 +406,16 @@ function Dashboard() {
     setToast({ kind: "success", message: t("status.deleted") });
   }
 
-  async function handleAddPracticeLog(log: { date: string; duration: number; content: string }) {
-    if (!child) return;
+  async function handleAddPracticeLog(log: { date: string; duration: number; content: string }): Promise<SaveOutcome> {
+    if (!child) return "saved";
     if (!localMode) {
-      try { await createPracticeLog(child.childId, log); }
+      // Offline (or a stalled connection): the write sits in Firestore's queue and the
+      // listener already shows it (hasPendingWrites); don't block the form on the server ack.
+      try { return await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
-      return;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
+    return "saved";
   }
 
   async function handleAddReflection(r: { date: string; mood: 1|2|3|4|5; content: string; parentNote?: string }) {
@@ -552,6 +635,7 @@ function Dashboard() {
   }
 
   const navItems: { id: NavSection; label: string; Icon: LucideIcon }[] = [
+    { id: "today", label: t("nav.today"), Icon: CalendarCheck },
     { id: "achievements", label: t("nav.achievements"), Icon: Trophy },
     { id: "practice", label: t("nav.practice"), Icon: Clock },
     { id: "reflection", label: t("nav.reflection"), Icon: Heart },
@@ -647,6 +731,7 @@ function Dashboard() {
         <div className="bg-warn-soft px-4 py-2 text-center t-caption text-warn print:hidden">{t("status.offlineBanner")}</div>
       )}
       {isGuest && <GuestBanner onSignUp={handleGuestSignUp} />}
+      {!localMode && <OfflineBanner />}
 
       {/* -- BODY: мобайл = flex-col, desktop = flex-row -- */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
@@ -733,6 +818,20 @@ function Dashboard() {
           <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && <TeacherBanner label={t("status.teacherMode")} />}
           <div key={activeSection} className="cs-section-in">
+          {activeSection === "today" && (
+            <div className="px-4 py-6 max-w-3xl mx-auto">
+              <SectionHeader title={t("today.title")} subtitle={child.name} />
+              <TodayPage
+                kids={children}
+                activeIdx={activeChildIdx}
+                onSelectChild={setActiveChildIdx}
+                logs={practiceLogs}
+                onAdd={handleAddPracticeLog}
+                onDelete={handleDeletePracticeLog}
+                readOnly={isTeacher}
+              />
+            </div>
+          )}
           {activeSection === "achievements" && (
             <TimelineDashboard
               child={child}
@@ -740,6 +839,7 @@ function Dashboard() {
               loading={loadingAch && !localMode}
               readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
+              onTodayClick={() => setActiveSection("today")}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
@@ -992,8 +1092,19 @@ function Dashboard() {
           childrenCount={isTeacher ? 0 : children.length}
           onClose={() => setShowAccount(false)}
           onDeleteAccount={handleDeleteAccount}
+          onShowInstall={() => setShowInstallGuide(true)}
         />
       )}
+      {installKind !== "none" && !showInstallGuide && (
+        <InstallBanner
+          kind={installKind}
+          bottomOffset={showUpgradeBar ? 116 : 72}
+          onHow={() => setShowInstallGuide(true)}
+          onInstall={() => { void promptInstall().then((r) => { if (r === "accepted") setInstallKind("none"); }); }}
+          onLater={() => { snoozeInstall(); setInstallKind("none"); }}
+        />
+      )}
+      {showInstallGuide && <InstallGuideModal onClose={() => { setShowInstallGuide(false); if (installKind !== "none") { snoozeInstall(); setInstallKind("none"); } }} />}
       {showSubscription && <SubscriptionModal initialTier={modalTier} onClose={() => { setShowSubscription(false); setModalTier(undefined); }} />}
       <PdfPreviewModal
         open={previewOpen}

@@ -67,6 +67,7 @@ import type {
 } from "../types";
 import { compressImage } from "../utils/image";
 import { infoFromDoc, toDate, type SubscriptionInfo } from "./subscription";
+import { reportPending } from "./pendingWrites";
 
 // -----------------------------------------------------------------------------
 // Init
@@ -106,6 +107,8 @@ if (isFirebaseConfigured) {
 export const db = _db;
 export const storage = _storage;
 export const auth = _auth;
+/** The initialised app (null when not configured) — src/lib/push.ts needs it for Messaging. */
+export const firebaseApp = app;
 
 function requireDb(): Firestore {
   if (!_db) throw new Error("Firebase тохируулагдаагүй байна.");
@@ -466,9 +469,14 @@ export function subscribeAchievements(
 ) {
   const db = requireDb();
   const q = query(collection(db, "achievements"), where("childId", "==", childId));
-  return onSnapshot(
+  const key = `achievements:${childId}`;
+  // includeMetadataChanges: offline writes show up at once (hasPendingWrites) and the
+  // offline banner's "N queued" counter drops when the server acknowledges them.
+  const unsub = onSnapshot(
     q,
+    { includeMetadataChanges: true },
     (snap) => {
+      reportPending(key, snap.docs.filter((d) => d.metadata.hasPendingWrites).length);
       const items = snap.docs.map(toAchievement).sort((a, b) => (a.date < b.date ? 1 : -1));
       cb(items);
     },
@@ -477,6 +485,7 @@ export function subscribeAchievements(
       onError?.(err);
     }
   );
+  return () => { unsub(); reportPending(key, 0); };
 }
 
 function toAchievement(snap: QueryDocumentSnapshot<DocumentData>): Achievement {
@@ -522,16 +531,47 @@ export function subscribePracticeLogs(
 ) {
   const db = requireDb();
   const q = query(collection(db, "practiceLogs"), where("childId", "==", childId));
-  return onSnapshot(
+  const key = `practiceLogs:${childId}`;
+  const unsub = onSnapshot(
     q,
+    { includeMetadataChanges: true },
     (snap) => {
-    const items = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as PracticeLog))
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-    cb(items);
+      reportPending(key, snap.docs.filter((d) => d.metadata.hasPendingWrites).length);
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as PracticeLog))
+        .sort((a, b) => (a.date < b.date ? 1 : -1));
+      cb(items);
     },
     (err) => { console.error("[champstep] practiceLogs error:", err); onError?.(err); }
   );
+  return () => { unsub(); reportPending(key, 0); };
+}
+
+// -----------------------------------------------------------------------------
+// Reminders (users/{uid}.reminders — client-writable profile field, see firestore.rules)
+// -----------------------------------------------------------------------------
+
+export interface ReminderPrefs {
+  daily: boolean;
+  competition: boolean;
+}
+
+export async function getReminderPrefs(uid: string): Promise<ReminderPrefs> {
+  const data = await getUserDoc(uid);
+  const r = (data?.reminders ?? {}) as Partial<ReminderPrefs>;
+  return { daily: r.daily === true, competition: r.competition === true };
+}
+
+export async function setReminderPrefs(uid: string, prefs: ReminderPrefs): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "users", uid), { reminders: { ...prefs, updatedAt: serverTimestamp() } });
+}
+
+/** Firebase ID token of the signed-in user (for /api/push/*). */
+export async function currentIdToken(): Promise<string> {
+  const u = requireAuth().currentUser;
+  if (!u) throw new Error("not signed in");
+  return u.getIdToken();
 }
 
 // -----------------------------------------------------------------------------

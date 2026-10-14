@@ -114,7 +114,8 @@
     "coach": "Coach",
     "pdf": "PDF",
     "about": "About",
-    "terms": "Terms"
+    "terms": "Terms",
+    "today": "Today"
   },
   "auth": {
     "resetEnterEmail": "Enter your e-mail first.",
@@ -646,5 +647,68 @@
       "error": "Could not delete. Check your connection and try again.",
       "rateLimited": "Too many attempts. Please wait a while and try again."
     }
+  },
+  "today": {
+    "title": "Today",
+    "subtitle": "Log practice",
+    "dashboardButton": "Log today's practice",
+    "isToday": "Today",
+    "isYesterday": "Yesterday",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "backToToday": "Back to today",
+    "streak_one": "{{count}} day streak",
+    "streak_other": "{{count}} days streak",
+    "streakNone": "Start today",
+    "week": "Last 7 days",
+    "childLabel": "Child",
+    "whatPlaceholder": "What did you practice?",
+    "durationLabel": "Duration",
+    "minutes": "{{count}} min",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "queued": "Saved — syncs when back online",
+    "entriesTitle": "Entries for this day",
+    "noEntries": "No entries for this day",
+    "teacherNote": "Teachers can only view"
+  },
+  "reminders": {
+    "title": "Reminders",
+    "desc": "Push notifications. Only the reminders you choose; no marketing.",
+    "daily": "Remind me daily at 20:00",
+    "dailyHint": "Only when no practice was logged that day",
+    "competition": "Remind me the day before a competition",
+    "competitionHint": "When an achievement is dated tomorrow",
+    "installFirst": "Add the app to your home screen first — on iOS notifications only work in the installed app.",
+    "howToInstall": "How to install?",
+    "denied": "Notifications are blocked. Allow them for ChampStep in your browser or phone settings.",
+    "unsupported": "This browser does not support push notifications.",
+    "notConfigured": "Push reminders are not configured on this deployment.",
+    "dismissed": "Permission was not granted, reminders stay off.",
+    "error": "Could not enable reminders. Please try again.",
+    "timeNote": "Time: 20:00 (Ulaanbaatar). At most one notification per day.",
+    "guestNote": "Available for signed-in accounts only.",
+    "working": "Please wait...",
+    "installApp": "Install as an app"
+  },
+  "install": {
+    "bannerTitle": "Add to your home screen",
+    "bannerText": "Get reminders and open it like an app",
+    "how": "How?",
+    "later": "Later",
+    "install": "Install",
+    "modalTitle": "Add to Home Screen",
+    "step1": "Tap the Share button at the bottom of Safari",
+    "step2": "Choose \"Add to Home Screen\"",
+    "step3": "Tap \"Add\" in the top right",
+    "done": "Got it"
+  },
+  "offline": {
+    "banner": "No internet — what you write is saved once you reconnect",
+    "pending_one": "{{count}} entry waiting to sync",
+    "pending_other": "{{count}} entries waiting to sync",
+    "photosLater": "Saved without photos (no internet). Add the photos once you are back online.",
+    "queuedAchievement": "Saved — syncs once you are back online."
   }
 }

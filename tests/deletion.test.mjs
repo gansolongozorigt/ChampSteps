@@ -48,6 +48,8 @@ function makeWorld() {
   put("aiInsights", OTHER_KID, { childId: OTHER_KID, text: "y" });
   put("payments", "CS-1", { uid: PARENT, plan: "master", amount: 24900, status: "paid" });
   put("aiUsage", PARENT, { count: 3 });
+  put("pushTokens", "tok-parent-1", { uid: PARENT, platform: "ios-pwa" });
+  put("pushTokens", "tok-other-1", { uid: OTHER, platform: "android" });
   for (let i = 0; i < 34; i++) files.add(`achievements/${KID}/${i}.jpg`);
   files.add(`avatars/${KID}/a.png`);
   files.add(`achievements/${OTHER_KID}/1.jpg`);
@@ -210,6 +212,8 @@ test("processAccountDelete (parent): all children + user doc + auth user gone, p
   assert.ok(w.col("children").has(OTHER_KID));
   assert.ok(!w.col("users").has(PARENT));
   assert.ok(!w.col("aiUsage").has(PARENT));
+  assert.ok(!w.col("pushTokens").has("tok-parent-1"), "push tokens of the deleted account are gone");
+  assert.ok(w.col("pushTokens").has("tok-other-1"), "other users' push tokens untouched");
   assert.ok(!w.authUsers.has(PARENT));
   assert.ok(w.col("payments").has("CS-1"), "financial record kept");
   assert.equal(w.col("payments").get("CS-1").uid, PARENT, "payment uid untouched");

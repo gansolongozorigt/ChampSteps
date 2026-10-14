@@ -11,6 +11,7 @@
 //   inviteCodes/{code}.childId              a redeemed teacher code points at the child
 //   aiInsights/{childId}                    server-written AI cache, doc id == childId
 //   Storage achievements/{childId}/**  avatars/{childId}/**
+//   pushTokens/{token}.uid                  web push registrations of the account (account delete only)
 //   payments/{orderId}                      uid + plan + amount only — never touched
 //
 // Deletion order (a failed step leaves children/{childId} in place, so a retry
@@ -157,6 +158,7 @@ export async function deleteAccountData(deps: DeletionDeps, uid: string): Promis
 
   await deps.deleteDoc("aiUsage", uid);
   await deps.deleteDoc("deletionUsage", uid);
+  await deps.deleteWhere("pushTokens", "uid", uid); // web push registrations (api/_lib/push.ts)
   const userDoc = (await deps.recursiveDeleteDoc("users", uid)) ? 1 : 0;
   const authUser = (await deps.deleteAuthUser(uid)) ? 1 : 0;
   return { children: childIds.length, childData, teacherInviteCodes, teacherCoachNotes, unlinkedStudents: taught.length, userDoc, authUser };
