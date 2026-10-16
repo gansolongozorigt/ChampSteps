@@ -2,6 +2,7 @@
 //
 //   npm run marketing:shots                    (production https://www.champstep.mn, Chrome)
 //   SHOTS_BASE_URL=http://127.0.0.1:5174 npm run marketing:shots   (any deployment / dev server)
+//   SHOTS_PDF_ONLY=1 npm run marketing:shots                        (only the three PDF pages)
 //
 // Creates ONE throw-away account (qa+<ts>-marketing@champstep.mn — the e2e naming the Admin SDK
 // cleanup helpers accept), seeds believable data through the Admin SDK (child "Анар", a goal 61 days
@@ -21,6 +22,8 @@ import { childrenOf, cleanupTestUser, setTier, testEmail, uidByEmail } from "../
 import { PASSWORD, fillAddChildModal, nav, newPage, openUserMenu, signIn, signUp, tr, waitForDashboard } from "../../tests/e2e/helpers/app.ts";
 
 const BASE_URL = process.env.SHOTS_BASE_URL ?? "https://www.champstep.mn";
+/** SHOTS_PDF_ONLY=1: account + seed + the three PDF pages only (e.g. against a dev server with a local pdfExport fix). */
+const PDF_ONLY = process.env.SHOTS_PDF_ONLY === "1";
 const DIR = "scratch/marketing";
 const TZ = "Asia/Ulaanbaatar";
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true };
@@ -224,14 +227,14 @@ try {
   await waitForDashboard(page);
   await settle(page); // "Анар-г нэмлээ" toast
 
-  await step("13b-plans-modal", async () => {
+  if (!PDF_ONLY) await step("13b-plans-modal", async () => {
     await page.locator("header").first().getByTitle(tr("nav.subscription")).click();
     await page.getByRole("heading", { name: tr("sub.title") }).waitFor();
     await sleep(500);
     await shot(page, "13b-plans-modal.png");
     await closeModal(page);
   });
-  await step("02-goal-form", async () => {
+  if (!PDF_ONLY) await step("02-goal-form", async () => {
     await nav(page, "today");
     await page.getByTestId("goal-add-card").click();
     await page.getByTestId("goal-title").fill(GOAL_TITLE);
@@ -252,7 +255,7 @@ try {
   await page.getByTestId("goal-card").waitFor({ timeout: 40_000 }); // /today has no "add achievement" button → don't use waitForDashboard here
   await sleep(800);
 
-  await step("13-plans", async () => {
+  if (!PDF_ONLY) await step("13-plans", async () => {
     await nav(page, "about");
     const heading = page.getByText(tr("about.pricingHeading"), { exact: true }).first();
     await heading.waitFor();
@@ -261,14 +264,14 @@ try {
     await sleep(500);
     await shot(page, "13-plans.png");
   });
-  await step("01-today-goal-nav", async () => { await page.goto("/today"); await page.getByTestId("goal-card").waitFor({ timeout: 40_000 }); await sleep(800); });
-  await step("01-today-goal", async () => {
+  if (!PDF_ONLY) await step("01-today-goal-nav", async () => { await page.goto("/today"); await page.getByTestId("goal-card").waitFor({ timeout: 40_000 }); await sleep(800); });
+  if (!PDF_ONLY) await step("01-today-goal", async () => {
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
     const countdown = await page.getByTestId("goal-countdown").textContent();
     if (!countdown?.includes(`${GOAL_IN_DAYS} өдөр`)) throw new Error(`countdown shows "${countdown}"`);
     await shot(page, "01-today-goal.png");
   });
-  await step("03-goal-detail", async () => {
+  if (!PDF_ONLY) await step("03-goal-detail", async () => {
     await page.getByTestId("goal-card").click();
     await page.getByTestId("goal-detail").waitFor();
     await sleep(500);
@@ -276,7 +279,7 @@ try {
     await page.getByTestId("goal-detail").getByRole("button", { name: tr("goals.detail.close"), exact: true }).click();
     await page.getByTestId("goal-detail").waitFor({ state: "hidden" });
   });
-  await step("07-quick-log", async () => {
+  if (!PDF_ONLY) await step("07-quick-log", async () => {
     const box = page.getByPlaceholder(tr("today.whatPlaceholder"));
     await box.fill("Эндшпиль дасгал, тактикийн 10 бодлого");
     await page.getByRole("button", { name: tr("today.minutes", { count: 45 }), exact: true }).click();
@@ -285,14 +288,14 @@ try {
     await shot(page, "07-quick-log.png");
     await box.fill("");
   });
-  await step("05-dashboard", async () => {
+  if (!PDF_ONLY) await step("05-dashboard", async () => {
     await nav(page, "achievements");
     await page.getByTestId("next-goal-line").waitFor();
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
     await waitForPhoto(page);
     await shot(page, "05-dashboard.png");
   });
-  await step("06-achievement-prep", async () => {
+  if (!PDF_ONLY) await step("06-achievement-prep", async () => {
     const prep = page.getByTestId("prep-line").first();
     await prep.waitFor();
     await prep.evaluate((el) => (el.closest("li") ?? el).scrollIntoView({ block: "start" }));
@@ -300,7 +303,7 @@ try {
     await waitForPhoto(page);
     await shot(page, "06-achievement-prep.png");
   });
-  await step("08-reminder-toggle", async () => {
+  if (!PDF_ONLY) await step("08-reminder-toggle", async () => {
     await openUserMenu(page);
     await page.getByRole("button", { name: tr("danger.account.menu") }).click();
     const rem = page.getByTestId("reminder-settings");
@@ -318,7 +321,7 @@ try {
   });
 
   // ---------- iOS Safari tab: install guide ----------
-  await step("09-install-banner", async () => {
+  if (!PDF_ONLY) await step("09-install-banner", async () => {
     const ios = await browser.newContext({ ...ctxOpts, ...PHONE, userAgent: IOS_UA });
     await ios.addInitScript(() => { try { localStorage.setItem("champstep.openCount", "5"); } catch {} });
     const p = await newPage(ios);
@@ -335,7 +338,7 @@ try {
   });
 
   // ---------- reel frames 1290×2796 ----------
-  await step("reel", async () => {
+  if (!PDF_ONLY) await step("reel", async () => {
     const reel = await browser.newContext({ ...ctxOpts, ...REEL });
     const p = await newPage(reel);
     p.setDefaultTimeout(25_000);
@@ -362,7 +365,7 @@ try {
   });
 
   // ---------- competition day (browser clock = the goal's date) — last in this context ----------
-  await step("04-competition-day", async () => {
+  if (!PDF_ONLY) await step("04-competition-day", async () => {
     await page.clock.install({ time: atUB(goalDate, "10:00") });
     await page.goto("/today");
     await page.getByTestId("celebration").waitFor({ timeout: 40_000 });
