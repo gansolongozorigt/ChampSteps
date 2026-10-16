@@ -64,6 +64,15 @@ node scripts/admin/create-promo.mjs MOTIVATOR-2026 coach 365 5 --until 2027-12-3
 - `plan`, `days`-ийг бичнэ (сервер эдгээрийг уншина); `discountMonths = round(days/30)`-ийг хуучин admin UI-д харагдахын тулд давхар хадгална.
 - Байгаа кодыг дарж бичихгүй (exit 1).
 - Үүссэн код: **MOTIVATOR-2026** (2026-10-13): coach × 365 хоног, maxUses 5, 2027-12-31 хүртэл.
+- Кампанит код **EHLEL2026** (Эхлэл 2026): family × 30 хоног, maxUses 100, 2026-11-30 хүртэл. Үүсгэх (нэг удаа, Ga ажиллуулна):
+
+  ```
+  node scripts/admin/create-promo.mjs EHLEL2026 family 30 100 --until 2026-11-30 --note "Эхлэл 2026 campaign"
+  ```
+
+  Хэрэглэгч: Багцын модал → «Хямдралын код» → `EHLEL2026` → «Хэрэглэх» → Гэр бүл багц 30 хоног (`subscription.provider = "promo"`).
+  Хязгаар, давхар ашиглалт, хугацаа дууссан шалгалт `api/_lib/promo.ts` → `promoRejectReason` (тест `tests/promo.test.mjs`).
+  30 хоногийн дараа `/api/subscription/status` хэвийн урсгалаар free болгоно. Rules өөрчлөгдөөгүй (`promoCodes` client-д бүрэн хаалттай хэвээр).
 
 ## 3. Шууд багц олгох (партнер, goodwill) — төлбөргүй
 
@@ -195,3 +204,22 @@ deadTokens=…` (uid, нэр хэзээ ч логлохгүй). `failed` их б
 Push ирэхгүй бол: (1) pushTokens-д тухайн uid-ийн token байгаа эсэх, (2) users doc-ийн `reminders.daily` true эсэх,
 (3) тухайн өдөр practiceLog бичсэн бол санаатайгаар ирэхгүй, (4) iOS: апп нүүр дэлгэцээс нээгдсэн байх ёстой.
 Тест: `npm run test:api` (register/unregister/cron, FCM mock — `tests/push.test.mjs`).
+
+## 9. Хэмжилт (metrics, 2026-10-16-наас)
+
+```
+npm run metrics -- --from 2026-10-20 --to 2026-10-26 [--json scratch/metrics.json]
+```
+
+Зөвхөн уншина (Admin SDK). Огноо = Улаанбаатарын хоног, хоёр тал орсон. Markdown хүснэгт + JSON: шинэ бүртгэл (role-оор),
+зочин → бүртгэл (`users.guestMigratedAt` — апп туршилтын өгөгдлийг бүртгэлд шилжүүлэхэд тамгална), үүсгэсэн хүүхэд / зорилго,
+сануулга асаасан хэрэглэгч (`users.reminders.updatedAt`), бэлтгэлийн бичлэг, амжилт, промо ашигласан (`subscription.provider == "promo"`, кодоор),
+төлбөр (захиалга / төлсөн / ₮, багцаар), промо кодын бүх цагийн хэрэглээ. uid, имэйл хэвлэхгүй.
+
+## 10. Маркетингийн материал (2026-10-16-наас)
+
+- `npm run marketing:shots` — production дээр `qa+<ts>-marketing@champstep.mn` түр аккаунт үүсгэж, Admin SDK-ээр бодит харагдах
+  өгөгдөл (хүүхэд «Анар», 61 хоногийн дараах зорилго, 14 хоногийн 11-д нь бэлтгэл, prep-тэй амжилт, сануулга) суулгаад
+  `scratch/marketing/*.png` (390×844 @3x, reel 1290×2796, PDF 3 загварын 1-р хуудас 1240px) авч, аккаунтыг устгана.
+  Өөр орчин: `SHOTS_BASE_URL=https://<preview> npm run marketing:shots`.
+- `npm run marketing:og` — `public/og.png` (1200×630) share preview зураг; `index.html`-ийн og:/twitter: meta үүнийг заана.

@@ -685,16 +685,18 @@ async function renderFramed(
       doc.setFontSize(9);
       doc.setTextColor(...INK3);
       const meta = `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  `;
+      const metaW = doc.getTextWidth(meta); // measured at 9 pt — the size it is drawn with
       doc.text(meta, X + 4, y + 5.5);
       setFont(doc, "bold");
       doc.setTextColor(...award);
-      doc.text(t(`awards.${a.awardType}`), X + 4 + doc.getTextWidth(meta), y + 5.5);
+      doc.text(t(`awards.${a.awardType}`), X + 4 + metaW, y + 5.5);
       if (prepLine(a, t)) {
-        const awardW = doc.getTextWidth(t(`awards.${a.awardType}`));
+        const awardW = doc.getTextWidth(t(`awards.${a.awardType}`)); // bold 9 pt, as drawn
         setFont(doc, "normal");
         doc.setFontSize(8);
         doc.setTextColor(...INK2);
-        doc.text(`  ·  ${prepLine(a, t)}`, X + 4 + doc.getTextWidth(meta) + awardW, y + 5.5);
+        // x uses the 9 pt widths captured above; re-measuring `meta` here (8 pt) put the prep line over the award word
+        doc.text(`  ·  ${prepLine(a, t)}`, X + 4 + metaW + awardW, y + 5.5);
       }
       if (descLines.length) {
         setFont(doc, "normal");

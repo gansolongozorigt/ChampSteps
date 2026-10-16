@@ -77,6 +77,26 @@ export function toView(doc: PromoCodeDoc): PromoCodeView {
   };
 }
 
+export type PromoRejectReason = "not_found" | "inactive" | "expired" | "used" | "exhausted";
+
+/**
+ * Why a code can NOT be redeemed by `uid` right now, or null when it can.
+ * Order matches /api/promo/apply: not_found → inactive → expired → used → exhausted.
+ * `maxUses` 0 / absent = unlimited. Pure: the handler's transaction calls this and
+ * tests/promo.test.mjs covers it without Firestore.
+ */
+export function promoRejectReason(doc: PromoCodeDoc | null | undefined, uid: string, now: Date = new Date()): PromoRejectReason | null {
+  if (!doc) return "not_found";
+  if (doc.active === false) return "inactive";
+  const exp = promoExpiresAt(doc);
+  if (exp && exp.getTime() < now.getTime()) return "expired";
+  const usedBy = Array.isArray(doc.usedBy) ? doc.usedBy : [];
+  if (usedBy.includes(uid)) return "used";
+  const max = Number(doc.maxUses) || 0;
+  if (max > 0 && usedBy.length >= max) return "exhausted";
+  return null;
+}
+
 export function normalizeCode(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const c = v.trim().toUpperCase();

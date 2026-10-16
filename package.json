@@ -17,7 +17,10 @@
     "test:pdf": "node --import tsx --test tests/pdf-templates.test.mjs",
     "test:export": "node --import tsx --test tests/export-data.test.mjs",
     "test:goals": "node --import tsx --test tests/goals.test.mjs",
-    "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs tests/push.test.mjs tests/streak.test.mjs"
+    "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs tests/push.test.mjs tests/streak.test.mjs",
+    "marketing:shots": "node --import tsx scripts/marketing/screenshots.mjs",
+    "marketing:og": "node scripts/marketing/og-image.mjs",
+    "metrics": "node scripts/admin/metrics.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
