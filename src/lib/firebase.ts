@@ -622,6 +622,16 @@ export async function setReminderPrefs(uid: string, prefs: ReminderPrefs): Promi
 }
 
 /** Firebase ID token of the signed-in user (for /api/push/*). */
+/**
+ * Metrics only: stamps users/{uid}.guestMigratedAt when the device's trial data was moved into a
+ * new account (scripts/admin/metrics.mjs "зочин → бүртгэл"). Best-effort — never blocks the flow.
+ */
+export async function markGuestMigrated(uid: string): Promise<void> {
+  const db = requireDb();
+  try { await updateDoc(doc(db, "users", uid), { guestMigratedAt: serverTimestamp() }); }
+  catch (e) { console.warn("[champstep] guestMigratedAt not written:", e); }
+}
+
 export async function currentIdToken(): Promise<string> {
   const u = requireAuth().currentUser;
   if (!u) throw new Error("not signed in");
