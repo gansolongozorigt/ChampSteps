@@ -3,8 +3,10 @@
 // practice notes, 60+ char title, 12 achievements) and the 3 templates are
 // downloaded to scratch/pdf-check/<local|preview>/<template>.pdf. Render them
 // with `node scratch/render-png.mjs scratch/pdf-check/<dir>` and look at the PNGs.
-// Against a protected Vercel preview: E2E_BASE_URL=<preview> + VERCEL_OIDC_TOKEN
-// (vercel env run) — the token goes only to requests for the preview origin.
+// Against a protected Vercel preview: E2E_BASE_URL=<preview> plus either
+// VERCEL_AUTOMATION_BYPASS_SECRET (Settings → Deployment Protection → Protection
+// Bypass for Automation; the secret `vercel curl` uses) or VERCEL_OIDC_TOKEN
+// (Trusted Sources) — the header goes only to requests for the preview origin.
 import { mkdirSync } from "node:fs";
 import sharp from "sharp";
 import { test, expect } from "./fixtures";
@@ -33,14 +35,18 @@ test("pdf layout: test data in, 3 templates downloaded for the visual check", as
   test.setTimeout(10 * 60_000);
   mkdirSync(OUT, { recursive: true });
 
-  // Protected Vercel preview: short-lived OIDC token as a header, only for the preview origin.
+  // Protected Vercel preview: bypass header only for requests to the preview origin.
   const base = process.env.E2E_BASE_URL;
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   const oidc = process.env.VERCEL_OIDC_TOKEN;
-  if (base && oidc) {
+  if (base && (bypass || oidc)) {
     const origin = new URL(base).origin;
+    const extra: Record<string, string> = bypass
+      ? { "x-vercel-protection-bypass": bypass, "x-vercel-set-bypass-cookie": "true" }
+      : { "x-vercel-trusted-oidc-idp-token": oidc! };
     await context.route("**/*", (route) => {
       const req = route.request();
-      if (req.url().startsWith(origin)) return route.continue({ headers: { ...req.headers(), "x-vercel-trusted-oidc-idp-token": oidc } });
+      if (req.url().startsWith(origin)) return route.continue({ headers: { ...req.headers(), ...extra } });
       return route.continue();
     });
   }
