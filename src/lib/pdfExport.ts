@@ -4,7 +4,7 @@
 //   framed    — гэрчилгээний хэв маяг, хуудас бүр давхар хүрээтэй
 //   portfolio — зургийн загвар: дугуй хүрээтэй карт, гэрчилгээ бүтэн хуудсаар хавсралтад
 // Амжилт бүр 2 баганат карт (drawCard): зүүн талд label/value мөрүүд + тэмдэглэл
-// (бүтнээрээ, эвхэгдсэн), баруун талд зургууд (харьцаа хадгална, max 60mm).
+// (бүтнээрээ, эвхэгдсэн), баруун талд зургууд (харьцаа хадгална, max 45mm).
 // Хэрэглэгчийн текст бүр wrapLines/drawWrapped-оор баганын өргөнд эвхэгдэнэ —
 // хэмжих, зурах хоёр ижил фонтоор (өмнөх алдаа: 8pt-ээр хэмжээд 9.5pt-ээр зурдаг байсан).
 // Монгол+Англи+Орос хэл, NotoSans фонт (emoji байхгүй — NotoSans зурдаггүй),
@@ -520,9 +520,8 @@ interface Line { h: number; draw: (x: number, yTop: number) => void }
  * Draws one achievement as a 2-column card at flow.y and advances the flow.
  *
  *   TITLE (≤ 2 lines, "…")                      full width
- *   date · location · category · award           meta line
  *   label  value rows | photos (aspect kept,     left ≈ 58 %, right ≈ 42 %
- *   notes (all lines) | max 60 mm each, ≤ 3,
+ *   notes (all lines) | max 45 mm each, ≤ 3,
  *   practice notes    | "+N" for the rest)
  *
  * Measured first: a card that does not fit goes on the next page; a card taller
@@ -537,16 +536,11 @@ async function drawCard(ctx: CardCtx, flow: Flow, a: Achievement): Promise<numbe
   const award = AWARD_COLOR[a.awardType] ?? INK3;
   const indent = ctx.style === "portfolio" ? 8 : ctx.style === "framed" ? 4 : 0; // room for the award marker beside the title
 
-  // ---- header: title (≤ 2 lines) + meta line (≤ 2 lines) ----
+  // ---- header: title (≤ 2 lines) + 4 mm before the label/value rows ----
   const titleFont: FontSpec = { size: ctx.style === "official" ? 11 : 12, weight: "bold", color: INK };
   const titleLH = lineHeightFor(titleFont.size);
   const titleLines = wrapLines(doc, a.title, innerW - indent, titleFont, 2);
-  const metaFont: FontSpec = { size: 8.5, color: INK3 };
-  const metaLH = lineHeightFor(metaFont.size);
-  const meta = [a.date, a.location, t(`categories.${a.category}`), t(`awards.${a.awardType}`)]
-    .map((v) => String(v ?? "").trim()).filter(Boolean).join("  ·  ");
-  const metaLines = wrapLines(doc, meta, innerW - indent, metaFont, 2);
-  const headerH = titleLines.length * titleLH + 0.5 + metaLines.length * metaLH + 2;
+  const headerH = titleLines.length * titleLH + 4;
 
   // ---- right column: photos ----
   const loaded = ctx.includeImages ? await loadCardImages(doc, a.imageURLs ?? []) : { images: [], more: 0 };
@@ -617,9 +611,6 @@ async function drawCard(ctx: CardCtx, flow: Flow, a: Achievement): Promise<numbe
     else if (ctx.style === "portfolio") doc.circle(x0 + 2.2, base - 1.5, 2.2, "F");
     applyFont(doc, titleFont);
     titleLines.forEach((line, i) => doc.text(line, x0 + indent, base + i * titleLH));
-    applyFont(doc, metaFont);
-    const metaBase = top + pad + titleLines.length * titleLH + 0.5 + metaLH * 0.8;
-    metaLines.forEach((line, i) => doc.text(line, x0 + indent, metaBase + i * metaLH));
     return top + pad + headerH;
   };
   const drawImages = (top: number) => {

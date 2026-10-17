@@ -44,7 +44,7 @@ export const CARD = {
   /** share of the inner width given to the left (text) column when there are photos */
   leftRatio: 0.58,
   /** one photo never grows taller than this */
-  imgMaxH: 60,
+  imgMaxH: 45,
   /** vertical gap between stacked photos */
   imgGap: 3,
   /** photos shown on the card; the rest becomes "+N" */

@@ -95,7 +95,7 @@ for (const template of PDF_TEMPLATES) {
     for (const c of note) assert.ok(c.w <= leftW + EPS, `${template}: note line ${c.w.toFixed(1)} mm > column ${leftW} mm`);
     assert.equal(note.map((c) => c.text).join(" ").replace(/\s+/g, " "), LONG_NOTE.replace(/\s+/g, " "), "note text complete and in order");
     assert.ok(calls.some((c) => c.text === CASES.a.location), "location in its label row");
-    assert.ok(calls.some((c) => c.text !== CASES.a.location && c.text.includes(CASES.a.location)), "location in the meta line");
+    assert.ok(!calls.some((c) => c.text !== CASES.a.location && c.text.includes(CASES.a.location)), "no meta line under the title (the rows carry date/location/category/award)");
   });
 
   test(`${template}: (b) 3 photos keep their aspect inside the right column, text stays in the left column`, async () => {
@@ -103,10 +103,8 @@ for (const template of PDF_TEMPLATES) {
     assertInsideBox(template, calls);
     const { leftW } = cardColumns(innerW(template), true);
     for (const c of linesOf(calls, CASES.b.description)) assert.ok(c.w <= leftW + EPS, `note wider than the left column`);
-    // 3 stacked photos (≤ 60 mm each) may push the card past the framed cover's header onto page 2
     const base = template === "portfolio" ? 2 : 1;
-    const content = pageCount - 3; // 3 appendix pages, one per photo
-    assert.ok(content === base || content === base + 1, `${content} content pages`);
+    assert.equal(pageCount - 3, base, "one content page + 3 appendix pages (one per photo); 3 stacked photos ≤ 45 mm fit under every cover"); 
   });
 
   test(`${template}: (c) goal-linked achievement shows the preparation row and the last 3 practice notes, one line each`, async () => {

@@ -96,7 +96,7 @@ for (const template of PDF_TEMPLATES) {
     const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z"), onPages: (p) => { framedPages = p; } });
     assert.ok(buf instanceof ArrayBuffer && buf.byteLength > 20_000, "pdf bytes");
     if (template === "framed") {
-      // 3 cards (2 + 1 + 0 photos) flow onto ≤ 2 content pages; the 3 appendix pages come on top
+      // 3 cards (2 + 1 + 0 photos, ≤ 45 mm each) flow onto ≤ 2 content pages; the 3 appendix pages come on top
       assert.ok(framedPages.length <= 2, `framed: ${framedPages.length} content pages`);
       assert.deepEqual(framedPages.flat(), [0, 1, 2]);
       console.log(`framed content pages: ${JSON.stringify(framedPages)}`);
@@ -120,19 +120,22 @@ test("render without images and with an unknown legacy id falls back cleanly", a
   assert.ok(pages >= 1 && pages <= 2, `no appendix without images (got ${pages})`);
 });
 
-test("card columns: 58/42 split with photos, full width without; photos fit the column and stay under 60 mm", () => {
+test("card columns: 58/42 split with photos, full width without; photos fit the column and stay under 45 mm", () => {
   assert.deepEqual(cardColumns(166, false), { leftW: 166, rightW: 0 });
   const { leftW, rightW } = cardColumns(166, true);
   assert.equal(rightW, 70);
   assert.equal(leftW, 166 - 70 - CARD.colGap);
-  assert.deepEqual(fitImage(1600, 1000, 70), { w: 70, h: 43.75 });              // landscape: column wide
-  const cert = fitImage(1000, 1400, 70);                                        // portrait: capped at 60 mm tall
-  assert.equal(cert.h, 60);
-  assert.ok(Math.abs(cert.w - 60 * 1000 / 1400) < 1e-9);
-  assert.deepEqual(fitImage(0, 0, 70), { w: 70, h: 52.5 });                     // unknown size: 4:3
+  assert.equal(CARD.imgMaxH, 45);
+  assert.deepEqual(fitImage(1600, 1000, 70), { w: 70, h: 43.75 });              // landscape: column wide, under 45 mm
+  const cert = fitImage(1000, 1400, 70);                                        // portrait: capped at 45 mm tall
+  assert.equal(cert.h, 45);
+  assert.ok(Math.abs(cert.w - 45 * 1000 / 1400) < 1e-9);
+  const sq = fitImage(1000, 1000, 70);                                          // square: height cap wins
+  assert.deepEqual(sq, { w: 45, h: 45 });
+  assert.deepEqual(fitImage(0, 0, 70), { w: 60, h: 45 });                       // unknown size: 4:3, capped
 });
 
-test("framed pagination: 10 achievements → every content page carries ≥ 2, order kept, appendix = image count", async () => {
+test("framed pagination: 10 achievements → every full content page carries ≥ 2, order kept, appendix = image count", async () => {
   const many = Array.from({ length: 10 }, (_, i) => ({
     id: `m${i}`, childId: "c1",
     title: `Амжилт ${i + 1}`, date: `2026-0${(i % 9) + 1}-10`, location: "Улаанбаатар",
@@ -144,7 +147,8 @@ test("framed pagination: 10 achievements → every content page carries ≥ 2, o
   const buf = await exportPortfolio(child, many, { template: "framed", t, fonts, includeImages: true, output: "arraybuffer", onPages: (p) => { pages = p; } });
   assert.ok(Array.isArray(pages) && pages.length >= 2, "flowed over several pages");
   assert.deepEqual(pages.flat(), many.map((_, i) => i), "every achievement once, in order");
-  for (const [n, p] of pages.entries()) assert.ok(p.length >= 2, `page ${n + 1} has ${p.length} achievement(s): ${JSON.stringify(pages)}`);
+  // every page but the last carries ≥ 2 cards (the last one takes whatever is left over)
+  for (const [n, p] of pages.slice(0, -1).entries()) assert.ok(p.length >= 2, `page ${n + 1} has ${p.length} achievement(s): ${JSON.stringify(pages)}`);
   const images = many.reduce((s, a) => s + a.imageURLs.length, 0);
   const total = (Buffer.from(buf).toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   assert.equal(total, pages.length + images, `content ${pages.length} + appendix ${images} pages`);
