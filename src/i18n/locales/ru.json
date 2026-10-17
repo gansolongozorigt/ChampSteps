@@ -220,7 +220,19 @@
     "tapToEnlarge": "Нажмите для увеличения",
     "downloadSubtitle": "Скачать PDF-портфолио {{name}}",
     "includeImages": "Включить изображения",
-    "premiumMessage": "Шаблоны «В рамке» и «Портфолио» — в тарифе «Семья». Выбрать тариф"
+    "premiumMessage": "Шаблоны «В рамке» и «Портфолио» — в тарифе «Семья». Выбрать тариф",
+    "labels": {
+      "date": "Дата",
+      "location": "Место",
+      "category": "Категория",
+      "award": "Награда",
+      "prep": "Подготовка",
+      "notes": "Заметки",
+      "prepNotes": "Заметки о подготовке",
+      "morePhotos": "+{{n}} фото"
+    },
+    "prepValue": "{{days}} дн. · {{hours}} ч",
+    "prepValueMin": "{{days}} дн. · {{minutes}} мин"
   },
   "pdfPreview": {
     "title": "Предпросмотр PDF",
