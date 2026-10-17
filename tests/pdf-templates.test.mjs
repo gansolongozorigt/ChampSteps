@@ -4,49 +4,17 @@
 // Also covers the legacy template-id map and the header-only image size parser.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import sharp from "sharp";
+import { mkdirSync, writeFileSync } from "node:fs";
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate,
-  dataUrlDims, exportPortfolio, planPages, framedBlockHeight, FRAMED_BLOCK_GAP, prepLine,
+  dataUrlDims, exportPortfolio, prepValue, prepNotesFor, CARD, cardColumns, fitImage,
 } from "../src/lib/pdfExport.ts";
-import mn from "../src/i18n/locales/mn.json" with { type: "json" };
+import { makeT, fonts, fixtures } from "./helpers/pdf-fixtures.mjs";
 
 const OUT = new URL("../scratch/pdf-3/", import.meta.url);
 mkdirSync(OUT, { recursive: true });
 
-// --- i18n: same lookup the app does (i18next-style {{var}} interpolation, mn) ---
-function t(key, vars = {}) {
-  const v = key.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), mn);
-  if (typeof v !== "string") return key;
-  return v.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? ""));
-}
-
-const fonts = {
-  regular: readFileSync(new URL("../public/NotoSans-Regular.ttf", import.meta.url)).toString("base64"),
-  bold: readFileSync(new URL("../public/NotoSans-Bold.ttf", import.meta.url)).toString("base64"),
-};
-
-/** Fixture images: a landscape photo, a portrait "certificate", a square avatar. */
-async function fixtures() {
-  const svgText = (w, h, text, size, fill) =>
-    Buffer.from(`<svg width="${w}" height="${h}"><text x="50%" y="50%" font-family="Helvetica, Arial" font-size="${size}" fill="${fill}" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`);
-  const landscape = await sharp({ create: { width: 1600, height: 1000, channels: 3, background: "#2F7D5B" } })
-    .composite([{ input: svgText(1600, 1000, "PHOTO 16:10", 140, "#DDF3E6") }]).jpeg({ quality: 82 }).toBuffer();
-  const certificate = await sharp({ create: { width: 1000, height: 1400, channels: 3, background: "#FFFFFF" } })
-    .composite([
-      { input: Buffer.from(`<svg width="1000" height="1400"><rect x="40" y="40" width="920" height="1320" fill="none" stroke="#18251D" stroke-width="10"/><rect x="70" y="70" width="860" height="1260" fill="none" stroke="#2F7D5B" stroke-width="4"/></svg>`) },
-      { input: svgText(1000, 1400, "CERTIFICATE", 110, "#18251D") },
-    ]).jpeg({ quality: 85 }).toBuffer();
-  const avatar = await sharp({ create: { width: 600, height: 800, channels: 3, background: "#C9D6CE" } })
-    .composite([{ input: svgText(600, 800, "T", 320, "#18251D") }]).png().toBuffer();
-  return {
-    landscape: `data:image/jpeg;base64,${landscape.toString("base64")}`,
-    certificate: `data:image/jpeg;base64,${certificate.toString("base64")}`,
-    avatar: `data:image/png;base64,${avatar.toString("base64")}`,
-  };
-}
-
+const t = makeT("mn");
 const fx = await fixtures();
 
 const child = {
@@ -60,10 +28,25 @@ const achievements = [
   { id: "a3", childId: "c1", title: "Зургийн уралдаан — оролцогч", date: "2026-01-20", location: "Соёлын төв", category: "Arts", awardType: "Participant", description: "Зураггүй амжилт: энгийн карт хэлбэрээр харагдана.", imageURLs: [], prep: { goalId: "g1", days: 43, sessions: 50, minutes: 1860, daysTotal: 61 } },
 ];
 
-test("prepLine: goal preparation stats in hours, or minutes under one hour; empty without prep", () => {
-  assert.equal(prepLine({ prep: { goalId: "g", days: 43, sessions: 50, minutes: 1860, daysTotal: 61 } }, t), "Бэлтгэл: 43 өдөр · 31 цаг");
-  assert.equal(prepLine({ prep: { goalId: "g", days: 2, sessions: 2, minutes: 45, daysTotal: 7 } }, t), "Бэлтгэл: 2 өдөр · 45 мин");
-  assert.equal(prepLine({}, t), "");
+test("prepValue: goal preparation stats in hours, or minutes under one hour; empty without prep", () => {
+  assert.equal(prepValue({ prep: { goalId: "g", days: 43, sessions: 50, minutes: 1860, daysTotal: 61 } }, t), "43 өдөр · 31 цаг");
+  assert.equal(prepValue({ prep: { goalId: "g", days: 2, sessions: 2, minutes: 45, daysTotal: 7 } }, t), "2 өдөр · 45 мин");
+  assert.equal(prepValue({}, t), "");
+});
+
+test("prepNotesFor: newest 3 notes of the achievement's goal, one line each; nothing without prep / logs", () => {
+  const logs = [
+    { id: "l1", childId: "c1", date: "2026-04-01", duration: 30, content: "Эхний  бэлтгэл\nхоёр мөр", goalId: "g1" },
+    { id: "l2", childId: "c1", date: "2026-04-03", duration: 30, content: "   ", goalId: "g1" },
+    { id: "l3", childId: "c1", date: "2026-04-05", duration: 30, content: "Өөр зорилго", goalId: "g2" },
+    { id: "l4", childId: "c1", date: "2026-04-07", duration: 30, content: "Дөрөв", goalId: "g1" },
+    { id: "l5", childId: "c1", date: "2026-04-09", duration: 30, content: "Тав", goalId: "g1" },
+    { id: "l6", childId: "c1", date: "2026-04-11", duration: 30, content: "Зургаа", goalId: "g1" },
+  ];
+  assert.deepEqual(prepNotesFor({ prep: { goalId: "g1" } }, logs), ["Зургаа", "Тав", "Дөрөв"]);
+  assert.deepEqual(prepNotesFor({ prep: { goalId: "g1" } }, logs.slice(0, 2)), ["Эхний бэлтгэл хоёр мөр"]);
+  assert.deepEqual(prepNotesFor({}, logs), []);
+  assert.deepEqual(prepNotesFor({ prep: { goalId: "g1" } }, []), []);
 });
 
 test("template ids: exactly 3, official is free, framed/portfolio paid", () => {
@@ -91,7 +74,8 @@ test("dataUrlDims reads PNG IHDR and JPEG SOF headers", () => {
 });
 
 test("i18n: pdf keys the templates use exist in mn/en/ru and carry no emoji", async () => {
-  const keys = ["pdf.official", "pdf.framed", "pdf.portfolio", "pdf.officialDesc", "pdf.framedDesc", "pdf.portfolioDesc", "pdf.lockedCaption", "pdf.portfolioLabel", "pdf.footerLine", "pdf.backLink", "pdf.appendixTitle", "pdf.subtitle", "pdf.totalEntries", "pdf.goldMedals", "pdf.birthDate", "pdf.achievementsTitle", "pdf.premiumMessage"];
+  const keys = ["pdf.official", "pdf.framed", "pdf.portfolio", "pdf.officialDesc", "pdf.framedDesc", "pdf.portfolioDesc", "pdf.lockedCaption", "pdf.portfolioLabel", "pdf.footerLine", "pdf.backLink", "pdf.appendixTitle", "pdf.subtitle", "pdf.totalEntries", "pdf.goldMedals", "pdf.birthDate", "pdf.achievementsTitle", "pdf.premiumMessage",
+    "pdf.labels.date", "pdf.labels.location", "pdf.labels.category", "pdf.labels.award", "pdf.labels.prep", "pdf.labels.notes", "pdf.labels.prepNotes", "pdf.labels.morePhotos", "pdf.prepValue", "pdf.prepValueMin"];
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2900}-\u{297F}]/u;
   for (const lang of ["mn", "en", "ru"]) {
     const dict = (await import(`../src/i18n/locales/${lang}.json`, { with: { type: "json" } })).default;
@@ -112,7 +96,7 @@ for (const template of PDF_TEMPLATES) {
     const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z"), onPages: (p) => { framedPages = p; } });
     assert.ok(buf instanceof ArrayBuffer && buf.byteLength > 20_000, "pdf bytes");
     if (template === "framed") {
-      // 3 achievements (2 + 1 + 0 images) flow onto ≤ 2 content pages; the 3 appendix pages come on top
+      // 3 cards (2 + 1 + 0 photos) flow onto ≤ 2 content pages; the 3 appendix pages come on top
       assert.ok(framedPages.length <= 2, `framed: ${framedPages.length} content pages`);
       assert.deepEqual(framedPages.flat(), [0, 1, 2]);
       console.log(`framed content pages: ${JSON.stringify(framedPages)}`);
@@ -136,16 +120,16 @@ test("render without images and with an unknown legacy id falls back cleanly", a
   assert.ok(pages >= 1 && pages <= 2, `no appendix without images (got ${pages})`);
 });
 
-test("framed pagination: planPages fills in order, never splits, first page has its own capacity", () => {
-  assert.deepEqual(planPages([], 100, 200, 5), []);
-  assert.deepEqual(planPages([60, 60, 60], 100, 200, 5), [[0], [1, 2]]);          // 60+5+60 > 100 → page 2 (cap 200) takes two
-  assert.deepEqual(planPages([40, 40, 40, 40], 85, 85, 5), [[0, 1], [2, 3]]);      // 40+5+40 = 85 fits exactly
-  assert.deepEqual(planPages([300, 10], 100, 200, 5), [[0], [1]]);                 // over-tall block gets its own page, not split
-  assert.equal(framedBlockHeight(0, 0), 14);
-  assert.equal(framedBlockHeight(1, 1), 11 + 4.5 + 36 + 2 + 3);
-  assert.equal(framedBlockHeight(2, 3), 11 + 9 + 28 + 2 + 3);
-  assert.equal(framedBlockHeight(5, 9), framedBlockHeight(2, 3));                  // clamped to 2 lines / 3 images
-  assert.equal(FRAMED_BLOCK_GAP, 5);
+test("card columns: 58/42 split with photos, full width without; photos fit the column and stay under 60 mm", () => {
+  assert.deepEqual(cardColumns(166, false), { leftW: 166, rightW: 0 });
+  const { leftW, rightW } = cardColumns(166, true);
+  assert.equal(rightW, 70);
+  assert.equal(leftW, 166 - 70 - CARD.colGap);
+  assert.deepEqual(fitImage(1600, 1000, 70), { w: 70, h: 43.75 });              // landscape: column wide
+  const cert = fitImage(1000, 1400, 70);                                        // portrait: capped at 60 mm tall
+  assert.equal(cert.h, 60);
+  assert.ok(Math.abs(cert.w - 60 * 1000 / 1400) < 1e-9);
+  assert.deepEqual(fitImage(0, 0, 70), { w: 70, h: 52.5 });                     // unknown size: 4:3
 });
 
 test("framed pagination: 10 achievements → every content page carries ≥ 2, order kept, appendix = image count", async () => {

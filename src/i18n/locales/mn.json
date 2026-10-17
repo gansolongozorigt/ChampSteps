@@ -218,7 +218,19 @@
     "premiumMessage": "Хүрээтэй, Портфолио загвар — Гэр бүл багцаас. Багц сонгох",
     "lockedCaption": "Гэр бүл багцаас",
     "portfolioLabel": "Амжилтын портфолио",
-    "footerLine": "ChampStep-ээр үүсгэсэн · champstep.mn · {{date}} · {{page}}/{{total}}"
+    "footerLine": "ChampStep-ээр үүсгэсэн · champstep.mn · {{date}} · {{page}}/{{total}}",
+    "labels": {
+      "date": "Огноо",
+      "location": "Газар",
+      "category": "Төрөл",
+      "award": "Шагнал",
+      "prep": "Бэлтгэл",
+      "notes": "Тэмдэглэл",
+      "prepNotes": "Бэлтгэлийн тэмдэглэл",
+      "morePhotos": "+{{n}} зураг"
+    },
+    "prepValue": "{{days}} өдөр · {{hours}} цаг",
+    "prepValueMin": "{{days}} өдөр · {{minutes}} мин"
   },
   "pdfPreview": {
     "title": "PDF урьдчилж харах",

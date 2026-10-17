@@ -1,8 +1,12 @@
 // =============================================================================
-// pdfExport v8 — 3 template: official, framed, portfolio
+// pdfExport v9 — 3 template: official, framed, portfolio
 //   official  — албан хэлбэр (сургууль, тэтгэлэг); үнэгүй багцад ч ажиллана
 //   framed    — гэрчилгээний хэв маяг, хуудас бүр давхар хүрээтэй
-//   portfolio — зургийн загвар: том зураг, гэрчилгээ бүтэн хуудсаар хавсралтад
+//   portfolio — зургийн загвар: дугуй хүрээтэй карт, гэрчилгээ бүтэн хуудсаар хавсралтад
+// Амжилт бүр 2 баганат карт (drawCard): зүүн талд label/value мөрүүд + тэмдэглэл
+// (бүтнээрээ, эвхэгдсэн), баруун талд зургууд (харьцаа хадгална, max 60mm).
+// Хэрэглэгчийн текст бүр wrapLines/drawWrapped-оор баганын өргөнд эвхэгдэнэ —
+// хэмжих, зурах хоёр ижил фонтоор (өмнөх алдаа: 8pt-ээр хэмжээд 9.5pt-ээр зурдаг байсан).
 // Монгол+Англи+Орос хэл, NotoSans фонт (emoji байхгүй — NotoSans зурдаггүй),
 // хавсралт хуудас (бүтэн хэмжээний зураг) + thumbnail-аас үсрэх холбоос.
 // Браузер болон Node (tests/pdf-templates.test.mjs) хоёуланд ажиллана:
@@ -10,7 +14,7 @@
 // =============================================================================
 
 import { jsPDF } from "jspdf";
-import type { Achievement, Child } from "../types";
+import type { Achievement, Child, PracticeLog } from "../types";
 import type { AppLang } from "../i18n";
 import { LOGO_BARS } from "../components/Logo";
 
@@ -22,12 +26,6 @@ const INK: RGB = [24, 37, 29];            // #18251D graphite
 const INK2: RGB = [62, 79, 70];           // #3E4F46
 const INK3: RGB = [110, 125, 116];        // #6E7D74
 
-/** "Бэлтгэл: 43 өдөр · 31 цаг" for achievements that came out of a goal (achievements.prep); "" otherwise. */
-export function prepLine(a: { prep?: { days: number; minutes: number } }, t: (k: string, o?: Record<string, unknown>) => string): string {
-  if (!a.prep) return "";
-  const hours = Math.floor(a.prep.minutes / 60);
-  return hours > 0 ? t("goals.prepLine", { days: a.prep.days, hours }) : t("goals.prepLineMin", { days: a.prep.days, minutes: a.prep.minutes });
-}
 const LINE: RGB = [220, 229, 221];        // #DCE5DD
 const PRIMARY: RGB = [47, 125, 91];       // #2F7D5B forest green
 const PRIMARY_SOFT: RGB = [221, 243, 230]; // #DDF3E6
@@ -47,9 +45,9 @@ const AWARD_COLOR: Record<string, RGB> = { Gold: GOLD, Silver: SILVER, Bronze: B
 
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, type PdfTemplate,
-  FRAMED_IMAGE_ROW, FRAMED_BLOCK_GAP, framedBlockHeight, planPages,
+  CARD, cardColumns, fitImage,
 } from "./pdfTemplates";
-export { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, FRAMED_IMAGE_ROW, FRAMED_BLOCK_GAP, framedBlockHeight, planPages };
+export { PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate, CARD, cardColumns, fitImage };
 export type { PdfTemplate };
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
@@ -72,8 +70,12 @@ interface ExportOpts {
   fonts?: PdfFonts;
   /** Footer date (defaults to today). */
   now?: Date;
-  /** Framed template: achievement indices per content page, once laid out (tests / debugging). */
+  /** Framed template: index of the content page each achievement card starts on (tests / debugging). */
   onPages?: (pages: number[][]) => void;
+  /** Practice logs of the child: the last notes of the goal an achievement came out of go on its card. */
+  practiceLogs?: PracticeLog[];
+  /** Called with the jsPDF instance right after the fonts are loaded (tests spy on doc.text). */
+  onDoc?: (doc: jsPDF) => void;
 }
 
 const A4 = { w: 210, h: 297 };
@@ -372,50 +374,296 @@ function drawChip(doc: jsPDF, text: string, x: number, y: number, bg: RGB, fg: R
   return w;
 }
 
-// Бичлэг бүрт 3 хүртэл зургийг эгнээгээр харуулна; refCtx өгвөл thumbnail бүрийг imgRefs-д бүртгэнэ.
-async function drawImageRow(
-  doc: jsPDF,
-  urls: string[],
-  x: number,
-  y: number,
-  refCtx?: { list: ImgRef[]; title: string; date: string },
-  size?: { w: number; h: number; gap: number },
-) {
-  const imgs = urls.slice(0, 3);
-  const n = imgs.length;
-  if (n === 0) return;
-  const dims = size ?? (
-    n === 1 ? { w: 55, h: 40, gap: 0 } :
-    n === 2 ? { w: 50, h: 37, gap: 5 } :
-              { w: 40, h: 30, gap: 4 });
-  for (let i = 0; i < n; i++) {
-    const ix = x + i * (dims.w + dims.gap);
+// -----------------------------------------------------------------------------
+// Text wrapping — measure and draw with the SAME font (size + weight), always.
+// -----------------------------------------------------------------------------
+
+export interface FontSpec { size: number; weight?: "normal" | "bold"; color?: RGB }
+
+function applyFont(doc: jsPDF, f: FontSpec) {
+  setFont(doc, f.weight ?? "normal");
+  doc.setFontSize(f.size);
+  if (f.color) doc.setTextColor(...f.color);
+}
+
+/** Line advance (mm) for a font size in pt: 9.5 pt -> 4.6 mm, 12 pt -> 5.8 mm. */
+export function lineHeightFor(size: number): number {
+  return Math.round(size * 0.48 * 10) / 10;
+}
+
+/**
+ * `text` wrapped to `width` mm with `font` applied first, so the lines are measured
+ * with the font they are drawn in. With `maxLines` the last kept line ends in "…".
+ */
+export function wrapLines(doc: jsPDF, text: string, width: number, font?: FontSpec, maxLines = Infinity): string[] {
+  if (font) applyFont(doc, font);
+  const clean = String(text ?? "").replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").trim();
+  if (!clean) return [];
+  const lines = doc.splitTextToSize(clean, width) as string[];
+  if (lines.length <= maxLines) return lines;
+  const kept = lines.slice(0, Math.max(1, maxLines));
+  let last = kept[kept.length - 1];
+  while (last.length > 1 && doc.getTextWidth(last + "…") > width) last = last.slice(0, -1).trimEnd();
+  kept[kept.length - 1] = last + "…";
+  return kept;
+}
+
+/** Height (mm) `text` takes once wrapped — known before anything is drawn. */
+export function measureWrapped(doc: jsPDF, text: string, width: number, lineHeight: number, font?: FontSpec, maxLines?: number): number {
+  return wrapLines(doc, text, width, font, maxLines).length * lineHeight;
+}
+
+/** Draws `text` wrapped to `width` from baseline `y`; returns the baseline of the line after the block. */
+export function drawWrapped(
+  doc: jsPDF, text: string, x: number, y: number, width: number, lineHeight: number,
+  opts: { font?: FontSpec; maxLines?: number; align?: "left" | "center" } = {},
+): number {
+  const lines = wrapLines(doc, text, width, opts.font, opts.maxLines);
+  lines.forEach((line, i) => doc.text(line, x, y + i * lineHeight, opts.align ? { align: opts.align } : undefined));
+  return y + lines.length * lineHeight;
+}
+
+// -----------------------------------------------------------------------------
+// Achievement card data
+// -----------------------------------------------------------------------------
+
+/** "43 өдөр · 31 цаг" (pdf.prepValue) for achievements that came out of a goal; "" otherwise. */
+export function prepValue(a: { prep?: { days: number; minutes: number } }, t: T): string {
+  if (!a.prep) return "";
+  const hours = Math.floor(a.prep.minutes / 60);
+  return hours > 0 ? t("pdf.prepValue", { days: a.prep.days, hours }) : t("pdf.prepValueMin", { days: a.prep.days, minutes: a.prep.minutes });
+}
+
+/** The newest practice-log notes (max 3) written for the goal the achievement came out of, one line each. */
+export function prepNotesFor(a: { prep?: { goalId: string } }, logs: readonly PracticeLog[] | undefined, max = 3): string[] {
+  const goalId = a.prep?.goalId;
+  if (!goalId || !logs?.length) return [];
+  return logs
+    .filter((l) => l.goalId === goalId && typeof l.content === "string" && l.content.trim().length > 0)
+    .sort((p, q) => (p.date < q.date ? 1 : p.date > q.date ? -1 : 0))
+    .slice(0, max)
+    .map((l) => l.content.replace(/\s+/g, " ").trim());
+}
+
+interface CardImage { dataUrl: string; naturalW: number; naturalH: number }
+
+/**
+ * Loads up to CARD.maxImages photos. A photo that fails to load (CORS, bad data) is
+ * skipped — no grey placeholder. `more` = photos left over for the "+N" note.
+ */
+async function loadCardImages(doc: jsPDF, urls: readonly string[]): Promise<{ images: CardImage[]; more: number }> {
+  const images: CardImage[] = [];
+  let i = 0;
+  for (; i < urls.length && images.length < CARD.maxImages; i++) {
     try {
-      const dataUrl = await urlToDataUrl(imgs[i]);
-      if (!dataUrl) { drawImagePlaceholder(doc, ix, y, dims.w, dims.h); continue; }
-      // contain-fit inside the box (portrait certificates are no longer squashed); box size unchanged
-      const { w: naturalW, h: naturalH } = dataUrlDims(dataUrl);
-      let dw = dims.w, dh = dims.h;
-      if (naturalW > 0 && naturalH > 0) {
-        const aspect = naturalW / naturalH;
-        if (dw / dh > aspect) dw = dh * aspect; else dh = dw / aspect;
+      const dataUrl = await urlToDataUrl(String(urls[i]));
+      if (!dataUrl) continue;
+      let { w, h } = dataUrlDims(dataUrl);
+      if (!(w > 0 && h > 0)) {
+        const props = doc.getImageProperties(dataUrl); // throws on data jsPDF cannot draw
+        w = props.width; h = props.height;
       }
-      const dx = ix + (dims.w - dw) / 2;
-      const dy = y + (dims.h - dh) / 2;
-      doc.addImage(dataUrl, dataUrlFormat(dataUrl), dx, dy, dw, dh);
-      if (refCtx) {
-        refCtx.list.push({
-          dataUrl, naturalW, naturalH,
-          achievementTitle: refCtx.title,
-          achievementDate: refCtx.date,
-          page: currentPageNum(doc),
-          x: dx, y: dy, w: dw, h: dh,
-        });
-      }
-    } catch {
-      drawImagePlaceholder(doc, ix, y, dims.w, dims.h);
+      images.push({ dataUrl, naturalW: w, naturalH: h });
+    } catch (e) {
+      console.warn("[champstep] pdf: photo skipped:", e);
     }
   }
+  return { images, more: Math.max(0, urls.length - i) };
+}
+
+// -----------------------------------------------------------------------------
+// Page flow + the 2-column card (shared by the 3 templates)
+// -----------------------------------------------------------------------------
+
+/** Vertical cursor over content pages. `newPage` adds a page, draws the template chrome and returns the content top. */
+interface Flow {
+  y: number;
+  /** content must stay above this */
+  bottom: number;
+  /** content top on a continuation page */
+  pageTop: number;
+  /** 0-based index of the current content page */
+  pageIdx: number;
+  newPage: () => number;
+}
+
+function makeFlow(doc: jsPDF, y: number, bottom: number, pageTop: number, decorate: () => void): Flow {
+  const flow: Flow = {
+    y, bottom, pageTop, pageIdx: 0,
+    newPage: () => {
+      doc.addPage();
+      decorate();
+      flow.pageIdx++;
+      flow.y = pageTop;
+      return pageTop;
+    },
+  };
+  return flow;
+}
+
+interface CardCtx {
+  doc: jsPDF;
+  t: T;
+  style: PdfTemplate;
+  /** card left edge + width (mm) */
+  x: number;
+  w: number;
+  includeImages: boolean;
+  imgRefs: ImgRef[];
+  practiceLogs?: PracticeLog[];
+}
+
+/** One line of the card's left column; `draw` gets the column's x and the line's top y. */
+interface Line { h: number; draw: (x: number, yTop: number) => void }
+
+/**
+ * Draws one achievement as a 2-column card at flow.y and advances the flow.
+ *
+ *   TITLE (≤ 2 lines, "…")                      full width
+ *   date · location · category · award           meta line
+ *   label  value rows | photos (aspect kept,     left ≈ 58 %, right ≈ 42 %
+ *   notes (all lines) | max 60 mm each, ≤ 3,
+ *   practice notes    | "+N" for the rest)
+ *
+ * Measured first: a card that does not fit goes on the next page; a card taller
+ * than a page keeps its header + photos on the first page and continues the
+ * left-column text on the next page(s). Returns the content-page index the card starts on.
+ */
+async function drawCard(ctx: CardCtx, flow: Flow, a: Achievement): Promise<number> {
+  const { doc, t, x, w } = ctx;
+  const pad = CARD.pad;
+  const x0 = x + pad;
+  const innerW = w - pad * 2;
+  const award = AWARD_COLOR[a.awardType] ?? INK3;
+  const indent = ctx.style === "portfolio" ? 8 : ctx.style === "framed" ? 4 : 0; // room for the award marker beside the title
+
+  // ---- header: title (≤ 2 lines) + meta line (≤ 2 lines) ----
+  const titleFont: FontSpec = { size: ctx.style === "official" ? 11 : 12, weight: "bold", color: INK };
+  const titleLH = lineHeightFor(titleFont.size);
+  const titleLines = wrapLines(doc, a.title, innerW - indent, titleFont, 2);
+  const metaFont: FontSpec = { size: 8.5, color: INK3 };
+  const metaLH = lineHeightFor(metaFont.size);
+  const meta = [a.date, a.location, t(`categories.${a.category}`), t(`awards.${a.awardType}`)]
+    .map((v) => String(v ?? "").trim()).filter(Boolean).join("  ·  ");
+  const metaLines = wrapLines(doc, meta, innerW - indent, metaFont, 2);
+  const headerH = titleLines.length * titleLH + 0.5 + metaLines.length * metaLH + 2;
+
+  // ---- right column: photos ----
+  const loaded = ctx.includeImages ? await loadCardImages(doc, a.imageURLs ?? []) : { images: [], more: 0 };
+  const { leftW, rightW } = cardColumns(innerW, loaded.images.length > 0);
+  const images = loaded.images.map((im) => ({ ...im, ...fitImage(im.naturalW, im.naturalH, rightW) }));
+  const moreText = loaded.more > 0 ? t("pdf.labels.morePhotos", { n: loaded.more }) : "";
+  const rightH = images.reduce((s, im, i) => s + im.h + (i ? CARD.imgGap : 0), 0) + (moreText ? 5 : 0);
+
+  // ---- left column: label/value rows, notes, practice notes ----
+  const lines: Line[] = [];
+  const labelFont: FontSpec = { size: 8, color: INK3 };
+  const valueFont: FontSpec = { size: 9.5, color: INK };
+  const valueLH = lineHeightFor(valueFont.size);
+  const row = (label: string, value: string, vf: FontSpec = valueFont) => {
+    wrapLines(doc, value, leftW - CARD.labelW, vf).forEach((text, i) => lines.push({
+      h: valueLH,
+      draw: (lx, ly) => {
+        const base = ly + valueLH * 0.78;
+        if (i === 0) { applyFont(doc, labelFont); doc.text(label, lx, base); }
+        applyFont(doc, vf);
+        doc.text(text, lx + CARD.labelW, base);
+      },
+    }));
+  };
+  row(t("pdf.labels.date"), a.date);
+  row(t("pdf.labels.location"), a.location);
+  row(t("pdf.labels.category"), t(`categories.${a.category}`));
+  row(t("pdf.labels.award"), t(`awards.${a.awardType}`), { size: 9.5, weight: "bold", color: award });
+  const prep = prepValue(a, t);
+  if (prep) row(t("pdf.labels.prep"), prep);
+
+  const section = (heading: string, texts: string[], font: FontSpec, bullet: boolean, maxLines?: number) => {
+    const lh = lineHeightFor(font.size);
+    const wrapped = texts.map((tx) => wrapLines(doc, (bullet ? "·  " : "") + tx, leftW, font, maxLines)).filter((l) => l.length);
+    if (!wrapped.length) return;
+    lines.push({ h: 3, draw: () => {} });
+    lines.push({ h: 4.5, draw: (lx, ly) => drawLabel(doc, heading, lx, ly + 3.4, 7, INK3) });
+    for (const ls of wrapped) for (const text of ls) {
+      lines.push({ h: lh, draw: (lx, ly) => { applyFont(doc, font); doc.text(text, lx, ly + lh * 0.78); } });
+    }
+  };
+  if (a.description && a.description.trim()) section(t("pdf.labels.notes"), [a.description], { size: 9.5, color: INK2 }, false);
+  const notes = prepNotesFor(a, ctx.practiceLogs);
+  if (notes.length) section(t("pdf.labels.prepNotes"), notes, { size: 8.5, color: INK2 }, true, 1);
+
+  const leftH = lines.reduce((s, l) => s + l.h, 0);
+  const totalH = pad * 2 + headerH + Math.max(leftH, rightH);
+
+  // ---- where does it go? whole card here, whole card on a new page, or split ----
+  const fits = (h: number) => flow.y + h <= flow.bottom;
+  if (!fits(totalH)) {
+    const pageCap = flow.bottom - flow.pageTop;
+    const needFirst = pad * 2 + headerH + Math.max(rightH, Math.min(leftH, 20)); // header + all photos + some text
+    if (totalH <= pageCap || !fits(needFirst)) flow.newPage();
+  }
+  const startPage = flow.pageIdx;
+
+  const chrome = (top: number, h: number) => {
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    if (ctx.style === "portfolio") doc.roundedRect(x, top, w, h, 3, 3, "S");
+    else doc.line(x, top + h, x + w, top + h);
+  };
+  const drawHeader = (top: number) => {
+    const base = top + pad + titleLH * 0.8;
+    doc.setFillColor(...award);
+    if (ctx.style === "framed") doc.rect(x0, base - 3.6, 1, 4.8, "F");
+    else if (ctx.style === "portfolio") doc.circle(x0 + 2.2, base - 1.5, 2.2, "F");
+    applyFont(doc, titleFont);
+    titleLines.forEach((line, i) => doc.text(line, x0 + indent, base + i * titleLH));
+    applyFont(doc, metaFont);
+    const metaBase = top + pad + titleLines.length * titleLH + 0.5 + metaLH * 0.8;
+    metaLines.forEach((line, i) => doc.text(line, x0 + indent, metaBase + i * metaLH));
+    return top + pad + headerH;
+  };
+  const drawImages = (top: number) => {
+    const rx = x0 + leftW + CARD.colGap;
+    let iy = top;
+    for (const im of images) {
+      try {
+        doc.addImage(im.dataUrl, dataUrlFormat(im.dataUrl), rx, iy, im.w, im.h);
+        ctx.imgRefs.push({
+          dataUrl: im.dataUrl, naturalW: im.naturalW, naturalH: im.naturalH,
+          achievementTitle: a.title, achievementDate: a.date,
+          page: currentPageNum(doc), x: rx, y: iy, w: im.w, h: im.h,
+        });
+      } catch (e) {
+        console.warn("[champstep] pdf: photo skipped:", e);
+      }
+      iy += im.h + CARD.imgGap;
+    }
+    if (moreText) {
+      applyFont(doc, { size: 8, color: INK3 });
+      doc.text(moreText, rx, iy - CARD.imgGap + 3.5);
+    }
+  };
+
+  let i = 0;
+  let first = true;
+  do {
+    const top = flow.y;
+    const avail = flow.bottom - top - pad * 2 - (first ? headerH : 0);
+    let used = 0;
+    let j = i;
+    while (j < lines.length && used + lines[j].h <= avail) { used += lines[j].h; j++; }
+    if (!first && j === i) { flow.newPage(); continue; } // nothing fits here (cannot happen on a fresh page)
+    const partH = pad * 2 + (first ? headerH : 0) + (first ? Math.max(used, rightH) : used);
+    chrome(top, partH);
+    let ly = top + pad;
+    if (first) { ly = drawHeader(top); drawImages(ly); }
+    for (let k = i; k < j; k++) { lines[k].draw(x0, ly); ly += lines[k].h; }
+    i = j;
+    first = false;
+    flow.y = top + partH + CARD.gap;
+    if (i < lines.length) flow.newPage();
+  } while (i < lines.length);
+  return startPage;
 }
 
 // -----------------------------------------------------------------------------
@@ -436,24 +684,27 @@ export async function exportPortfolio(
     fonts,
     now = new Date(),
     onPages,
+    practiceLogs,
+    onDoc,
   } = opts;
   const template = normalizePdfTemplate(rawTemplate);
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   await loadFont(doc, fonts);
+  onDoc?.(doc);
 
   // Хавсралт бичлэгийн массив — export бүрт шинэ
   const imgRefs: ImgRef[] = [];
   const dateStr = now.toISOString().slice(0, 10);
 
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs);
+    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
     addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, imgRefs, onPages);
+    await renderFramed(doc, child, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
   } else {
-    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs);
+    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - 8 });
   }
 
@@ -467,7 +718,7 @@ export async function exportPortfolio(
 // Template 1: Official — layout, fonts and table unchanged (BRAND.md)
 // =============================================================================
 
-async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
+async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[], practiceLogs?: PracticeLog[]) {
   doc.setFillColor(...INK);
   doc.rect(0, 0, A4.w, 32, "F");
 
@@ -517,44 +768,10 @@ async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievemen
   doc.setDrawColor(...PRIMARY);
   doc.line(M, 102, A4.w - M, 102);
 
-  let y = 114;
-  for (const a of achievements) {
-    const imgH = includeImages && a.imageURLs?.length ? 45 : 0;
-    const blockH = 28 + imgH;
-
-    if (y + blockH > A4.h - 20) {
-      doc.addPage();
-      y = M + 10;
-    }
-
-    setFont(doc, "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...INK);
-    doc.text(a.title, M, y);
-
-    setFont(doc, "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...INK3);
-    doc.text(
-      `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`,
-      M, y + 6
-    );
-
-    if (a.description) {
-      doc.setFontSize(9);
-      doc.setTextColor(...INK2);
-      const lines = doc.splitTextToSize(a.description, CW - 10);
-      doc.text(lines.slice(0, 2), M, y + 13);
-    }
-
-    if (includeImages && a.imageURLs?.length) {
-      await drawImageRow(doc, a.imageURLs, M, y + 20, { list: imgRefs, title: a.title, date: a.date });
-    }
-
-    doc.setDrawColor(...LINE);
-    doc.line(M, y + blockH, A4.w - M, y + blockH);
-    y += blockH + 6;
-  }
+  // cards from 114 mm down, 20 mm clear at the bottom; continuation pages start just below the top margin
+  const flow = makeFlow(doc, 114, A4.h - 20, M + 10, () => {});
+  const ctx: CardCtx = { doc, t, style: "official", x: M, w: CW, includeImages, imgRefs, practiceLogs };
+  for (const a of achievements) await drawCard(ctx, flow, a);
 
   await addAppendix(doc, imgRefs, t);
 }
@@ -602,11 +819,11 @@ function drawMedalStats(doc: jsPDF, t: T, achievements: Achievement[], x: number
 }
 async function renderFramed(
   doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[],
-  onPages?: (pages: number[][]) => void,
+  practiceLogs?: PracticeLog[], onPages?: (pages: number[][]) => void,
 ) {
   const X = FRAME.content;
   const bottomLimit = A4.h - FRAME.content - 8; // keep clear of the footer
-  const contTop = FRAME.content + 18;           // first block baseline on continuation pages (below the small label)
+  const contTop = FRAME.content + 14;           // first card top on continuation pages (below the small label)
 
   // ---- Page 1: profile header ----
   drawFrame(doc);
@@ -648,81 +865,35 @@ async function renderFramed(
   doc.setDrawColor(...LINE);
   doc.setLineWidth(0.3);
   doc.line(X, y, A4.w - X, y);
-  y += 8; // first block title baseline
+  y += 6; // first card top
 
-  // ---- Flow: measure every block, then fill pages (blocks never split) ----
-  const blocks = achievements.map((a) => {
-    const descLines: string[] = a.description ? doc.splitTextToSize(a.description, FW - 8).slice(0, 2) : [];
-    const images = includeImages ? (a.imageURLs ?? []).slice(0, 3) : [];
-    return { a, descLines, images, h: framedBlockHeight(descLines.length, images.length) };
+  // ---- Cards: measured one by one; a card that does not fit opens a new framed page ----
+  const flow = makeFlow(doc, y, bottomLimit, contTop, () => {
+    drawFrame(doc);
+    // small "{name}'s achievements" label at the top of every continuation page
+    drawLabel(doc, t("pdf.achievementsTitle", { name: child.name }), X, FRAME.content + 6, 7.5, INK3);
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    doc.line(X, FRAME.content + 9, A4.w - X, FRAME.content + 9);
   });
-  const pages = planPages(blocks.map((b) => b.h), bottomLimit - y, bottomLimit - contTop, FRAMED_BLOCK_GAP);
-  onPages?.(pages.map((p) => [...p]));
-
-  for (let p = 0; p < pages.length; p++) {
-    if (p > 0) {
-      doc.addPage();
-      drawFrame(doc);
-      // small "{name}'s achievements" label at the top of every continuation page
-      drawLabel(doc, t("pdf.achievementsTitle", { name: child.name }), X, FRAME.content + 6, 7.5, INK3);
-      doc.setDrawColor(...LINE);
-      doc.setLineWidth(0.3);
-      doc.line(X, FRAME.content + 9, A4.w - X, FRAME.content + 9);
-      y = contTop;
-    }
-    for (const i of pages[p]) {
-      const { a, descLines, images, h } = blocks[i];
-      // award-coloured tick + title
-      const award = AWARD_COLOR[a.awardType] ?? INK3;
-      doc.setFillColor(...award);
-      doc.rect(X, y - 3.8, 1, 5.2, "F");
-      setFont(doc, "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(...INK);
-      doc.text(doc.splitTextToSize(a.title, FW - 8)[0], X + 4, y);
-      // meta line with the award in its medal colour
-      setFont(doc, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...INK3);
-      const meta = `${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  `;
-      const metaW = doc.getTextWidth(meta); // measured at 9 pt — the size it is drawn with
-      doc.text(meta, X + 4, y + 5.5);
-      setFont(doc, "bold");
-      doc.setTextColor(...award);
-      doc.text(t(`awards.${a.awardType}`), X + 4 + metaW, y + 5.5);
-      if (prepLine(a, t)) {
-        const awardW = doc.getTextWidth(t(`awards.${a.awardType}`)); // bold 9 pt, as drawn
-        setFont(doc, "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(...INK2);
-        // x uses the 9 pt widths captured above; re-measuring `meta` here (8 pt) put the prep line over the award word
-        doc.text(`  ·  ${prepLine(a, t)}`, X + 4 + metaW + awardW, y + 5.5);
-      }
-      if (descLines.length) {
-        setFont(doc, "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(...INK2);
-        doc.text(descLines, X + 4, y + 11);
-      }
-      if (images.length) {
-        const dims = FRAMED_IMAGE_ROW[images.length as 1 | 2 | 3];
-        await drawImageRow(doc, images, X + 4, y + 11 + descLines.length * 4.5 + 2, { list: imgRefs, title: a.title, date: a.date }, dims);
-      }
-      doc.setDrawColor(...LINE);
-      doc.setLineWidth(0.3);
-      doc.line(X, y + h, A4.w - X, y + h);
-      y += h + FRAMED_BLOCK_GAP;
-    }
+  const ctx: CardCtx = { doc, t, style: "framed", x: X, w: FW, includeImages, imgRefs, practiceLogs };
+  const pages: number[][] = [[]];
+  for (let i = 0; i < achievements.length; i++) {
+    const start = await drawCard(ctx, flow, achievements[i]);
+    while (pages.length <= start) pages.push([]);
+    pages[start].push(i);
   }
+  while (pages.length <= flow.pageIdx) pages.push([]);
+  onPages?.(pages.map((p) => [...p]));
 
   await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
 }
 
 // =============================================================================
-// Template 3: Portfolio — image-led: big photos, certificates full-page in the appendix
+// Template 3: Portfolio — rounded cards, certificates full-page in the appendix
 // =============================================================================
 
-async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[]) {
+async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[], practiceLogs?: PracticeLog[]) {
   const bottomLimit = A4.h - 20;
 
   // ---- Cover ----
@@ -776,93 +947,11 @@ async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achieveme
   doc.setDrawColor(...PRIMARY);
   doc.setLineWidth(0.6);
   doc.line(M, y + 3, M + 14, y + 3);
-  y += 12;
+  y += 10;
 
-  const ensure = (h: number) => {
-    if (y + h > bottomLimit) { doc.addPage(); y = 22; }
-  };
-
-  for (const a of achievements) {
-    const award = AWARD_COLOR[a.awardType] ?? INK3;
-    const descLines = a.description ? doc.splitTextToSize(a.description, CW - 8).slice(0, 3) : [];
-    const titleLines = doc.splitTextToSize(a.title, CW - 8).slice(0, 2);
-    const textH = titleLines.length * 6 + 6 + descLines.length * 4.6 + 3;
-
-    const urls = includeImages ? (a.imageURLs ?? []).map(String) : [];
-    const main = urls.length ? await urlToDataUrl(urls[0]) : "";
-
-    if (!main) {
-      // ---- simple card (no image) ----
-      const cardH = textH + 12;
-      ensure(cardH + 6);
-      doc.setDrawColor(...LINE);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(M, y, CW, cardH, 4, 4, "S");
-      doc.setFillColor(...award);
-      doc.circle(M + 7, y + 8.5, 2.2, "F");
-      let ty = y + 10;
-      setFont(doc, "bold"); doc.setFontSize(12); doc.setTextColor(...INK);
-      doc.text(titleLines, M + 13, ty);
-      ty += titleLines.length * 6;
-      setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
-      doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`, M + 13, ty);
-      ty += 6;
-      if (descLines.length) { doc.setFontSize(9.5); doc.setTextColor(...INK2); doc.text(descLines, M + 13, ty); }
-      y += cardH + 8;
-      continue;
-    }
-
-    // ---- image block: landscape -> 100% width, portrait -> 60% width, centred ----
-    const { w: nw, h: nh } = dataUrlDims(main);
-    const aspect = nw > 0 && nh > 0 ? nw / nh : 4 / 3;
-    let iw: number, ih: number;
-    if (aspect >= 1.15) {
-      iw = CW;
-      ih = Math.min(iw / aspect, 118);
-      iw = ih * aspect;
-    } else {
-      iw = CW * 0.6;
-      ih = Math.min(iw / aspect, 132);
-      iw = ih * aspect;
-    }
-    const extras = urls.slice(1, 3);
-    const thumbH = extras.length ? 30 : 0;
-    const blockH = ih + 7 + textH + (thumbH ? thumbH + 4 : 0);
-    // one per page when tall, otherwise pack two
-    ensure(blockH + 6);
-
-    const ix = M + (CW - iw) / 2;
-    try {
-      doc.addImage(main, dataUrlFormat(main), ix, y, iw, ih);
-    } catch {
-      drawImagePlaceholder(doc, ix, y, iw, ih);
-    }
-    imgRefs.push({ dataUrl: main, naturalW: nw, naturalH: nh, achievementTitle: a.title, achievementDate: a.date, page: currentPageNum(doc), x: ix, y, w: iw, h: ih });
-    y += ih + 7;
-
-    doc.setFillColor(...award);
-    doc.circle(M + 2.2, y - 1.6, 2.2, "F");
-    setFont(doc, "bold"); doc.setFontSize(13); doc.setTextColor(...INK);
-    doc.text(titleLines, M + 8, y);
-    y += titleLines.length * 6;
-    setFont(doc, "normal"); doc.setFontSize(8.5); doc.setTextColor(...INK3);
-    doc.text(`${a.date}  ·  ${a.location}  ·  ${t(`categories.${a.category}`)}  ·  ${t(`awards.${a.awardType}`)}${prepLine(a, t) ? `  ·  ${prepLine(a, t)}` : ""}`, M + 8, y);
-    y += 6;
-    if (descLines.length) {
-      doc.setFontSize(9.5); doc.setTextColor(...INK2);
-      doc.text(descLines, M + 8, y);
-      y += descLines.length * 4.6;
-    }
-    if (thumbH) {
-      await drawImageRow(doc, extras, M + 8, y + 1, { list: imgRefs, title: a.title, date: a.date }, { w: 40, h: 30, gap: 4 });
-      y += thumbH + 4;
-    }
-    y += 3;
-    doc.setDrawColor(...LINE);
-    doc.setLineWidth(0.3);
-    doc.line(M, y, A4.w - M, y);
-    y += 10;
-  }
+  const flow = makeFlow(doc, y, bottomLimit, 22, () => {});
+  const ctx: CardCtx = { doc, t, style: "portfolio", x: M, w: CW, includeImages, imgRefs, practiceLogs };
+  for (const a of achievements) await drawCard(ctx, flow, a);
 
   await addAppendix(doc, imgRefs, t);
 }

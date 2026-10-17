@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Check, Expand, FileText, Lock, Maximize2, Shrink, X } from "lucide-react";
 import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "../lib/pdfTemplates";
-import type { Achievement, Child } from "../types";
+import type { Achievement, Child, PracticeLog } from "../types";
 import { SUPPORTED_LANGS, type AppLang } from "../i18n";
 
 interface PdfPreviewModalProps {
@@ -17,6 +17,8 @@ interface PdfPreviewModalProps {
   canUsePaidTemplates: boolean;
   onUpgrade: () => void;
   includeImages: boolean;
+  /** Practice logs of the child — the cards show the last notes of the goal an achievement came out of. */
+  practiceLogs?: PracticeLog[];
 }
 
 export default function PdfPreviewModal({
@@ -29,6 +31,7 @@ export default function PdfPreviewModal({
   canUsePaidTemplates,
   onUpgrade,
   includeImages,
+  practiceLogs,
 }: PdfPreviewModalProps) {
   const { t, i18n } = useTranslation();
   const language: AppLang = SUPPORTED_LANGS.includes(i18n.resolvedLanguage as AppLang)
@@ -96,7 +99,7 @@ export default function PdfPreviewModal({
       try {
         const { exportPortfolio } = await import("../lib/pdfExport");
         const url = await exportPortfolio(child, selectedList, {
-          t, template, language, includeImages, output: "bloburl",
+          t, template, language, includeImages, practiceLogs, output: "bloburl",
         });
         if (!cancelled && typeof url === "string") replaceUrl(url);
       } catch (err) {
@@ -108,7 +111,7 @@ export default function PdfPreviewModal({
 
     return () => { cancelled = true; window.clearTimeout(handle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isMobile, step, selectedList, template, includeImages, language]);
+  }, [open, isMobile, step, selectedList, template, includeImages, language, practiceLogs]);
 
   useEffect(() => {
     if (!open) replaceUrl(null);
@@ -142,7 +145,7 @@ export default function PdfPreviewModal({
       setGenerating(true);
       const { exportPortfolio } = await import("../lib/pdfExport");
       await exportPortfolio(child, selectedList, {
-        t, template, language, includeImages, output: "save",
+        t, template, language, includeImages, practiceLogs, output: "save",
       });
       onClose();
     } catch (err) {

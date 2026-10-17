@@ -145,12 +145,45 @@ export async function createChildFor(email: string, name: string, birthDate = "2
 }
 
 /** Seed an achievement for a TEST child (childId must belong to a qa account — callers pass ids from childrenOf/createChildFor). */
-export async function seedAchievement(childId: string, a: { title: string; date: string; category: "Sports" | "Arts" | "Academic"; awardType: "Gold" | "Silver" | "Bronze" | "Participant"; location?: string }) {
+export async function seedAchievement(childId: string, a: {
+  title: string; date: string; category: "Sports" | "Arts" | "Academic"; awardType: "Gold" | "Silver" | "Bronze" | "Participant";
+  location?: string; description?: string; imageURLs?: string[];
+  /** achievements.prep as copied from a goal when the result was recorded */
+  prep?: { goalId: string; days: number; sessions: number; minutes: number; daysTotal: number };
+}): Promise<string> {
+  await assertTestChild(childId);
+  const { FieldValue } = await import("firebase-admin/firestore");
+  const ref = await db().collection("achievements").add({
+    childId, title: a.title, date: a.date, location: a.location ?? "QA", category: a.category,
+    description: a.description ?? "seeded by e2e", awardType: a.awardType, imageURLs: a.imageURLs ?? [],
+    ...(a.prep ? { prep: a.prep } : {}),
+    createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+  });
+  return ref.id;
+}
+
+/** Seed a practice log (optionally tagged with a goal id) for a TEST child. */
+export async function seedPracticeLog(childId: string, l: { date: string; duration: number; content: string; goalId?: string }) {
+  await assertTestChild(childId);
+  const { FieldValue } = await import("firebase-admin/firestore");
+  await db().collection("practiceLogs").add({
+    childId, date: l.date, duration: l.duration, content: l.content, ...(l.goalId ? { goalId: l.goalId } : {}),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+/** Patch an achievement of a TEST child found by title (e.g. add `prep` to one created through the UI). */
+export async function patchAchievement(childId: string, title: string, data: Record<string, unknown>) {
+  await assertTestChild(childId);
+  const snap = await db().collection("achievements").where("childId", "==", childId).where("title", "==", title).get();
+  if (snap.empty) throw new Error(`achievement "${title}" not found for child ${childId}`);
+  for (const d of snap.docs) await d.ref.set(data, { merge: true });
+}
+
+async function assertTestChild(childId: string) {
   const child = await db().collection("children").doc(childId).get();
   const owner = await auth().getUser(String(child.data()?.parentId));
   assertTestEmail(owner.email ?? "");
-  const { FieldValue } = await import("firebase-admin/firestore");
-  await db().collection("achievements").add({ childId, title: a.title, date: a.date, location: a.location ?? "QA", category: a.category, description: "seeded by e2e", awardType: a.awardType, imageURLs: [], createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
 }
 
 /** Create a TEST account without the UI (Auth user + users/{uid} doc). */

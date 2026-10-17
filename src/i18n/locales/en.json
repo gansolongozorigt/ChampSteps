@@ -218,7 +218,19 @@
     "premiumMessage": "Framed and Portfolio templates — from the Family plan. Choose a plan",
     "lockedCaption": "From the Family plan",
     "portfolioLabel": "Achievement portfolio",
-    "footerLine": "Generated with ChampStep · champstep.mn · {{date}} · {{page}}/{{total}}"
+    "footerLine": "Generated with ChampStep · champstep.mn · {{date}} · {{page}}/{{total}}",
+    "labels": {
+      "date": "Date",
+      "location": "Location",
+      "category": "Category",
+      "award": "Award",
+      "prep": "Preparation",
+      "notes": "Notes",
+      "prepNotes": "Practice notes",
+      "morePhotos": "+{{n}} more photos"
+    },
+    "prepValue": "{{days}} days · {{hours}} h",
+    "prepValueMin": "{{days}} days · {{minutes}} min"
   },
   "pdfPreview": {
     "title": "PDF Preview",

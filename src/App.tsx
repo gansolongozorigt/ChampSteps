@@ -1249,6 +1249,7 @@ function Dashboard() {
         canUsePaidTemplates={tierLimits.hasPdf}
         onUpgrade={() => { setPreviewOpen(false); setShowSubscription(true); }}
         includeImages={includeImages}
+        practiceLogs={practiceLogs}
       />
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
