@@ -232,7 +232,8 @@
       "morePhotos": "+{{n}} фото"
     },
     "prepValue": "{{days}} дн. · {{hours}} ч",
-    "prepValueMin": "{{days}} дн. · {{minutes}} мин"
+    "prepValueMin": "{{days}} дн. · {{minutes}} мин",
+    "prepEntryMinutes": "{{minutes}} мин"
   },
   "pdfPreview": {
     "title": "Предпросмотр PDF",
@@ -249,7 +250,8 @@
     "back": "Назад",
     "cancel": "Отмена",
     "close": "Закрыть",
-    "downloadN": "Скачать ({{n}})"
+    "downloadN": "Скачать ({{n}})",
+    "appendix": "Приложение — фото на всю страницу"
   },
   "guest": {
     "banner": "Пробный режим: данные хранятся только на этом устройстве.",

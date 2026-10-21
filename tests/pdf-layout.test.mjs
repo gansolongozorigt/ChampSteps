@@ -4,6 +4,8 @@
 // inside the page's content box; user text (notes, practice notes, locations)
 // must stay inside its card column. Also: notes are never truncated, long titles
 // are cut to 2 lines with "…", 12 achievements flow over several pages.
+// The full-page photo appendix is opt-in (includeAppendix); off = no appendix pages,
+// no thumbnail links. Practice notes wrap to ≤ 3 lines with a hanging indent.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -68,7 +70,12 @@ async function render(template, achievements, extra = {}) {
     },
     ...extra.opts,
   });
-  return { calls, buf, pages, pageCount: (Buffer.from(buf).toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length };
+  const raw = Buffer.from(buf).toString("latin1");
+  return {
+    calls, buf, pages,
+    pageCount: (raw.match(/\/Type\s*\/Page[^s]/g) ?? []).length,
+    linkCount: (raw.match(/\/Subtype\s*\/Link/g) ?? []).length,
+  };
 }
 
 function assertInsideBox(template, calls) {
@@ -99,7 +106,7 @@ for (const template of PDF_TEMPLATES) {
   });
 
   test(`${template}: (b) 3 photos keep their aspect inside the right column, text stays in the left column`, async () => {
-    const { calls, pageCount } = await render(template, [CASES.b]);
+    const { calls, pageCount } = await render(template, [CASES.b], { opts: { includeAppendix: true } });
     assertInsideBox(template, calls);
     const { leftW } = cardColumns(innerW(template), true);
     for (const c of linesOf(calls, CASES.b.description)) assert.ok(c.w <= leftW + EPS, `note wider than the left column`);
@@ -107,19 +114,19 @@ for (const template of PDF_TEMPLATES) {
     assert.equal(pageCount - 3, base, "one content page + 3 appendix pages (one per photo); 3 stacked photos ≤ 45 mm fit under every cover"); 
   });
 
-  test(`${template}: (c) goal-linked achievement shows the preparation row and the last 3 practice notes, one line each`, async () => {
+  test(`${template}: (c) goal-linked achievement shows the preparation row and the last 3 practice notes with date · minutes`, async () => {
     const { calls } = await render(template, [CASES.c]);
     assertInsideBox(template, calls);
     const t = makeT("mn");
     assert.ok(calls.some((c) => c.text === t("pdf.labels.prep")), "prep label");
     assert.ok(calls.some((c) => c.text === "43 өдөр · 31 цаг"), "prep value");
     assert.ok(calls.some((c) => c.text === t("pdf.labels.prepNotes").toUpperCase()), "practice notes heading");
-    const notes = calls.filter((c) => c.text.startsWith("·"));
-    assert.equal(notes.length, 3, `3 practice notes, got ${notes.map((n) => n.text)}`);
-    assert.ok(notes.some((c) => c.text.endsWith("…")), "the long note is cut to one line with …");
+    assert.equal(calls.filter((c) => c.text === "·").length, 3, "3 practice notes, one bullet each");
+    for (const meta of ["04-09 · 30 мин", "04-05 · 60 мин", "04-01 · 45 мин"]) assert.ok(calls.some((c) => c.text === meta), `meta ${meta}`);
     assert.ok(!calls.some((c) => c.text.includes("Өөр зорилгын")), "other goal's note not shown");
-    const { leftW } = cardColumns(innerW(template), true);
-    for (const c of notes) assert.ok(c.w <= leftW + EPS, "practice note inside the left column");
+    const l1 = linesOf(calls, PREP_LOGS[0].content).filter((c) => c.size === 8.5);
+    assert.equal(l1.map((c) => c.text).join(" "), PREP_LOGS[0].content, "a 90-char note is shown whole");
+    assert.ok(!l1.some((c) => c.text.endsWith("…")), "no … on a note that fits in 3 lines");
   });
 
   test(`${template}: (d) a 60+ char title is cut to 2 lines ending in … and stays inside the card`, async () => {
@@ -131,7 +138,7 @@ for (const template of PDF_TEMPLATES) {
   });
 
   test(`${template}: (e) 12 achievements flow over several pages, in order, nothing outside the box`, async () => {
-    const { calls, pages, pageCount } = await render(template, MANY);
+    const { calls, pages, pageCount } = await render(template, MANY, { opts: { includeAppendix: true } });
     assertInsideBox(template, calls);
     const photos = MANY.reduce((s, a) => s + a.imageURLs.length, 0);
     const content = pageCount - photos;
@@ -148,7 +155,7 @@ for (const template of PDF_TEMPLATES) {
 
   test(`${template}: (f) a card taller than a page continues its text on the next page (photos stay on the first)`, async () => {
     const huge = { ...CASES.c, id: "huge", description: LONG_NOTE.repeat(4) };
-    const { calls, pageCount } = await render(template, [huge, CASES.b]);
+    const { calls, pageCount } = await render(template, [huge, CASES.b], { opts: { includeAppendix: true } });
     assertInsideBox(template, calls);
     const note = linesOf(calls, huge.description);
     const notePages = new Set(note.map((c) => c.page));
@@ -162,6 +169,83 @@ for (const template of PDF_TEMPLATES) {
     assertInsideBox(template, calls);
     assert.ok(calls.some((c) => c.text === "Preparation"), "en prep label");
     assert.ok(calls.some((c) => c.text === "43 days · 31 h"), "en prep value");
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Appendix switch + full practice notes
+// ---------------------------------------------------------------------------
+
+const NOTE_200 = "Өнөөдөр хоёр цагийн бэлтгэлээр гэрэл сүүдрийн дасгал хийж, өнгөний хольцыг давтан, эцсийн бүтээлийн ноорогоо багштайгаа хамт засаж сайжруулсан бөгөөд маргааш дахин үргэлжлүүлнэ гэж шийдсэн, маш сайн төвлөрсөн".slice(0, 200);
+const NOTE_40 = "Өнгөний хольц, акварель, гэрэл сүүдэр.";
+const logsWith = (content) => [{ id: "n1", childId: "c1", date: "2026-10-16", duration: 45, content, goalId: "g1" }];
+
+/** 10 achievements, every one with 1–3 photos (+ "+N" on some), notes of mixed length, half goal-linked. */
+const TEN = Array.from({ length: 10 }, (_, i) => ({
+  id: `t${i}`, childId: "c1", title: `Тэмцээн ${i + 1}`, date: `2026-${String(i + 1).padStart(2, "0")}-05`, location: "Улаанбаатар",
+  category: ["Sports", "Academic", "Arts"][i % 3], awardType: ["Gold", "Silver", "Bronze", "Participant"][i % 4],
+  description: i % 2 ? SENTENCE.repeat(2).trim() : "Нэг мөрт тайлбар.",
+  imageURLs: [[fx.landscape], [fx.landscape, fx.certificate], [fx.certificate, fx.panorama, fx.landscape, fx.landscape]][i % 3],
+  ...(i % 2 ? {} : { prep: { goalId: "g1", days: 20, sessions: 20, minutes: 900, daysTotal: 30 } }),
+}));
+const photoCount = (list) => list.reduce((s, a) => s + Math.min(a.imageURLs.length, CARD.maxImages), 0);
+
+/** Page-number footers differ with the total; everything else on the card pages must match. */
+const cardCalls = (calls, lastPage) => calls
+  .filter((c) => c.page <= lastPage && !c.text.includes("champstep.mn"))
+  .map(({ text, x, y, size, page }) => `${page}|${text}|${x.toFixed(2)}|${y.toFixed(2)}|${size}`);
+
+for (const template of PDF_TEMPLATES) {
+  test(`${template}: appendix (a) off by default → no appendix pages, no links, 10 achievements with photos fit in ≤ 8 pages`, async () => {
+    const t = makeT("mn");
+    const off = await render(template, TEN);
+    assertInsideBox(template, off.calls);
+    assert.equal(off.linkCount, 0, "no link annotations");
+    assert.ok(!off.calls.some((c) => c.text === t("pdf.appendixTitle").toUpperCase()), "no appendix page header");
+    assert.ok(!off.calls.some((c) => c.text === t("pdf.backLink")), "no back link");
+    assert.ok(off.pageCount <= 8, `${template}: ${off.pageCount} pages`);
+    const lastCardPage = Math.max(...off.calls.map((c) => c.page));
+    assert.equal(lastCardPage, off.pageCount, "every page is a card page");
+    const explicit = await render(template, TEN, { opts: { includeAppendix: false } });
+    assert.equal(explicit.pageCount, off.pageCount, "default == includeAppendix:false");
+    console.log(`${template}: 10 achievements, ${photoCount(TEN)} card photos → ${off.pageCount} pages without the appendix`);
+  });
+
+  test(`${template}: appendix (b) on → one page per card photo + thumbnail and back links, card pages unchanged`, async () => {
+    const off = await render(template, TEN);
+    const on = await render(template, TEN, { opts: { includeAppendix: true } });
+    const photos = photoCount(TEN);
+    assert.equal(on.pageCount, off.pageCount + photos, "appendix = one page per card photo");
+    assert.equal(on.linkCount, photos * 2, "thumbnail → appendix + appendix → back");
+    assert.deepEqual(cardCalls(on.calls, off.pageCount), cardCalls(off.calls, off.pageCount), "card pages identical with and without the appendix");
+    assertInsideBox(template, on.calls);
+  });
+
+  test(`${template}: practice notes (c) a 200-char note wraps to ≤ 3 lines inside the left column, hanging indent`, async () => {
+    assert.equal(NOTE_200.length, 200);
+    const { calls } = await render(template, [CASES.c], { opts: { practiceLogs: logsWith(NOTE_200) } });
+    assertInsideBox(template, calls);
+    const x0 = BOX[template].left + CARD.pad;
+    const { leftW } = cardColumns(innerW(template), true);
+    const lines = linesOf(calls, NOTE_200).filter((c) => c.size === 8.5);
+    assert.ok(lines.length >= 2 && lines.length <= 3, `${lines.length} lines`);
+    for (const c of lines) assert.ok(c.x + c.w <= x0 + leftW + EPS, `line ends at ${(c.x + c.w).toFixed(1)} > column ${(x0 + leftW).toFixed(1)}`);
+    const bullet = calls.find((c) => c.text === "·");
+    const meta = calls.find((c) => c.text === "10-16 · 45 мин");
+    assert.ok(bullet && meta, "bullet + date · minutes");
+    assert.ok(Math.abs(bullet.x - x0) < EPS, "bullet at the column edge");
+    assert.ok(lines[0].x > meta.x + meta.w - EPS, "first line after the meta");
+    for (const c of lines.slice(1)) assert.ok(Math.abs(c.x - meta.x) < EPS, `hanging indent: line at ${c.x.toFixed(2)}, text start ${meta.x.toFixed(2)}`);
+    const joined = lines.map((c) => c.text.replace(/…$/, "")).join(" ");
+    assert.ok(NOTE_200.startsWith(joined), "lines are the note's text, in order");
+    if (lines.length === 3 && joined.length < NOTE_200.length) assert.ok(lines[2].text.endsWith("…"), "cut note ends in …");
+  });
+
+  test(`${template}: practice notes (d) a 40-char note is shown whole, no "…"`, async () => {
+    const { calls } = await render(template, [CASES.c], { opts: { practiceLogs: logsWith(NOTE_40) } });
+    const lines = linesOf(calls, NOTE_40).filter((c) => c.size === 8.5);
+    assert.equal(lines.map((c) => c.text).join(" "), NOTE_40);
+    assert.ok(!calls.some((c) => c.size === 8.5 && c.text.endsWith("…")), "no …");
   });
 }
 

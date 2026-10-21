@@ -60,6 +60,25 @@ test("pdf: paid plan can pick all 3 templates, preview re-renders, fullscreen ta
     await expect(fullscreen).toBeEnabled({ timeout: 45_000 });
   }
 
+  // Appendix switch: off by default, remembered in localStorage, re-renders the preview
+  const appendix = page.getByTestId("pdf-appendix-switch");
+  await expect(appendix).toHaveAttribute("aria-checked", "false");
+  await expect(appendix).toHaveAccessibleName(tr("pdfPreview.appendix"));
+  const srcOff = await page.locator("iframe").getAttribute("src");
+  await appendix.click();
+  await expect(appendix).toHaveAttribute("aria-checked", "true");
+  expect(await page.evaluate(() => localStorage.getItem("champstep.pdf.appendix"))).toBe("1");
+  await expect(page.locator("iframe")).not.toHaveAttribute("src", srcOff ?? "", { timeout: 45_000 });
+  await expect(fullscreen).toBeEnabled({ timeout: 45_000 });
+  await page.keyboard.press("Escape");
+  await expect(page.getByText(tr("pdfPreview.title"))).toBeHidden();
+  await page.getByTestId("pdf-template-portfolio").click();
+  await expect(page.getByTestId("pdf-appendix-switch")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("pdf-appendix-switch").click();
+  await expect(page.getByTestId("pdf-appendix-switch")).toHaveAttribute("aria-checked", "false");
+  expect(await page.evaluate(() => localStorage.getItem("champstep.pdf.appendix"))).toBe("0");
+  await expect(fullscreen).toBeEnabled({ timeout: 45_000 });
+
   const downloadBtn = page.getByRole("button", { name: new RegExp("^" + tr("pdfPreview.downloadN", { n: 1 }).replace(/[()]/g, "\\$&")) });
   await expect(downloadBtn).toBeEnabled();
 

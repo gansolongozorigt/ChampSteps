@@ -230,7 +230,8 @@
       "morePhotos": "+{{n}} зураг"
     },
     "prepValue": "{{days}} өдөр · {{hours}} цаг",
-    "prepValueMin": "{{days}} өдөр · {{minutes}} мин"
+    "prepValueMin": "{{days}} өдөр · {{minutes}} мин",
+    "prepEntryMinutes": "{{minutes}} мин"
   },
   "pdfPreview": {
     "title": "PDF урьдчилж харах",
@@ -247,7 +248,8 @@
     "back": "Буцах",
     "cancel": "Болих",
     "close": "Хаах",
-    "downloadN": "Татах ({{n}})"
+    "downloadN": "Татах ({{n}})",
+    "appendix": "Хавсралт — зураг бүрийг бүтэн хуудсаар"
   },
   "guest": {
     "banner": "Туршилтын горим: өгөгдөл зөвхөн энэ төхөөрөмжид хадгалагдана.",
