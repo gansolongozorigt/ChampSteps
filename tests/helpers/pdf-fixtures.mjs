@@ -3,11 +3,14 @@
 import { readFileSync } from "node:fs";
 import sharp from "sharp";
 
-/** i18next-style lookup with {{var}} interpolation over a locale json (mn by default). */
+/** i18next-style lookup with {{var}} interpolation and count plurals over a locale json (mn by default). */
 export function makeT(lang = "mn") {
   const dict = JSON.parse(readFileSync(new URL(`../../src/i18n/locales/${lang}.json`, import.meta.url), "utf8"));
+  const rules = new Intl.PluralRules(lang);
+  const get = (k) => k.split(".").reduce((o, p) => (o && typeof o === "object" ? o[p] : undefined), dict);
   return (key, vars = {}) => {
-    const v = key.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), dict);
+    // i18next v4 plurals: key_one / key_few / key_many / key_other picked by Intl.PluralRules
+    const v = typeof vars.count === "number" ? get(`${key}_${rules.select(vars.count)}`) ?? get(`${key}_other`) ?? get(key) : get(key);
     if (typeof v !== "string") return key;
     return v.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? ""));
   };

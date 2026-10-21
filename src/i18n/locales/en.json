@@ -282,9 +282,11 @@
     "fields": {
       "name": "Name",
       "bio": "Bio",
-      "bioPlaceholder": "e.g. 11 y/o · loves chess and watercolor",
+      "bioPlaceholder": "e.g. dancesport, violin; loves chess",
       "birthDate": "Birth date",
-      "avatar": "Avatar"
+      "avatar": "Avatar",
+      "ageNow": "Now {{age}} — the age updates automatically",
+      "bioAgeHint": "The age is shown automatically from the birth date — no need to write it here."
     },
     "actions": {
       "save": "Save",
@@ -793,5 +795,9 @@
     "prepLine": "Preparation: {{days}} days · {{hours}} h",
     "prepLineMin": "Preparation: {{days}} days · {{minutes}} min",
     "resultFormHint": "Goal result: the practice statistics are attached to the achievement."
+  },
+  "age": {
+    "years_one": "{{count}} year old",
+    "years_other": "{{count}} years old"
   }
 }

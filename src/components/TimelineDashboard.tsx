@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookOpen, CalendarCheck, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Target, Trash2, type LucideIcon } from "lucide-react";
 import { hoursLabel } from "../lib/goals";
+import { ageBioLine } from "../lib/age";
 import type { Achievement, AchievementCategory, Child } from "../types";
 import {
   awardStyles,
@@ -58,6 +59,7 @@ export default function TimelineDashboard({
   onToast,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
+  const ageLine = ageBioLine(child, t);
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
   const [filter, setFilter] = useState<CategoryFilter>("All");
@@ -131,8 +133,9 @@ export default function TimelineDashboard({
               <h1 className="t-display">
                 {t("app.achievementsTitle", { name: child.name })}
               </h1>
-              {child.bio && (
-                <p className="t-caption mt-0.5 leading-snug">{child.bio}</p>
+              {/* "12 настай · Бүжгийн спорт": age from birthDate (UB date), bio without a typed-in age */}
+              {ageLine && (
+                <p className="t-caption mt-0.5 leading-snug" data-testid="child-age-bio">{ageLine}</p>
               )}
               {nextGoal && (
                 <p className="t-caption mt-1 inline-flex items-center gap-1 text-primary-soft-ink" data-testid="next-goal-line">

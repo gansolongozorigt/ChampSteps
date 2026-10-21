@@ -54,7 +54,7 @@ const MANY = Array.from({ length: 12 }, (_, i) => ({
 async function render(template, achievements, extra = {}) {
   const calls = [];
   let pages;
-  const buf = await exportPortfolio(child, achievements, {
+  const buf = await exportPortfolio(extra.child ?? child, achievements, {
     template, t: makeT(extra.lang ?? "mn"), fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-17T00:00:00Z"),
     practiceLogs: PREP_LOGS, onPages: (p) => { pages = p; },
     onDoc: (doc) => {
@@ -164,6 +164,38 @@ for (const template of PDF_TEMPLATES) {
     assert.ok(calls.some((c) => c.text === "43 days · 31 h"), "en prep value");
   });
 }
+
+// ---------------------------------------------------------------------------
+// Header: age from the birth date on the PDF's date, bio without a typed-in age
+// ---------------------------------------------------------------------------
+
+const UULEN = { ...child, name: "Үүлэн", birthDate: "2014-07-20", bio: "11 настай · Бүжгийн спорт, Хийл хөгжим" };
+
+for (const template of PDF_TEMPLATES) {
+  test(`${template}: header shows the computed age · bio without the stale "11 настай", birth date row kept`, async () => {
+    const { calls } = await render(template, [CASES.b], { child: UULEN, opts: { now: new Date("2026-10-21T00:00:00Z") } });
+    assertInsideBox(template, calls);
+    const header = calls.filter((c) => c.page === 1).map((c) => c.text).join("\n");
+    assert.ok(header.includes("12 настай · Бүжгийн спорт"), `header: ${header.slice(0, 300)}`);
+    assert.ok(!header.includes("11 настай"), "stale age from the bio is not shown");
+    assert.ok(header.includes("2014-07-20"), "birth date still shown");
+  });
+}
+
+test("header age follows the PDF date: the day before the birthday (UB) is still 11", async () => {
+  const { calls } = await render("framed", [CASES.b], { child: UULEN, opts: { now: new Date("2026-07-19T15:59:00Z") } }); // UB 07-19 23:59
+  const header = calls.filter((c) => c.page === 1).map((c) => c.text).join("\n");
+  assert.ok(header.includes("11 настай · Бүжгийн спорт") && !header.includes("12 настай"), header.slice(0, 200));
+});
+
+test("header without a birth date keeps the bio as typed; en/ru age wording", async () => {
+  const noDate = await render("portfolio", [CASES.b], { child: { ...UULEN, birthDate: "" } });
+  assert.ok(noDate.calls.some((c) => c.text.includes("11 настай · Бүжгийн спорт")), "bio unchanged when the age is unknown");
+  const en = await render("official", [CASES.b], { lang: "en", child: { ...UULEN, bio: "" }, opts: { now: new Date("2026-10-21T00:00:00Z") } });
+  assert.ok(en.calls.some((c) => c.text === "12 years old"), "en age only (empty bio)");
+  const ru = await render("official", [CASES.b], { lang: "ru", child: UULEN, opts: { now: new Date("2026-10-21T00:00:00Z") } });
+  assert.ok(ru.calls.some((c) => c.text.startsWith("12 лет · Бүжгийн спорт")), "ru plural");
+});
 
 test("all cases, 3 templates → scratch/pdf-layout/<template>.pdf for a visual check", async () => {
   for (const template of PDF_TEMPLATES) {

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera, Trash2, Target } from "lucide-react";
 import type { Child } from "../types";
+import { ageFromBirthDate, bioMentionsAge, formatAge } from "../lib/age";
 import { compressImage, validateImageFile } from "../utils/image";
 
 export interface ChildProfileEditorProps {
@@ -30,6 +31,7 @@ export interface ChildProfileEditorProps {
 export default function ChildProfileEditor({ child, onClose, onSave, onError, onRequestDelete, onAddGoal }: ChildProfileEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Child>(child);
+  const draftAge = ageFromBirthDate(draft.birthDate);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(child.avatarUrl);
   const [saving, setSaving] = useState(false);
@@ -139,6 +141,11 @@ export default function ChildProfileEditor({ child, onClose, onSave, onError, on
                 onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
                 className="cs-input"
               />
+              {draftAge !== null && (
+                <span className="t-caption block mt-1 text-ink-3" data-testid="profile-age-hint">
+                  {t("profile.fields.ageNow", { age: formatAge(draftAge, t) })}
+                </span>
+              )}
             </Field>
 
             <Field label={t("profile.fields.bio")}>
@@ -149,6 +156,11 @@ export default function ChildProfileEditor({ child, onClose, onSave, onError, on
                 placeholder={t("profile.fields.bioPlaceholder")}
                 className="cs-textarea"
               />
+              {bioMentionsAge(draft.bio) && (
+                <span className="t-caption block mt-1 text-primary-soft-ink" data-testid="profile-bio-age-hint">
+                  {t("profile.fields.bioAgeHint")}
+                </span>
+              )}
             </Field>
           </div>
 

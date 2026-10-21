@@ -17,6 +17,7 @@ import { jsPDF } from "jspdf";
 import type { Achievement, Child, PracticeLog } from "../types";
 import type { AppLang } from "../i18n";
 import { LOGO_BARS } from "../components/Logo";
+import { ageBioLine } from "./age";
 
 // -----------------------------------------------------------------------------
 // Brand palette (docs/BRAND.md) as RGB for jsPDF.
@@ -688,14 +689,18 @@ export async function exportPortfolio(
   const imgRefs: ImgRef[] = [];
   const dateStr = now.toISOString().slice(0, 10);
 
+  // Header line under the name: "12 настай · Бүжгийн спорт" — age on the PDF's date
+  // (Ulaanbaatar), bio without a typed-in leading age. The stored bio is untouched.
+  const shown: Child = { ...child, bio: ageBioLine(child, t, now) };
+
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    await renderOfficial(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs);
     addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
+    await renderFramed(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
   } else {
-    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    await renderPortfolio(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - 8 });
   }
 

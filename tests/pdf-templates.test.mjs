@@ -75,7 +75,7 @@ test("dataUrlDims reads PNG IHDR and JPEG SOF headers", () => {
 
 test("i18n: pdf keys the templates use exist in mn/en/ru and carry no emoji", async () => {
   const keys = ["pdf.official", "pdf.framed", "pdf.portfolio", "pdf.officialDesc", "pdf.framedDesc", "pdf.portfolioDesc", "pdf.lockedCaption", "pdf.portfolioLabel", "pdf.footerLine", "pdf.backLink", "pdf.appendixTitle", "pdf.subtitle", "pdf.totalEntries", "pdf.goldMedals", "pdf.birthDate", "pdf.achievementsTitle", "pdf.premiumMessage",
-    "pdf.labels.date", "pdf.labels.location", "pdf.labels.category", "pdf.labels.award", "pdf.labels.prep", "pdf.labels.notes", "pdf.labels.prepNotes", "pdf.labels.morePhotos", "pdf.prepValue", "pdf.prepValueMin"];
+    "pdf.labels.date", "pdf.labels.location", "pdf.labels.category", "pdf.labels.award", "pdf.labels.prep", "pdf.labels.notes", "pdf.labels.prepNotes", "pdf.labels.morePhotos", "pdf.prepValue", "pdf.prepValueMin", "profile.fields.ageNow", "profile.fields.bioAgeHint", "age.years_other"];
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2900}-\u{297F}]/u;
   for (const lang of ["mn", "en", "ru"]) {
     const dict = (await import(`../src/i18n/locales/${lang}.json`, { with: { type: "json" } })).default;
