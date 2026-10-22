@@ -18,6 +18,7 @@ import { jsPDF } from "jspdf";
 import type { Achievement, Child, PracticeLog } from "../types";
 import type { AppLang } from "../i18n";
 import { LOGO_BARS } from "../components/Logo";
+import { ageBioLine } from "./age";
 
 // -----------------------------------------------------------------------------
 // Brand palette (docs/BRAND.md) as RGB for jsPDF.
@@ -322,6 +323,8 @@ export async function urlToDataUrl(url: string): Promise<string> {
   }
 }
 
+const PT = 0.3528; // 1pt in mm
+
 /** Draw a data URL cover-fitted into a box and clipped to a circle (no canvas needed). */
 function drawCircleImage(doc: jsPDF, dataUrl: string, cx: number, cy: number, r: number) {
   const { w, h } = dataUrlDims(dataUrl);
@@ -350,13 +353,30 @@ async function drawAvatar(doc: jsPDF, child: Child, cx: number, cy: number, r: n
       } catch { /* fall through to initial */ }
     }
   }
-  doc.setFillColor(...bg);
+  drawInitialAvatar(doc, cx, cy, r, initialOf(child.name), { bg, fg });
+}
+
+/** First letter of the name, uppercased ("?" when empty); surrogate-safe. */
+export function initialOf(name: string | undefined): string {
+  const first = Array.from((name ?? "").trim())[0];
+  return first ? first.toUpperCase() : "?";
+}
+
+/** Glyph size = 45% of the circle diameter; NotoSans cap height is 714/1000 em. */
+export const AVATAR_INITIAL = { sizeRatio: 0.45, capHeight: 0.714 };
+
+/**
+ * Filled circle with a centred initial (all 3 templates). The baseline sits half a cap height
+ * below the centre, so capitals (Т, Ү, Ө, A, G) are optically centred in the circle.
+ */
+export function drawInitialAvatar(doc: jsPDF, cx: number, cy: number, r: number, initial: string, colors: { bg: RGB; fg: RGB }) {
+  doc.setFillColor(...colors.bg);
   doc.circle(cx, cy, r, "F");
-  const initial = (child.name || "?")[0].toUpperCase();
+  const sizeMm = AVATAR_INITIAL.sizeRatio * r * 2;
   setFont(doc, "bold");
-  doc.setFontSize(r * 4);
-  doc.setTextColor(...fg);
-  doc.text(initial, cx, cy + r * 1.3, { align: "center" });
+  doc.setFontSize(sizeMm / PT);
+  doc.setTextColor(...colors.fg);
+  doc.text(initial, cx, cy + (AVATAR_INITIAL.capHeight * sizeMm) / 2, { align: "center" });
 }
 
 /** Label-style text (BRAND.md .t-label): uppercase, letter-spaced. */
@@ -770,17 +790,21 @@ export async function exportPortfolio(
   const imgRefs: ImgRef[] = [];
   const dateStr = now.toISOString().slice(0, 10);
 
+  // Header line under the name: "12 настай · Бүжгийн спорт" — age on the PDF's date
+  // (Ulaanbaatar), bio without a typed-in leading age. The stored bio is untouched.
+  const shown: Child = { ...child, bio: ageBioLine(child, t, now) };
+
   // Appendix pages (and the thumbnail links / ↗ marks pointing at them) only when asked for.
   if (template === "official") {
-    await renderOfficial(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    await renderOfficial(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs);
     if (includeAppendix) await addAppendix(doc, imgRefs, t);
     addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
   } else if (template === "framed") {
-    await renderFramed(doc, child, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
+    await renderFramed(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
     if (includeAppendix) await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
   } else {
-    await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    await renderPortfolio(doc, shown, achievements, t, includeImages, imgRefs, practiceLogs);
     if (includeAppendix) await addAppendix(doc, imgRefs, t);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - 8 });
   }
@@ -855,7 +879,6 @@ async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievemen
 // Template 2: Framed — certificate feel, double frame on every page
 // =============================================================================
 
-const PT = 0.3528; // 1pt in mm
 /** Outer graphite 1.2pt at 10mm, inner green 0.5pt 2.5mm further in, content 10mm inside the inner frame. */
 const FRAME = { outer: 10, inner: 12.5, content: 22.5 };
 const FW = A4.w - FRAME.content * 2; // content width

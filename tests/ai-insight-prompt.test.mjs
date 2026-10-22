@@ -71,6 +71,15 @@ test("buildInsightInput: caps at 30 newest achievements; empty data is explicit"
   assert.equal(empty.child.age, null);
 });
 
+test("buildInsightInput: computed age (UB date) + bio without the typed-in age", () => {
+  const child = { ...childA, birthDate: "2014-07-20", bio: "11 настай · Бүжгийн спорт, Хийл хөгжим" };
+  const input = buildInsightInput({ childId: A, child, achievements, practiceLogs, language: "mn", now: Date.parse("2026-10-21T00:00:00Z") });
+  assert.equal(input.child.age, 12);
+  assert.equal(input.child.interests, "Бүжгийн спорт, Хийл хөгжим");
+  assert.equal(childAge("2014-07-20", Date.parse("2026-07-19T17:00:00Z")), 12, "UB 07-20 01:00 already counts");
+  assert.equal(childAge("2014-07-20", Date.parse("2026-07-19T15:00:00Z")), 11);
+});
+
 test("childAge / normalizeLanguage", () => {
   assert.equal(childAge("2017-03-15", NOW), 9);
   assert.equal(childAge("2017-10-09", NOW), 8, "birthday tomorrow → not yet 9");
