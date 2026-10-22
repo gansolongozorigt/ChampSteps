@@ -5,6 +5,17 @@ import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "../lib/pdfTempl
 import type { Achievement, Child, PracticeLog } from "../types";
 import { SUPPORTED_LANGS, type AppLang } from "../i18n";
 
+/** localStorage key for the "full-page photo appendix" switch ("1" = on). */
+const APPENDIX_PREF_KEY = "champstep.pdf.appendix";
+
+/** Saved appendix choice; off when nothing is saved or storage is unavailable. */
+function readAppendixPref(): boolean {
+  try { return window.localStorage.getItem(APPENDIX_PREF_KEY) === "1"; } catch { return false; }
+}
+function writeAppendixPref(on: boolean) {
+  try { window.localStorage.setItem(APPENDIX_PREF_KEY, on ? "1" : "0"); } catch { /* private mode etc. — keep the in-memory choice */ }
+}
+
 interface PdfPreviewModalProps {
   open: boolean;
   onClose: () => void;
@@ -39,6 +50,7 @@ export default function PdfPreviewModal({
     : "mn";
 
   const [template, setTemplate] = useState<PdfTemplate>(initialTemplate);
+  const [includeAppendix, setIncludeAppendix] = useState<boolean>(readAppendixPref);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -70,6 +82,12 @@ export default function PdfPreviewModal({
     }
   }, [open, achievements, initialTemplate]);
 
+  const toggleAppendix = () => {
+    const next = !includeAppendix;
+    writeAppendixPref(next);
+    setIncludeAppendix(next);
+  };
+
   const pickTemplate = (next: PdfTemplate) => {
     if (isPaidTemplate(next) && !canUsePaidTemplates) { onUpgrade(); return; }
     setTemplate(next);
@@ -99,7 +117,7 @@ export default function PdfPreviewModal({
       try {
         const { exportPortfolio } = await import("../lib/pdfExport");
         const url = await exportPortfolio(child, selectedList, {
-          t, template, language, includeImages, practiceLogs, output: "bloburl",
+          t, template, language, includeImages, includeAppendix, practiceLogs, output: "bloburl",
         });
         if (!cancelled && typeof url === "string") replaceUrl(url);
       } catch (err) {
@@ -111,7 +129,7 @@ export default function PdfPreviewModal({
 
     return () => { cancelled = true; window.clearTimeout(handle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isMobile, step, selectedList, template, includeImages, language, practiceLogs]);
+  }, [open, isMobile, step, selectedList, template, includeImages, includeAppendix, language, practiceLogs]);
 
   useEffect(() => {
     if (!open) replaceUrl(null);
@@ -145,7 +163,7 @@ export default function PdfPreviewModal({
       setGenerating(true);
       const { exportPortfolio } = await import("../lib/pdfExport");
       await exportPortfolio(child, selectedList, {
-        t, template, language, includeImages, practiceLogs, output: "save",
+        t, template, language, includeImages, includeAppendix, practiceLogs, output: "save",
       });
       onClose();
     } catch (err) {
@@ -342,6 +360,23 @@ export default function PdfPreviewModal({
               <span className="inline-flex items-center gap-1 text-primary-soft-ink"><Lock size={12} aria-hidden />{t("pdf.lockedCaption")}</span>
             )}
           </p>
+          {/* Full-page photo appendix: off by default (short PDF for schools); remembered per browser */}
+          <div className="flex items-center justify-between gap-3 mt-2 min-h-[36px]">
+            <label htmlFor="pdf-appendix-switch" className="t-caption text-ink-2 cursor-pointer min-w-0">
+              {t("pdfPreview.appendix")}
+            </label>
+            <button
+              id="pdf-appendix-switch"
+              type="button"
+              role="switch"
+              aria-checked={includeAppendix}
+              onClick={toggleAppendix}
+              data-testid="pdf-appendix-switch"
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${includeAppendix ? "bg-primary" : "bg-line-strong"}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${includeAppendix ? "translate-x-4" : ""}`} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 min-h-0">

@@ -230,7 +230,8 @@
       "morePhotos": "+{{n}} more photos"
     },
     "prepValue": "{{days}} days · {{hours}} h",
-    "prepValueMin": "{{days}} days · {{minutes}} min"
+    "prepValueMin": "{{days}} days · {{minutes}} min",
+    "prepEntryMinutes": "{{minutes}} min"
   },
   "pdfPreview": {
     "title": "PDF Preview",
@@ -247,7 +248,8 @@
     "back": "Back",
     "cancel": "Cancel",
     "close": "Close",
-    "downloadN": "Download ({{n}})"
+    "downloadN": "Download ({{n}})",
+    "appendix": "Appendix — full-page photos"
   },
   "guest": {
     "banner": "Trial mode: your data is stored on this device only.",

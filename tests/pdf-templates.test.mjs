@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate,
-  dataUrlDims, exportPortfolio, prepValue, prepNotesFor, CARD, cardColumns, fitImage,
+  dataUrlDims, exportPortfolio, prepValue, prepNotesFor, prepEntryMeta, CARD, cardColumns, fitImage,
 } from "../src/lib/pdfExport.ts";
 import { makeT, fonts, fixtures } from "./helpers/pdf-fixtures.mjs";
 
@@ -73,9 +73,16 @@ test("dataUrlDims reads PNG IHDR and JPEG SOF headers", () => {
   assert.deepEqual(dataUrlDims("https://x/y.jpg"), { w: 0, h: 0 });
 });
 
+test("prepEntryMeta: MM-DD · minutes, either part optional", () => {
+  assert.equal(prepEntryMeta({ date: "2026-10-16", minutes: 45 }, t), "10-16 · 45 мин");
+  assert.equal(prepEntryMeta({ date: "2026-10-16", minutes: 0 }, t), "10-16");
+  assert.equal(prepEntryMeta({ date: "", minutes: 30 }, t), "30 мин");
+  assert.equal(prepEntryMeta({ date: "", minutes: 0 }, t), "");
+});
+
 test("i18n: pdf keys the templates use exist in mn/en/ru and carry no emoji", async () => {
   const keys = ["pdf.official", "pdf.framed", "pdf.portfolio", "pdf.officialDesc", "pdf.framedDesc", "pdf.portfolioDesc", "pdf.lockedCaption", "pdf.portfolioLabel", "pdf.footerLine", "pdf.backLink", "pdf.appendixTitle", "pdf.subtitle", "pdf.totalEntries", "pdf.goldMedals", "pdf.birthDate", "pdf.achievementsTitle", "pdf.premiumMessage",
-    "pdf.labels.date", "pdf.labels.location", "pdf.labels.category", "pdf.labels.award", "pdf.labels.prep", "pdf.labels.notes", "pdf.labels.prepNotes", "pdf.labels.morePhotos", "pdf.prepValue", "pdf.prepValueMin"];
+    "pdf.labels.date", "pdf.labels.location", "pdf.labels.category", "pdf.labels.award", "pdf.labels.prep", "pdf.labels.notes", "pdf.labels.prepNotes", "pdf.labels.morePhotos", "pdf.prepValue", "pdf.prepValueMin", "pdf.prepEntryMinutes", "pdfPreview.appendix"];
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2900}-\u{297F}]/u;
   for (const lang of ["mn", "en", "ru"]) {
     const dict = (await import(`../src/i18n/locales/${lang}.json`, { with: { type: "json" } })).default;
@@ -93,7 +100,7 @@ test("i18n: pdf keys the templates use exist in mn/en/ru and carry no emoji", as
 for (const template of PDF_TEMPLATES) {
   test(`render ${template}: no throw, multi-page, NotoSans embedded, written to scratch/pdf-3/${template}.pdf`, async () => {
     let framedPages;
-    const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z"), onPages: (p) => { framedPages = p; } });
+    const buf = await exportPortfolio(child, achievements, { template, t, fonts, includeImages: true, includeAppendix: true, output: "arraybuffer", now: new Date("2026-10-13T00:00:00Z"), onPages: (p) => { framedPages = p; } });
     assert.ok(buf instanceof ArrayBuffer && buf.byteLength > 20_000, "pdf bytes");
     if (template === "framed") {
       // 3 cards (2 + 1 + 0 photos, ≤ 45 mm each) flow onto ≤ 2 content pages; the 3 appendix pages come on top
@@ -144,7 +151,7 @@ test("framed pagination: 10 achievements → every full content page carries ≥
     imageURLs: [[], [fx.landscape], [fx.landscape, fx.certificate]][i % 3],
   }));
   let pages;
-  const buf = await exportPortfolio(child, many, { template: "framed", t, fonts, includeImages: true, output: "arraybuffer", onPages: (p) => { pages = p; } });
+  const buf = await exportPortfolio(child, many, { template: "framed", t, fonts, includeImages: true, includeAppendix: true, output: "arraybuffer", onPages: (p) => { pages = p; } });
   assert.ok(Array.isArray(pages) && pages.length >= 2, "flowed over several pages");
   assert.deepEqual(pages.flat(), many.map((_, i) => i), "every achievement once, in order");
   // every page but the last carries ≥ 2 cards (the last one takes whatever is left over)

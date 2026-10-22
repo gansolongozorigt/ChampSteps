@@ -2,13 +2,14 @@
 // pdfExport v9 — 3 template: official, framed, portfolio
 //   official  — албан хэлбэр (сургууль, тэтгэлэг); үнэгүй багцад ч ажиллана
 //   framed    — гэрчилгээний хэв маяг, хуудас бүр давхар хүрээтэй
-//   portfolio — зургийн загвар: дугуй хүрээтэй карт, гэрчилгээ бүтэн хуудсаар хавсралтад
+//   portfolio — зургийн загвар: нүүр хуудас + дугуй хүрээтэй карт
 // Амжилт бүр 2 баганат карт (drawCard): зүүн талд label/value мөрүүд + тэмдэглэл
 // (бүтнээрээ, эвхэгдсэн), баруун талд зургууд (харьцаа хадгална, max 45mm).
 // Хэрэглэгчийн текст бүр wrapLines/drawWrapped-оор баганын өргөнд эвхэгдэнэ —
 // хэмжих, зурах хоёр ижил фонтоор (өмнөх алдаа: 8pt-ээр хэмжээд 9.5pt-ээр зурдаг байсан).
 // Монгол+Англи+Орос хэл, NotoSans фонт (emoji байхгүй — NotoSans зурдаггүй),
-// хавсралт хуудас (бүтэн хэмжээний зураг) + thumbnail-аас үсрэх холбоос.
+// Хавсралт (opts.includeAppendix, анхдагч false): зураг бүр бүтэн хуудсаар +
+// thumbnail-аас үсрэх холбоос, ↗ тэмдэг. Унтраалттай үед хавсралт, холбоос, тэмдэг аль нь ч үгүй.
 // Браузер болон Node (tests/pdf-templates.test.mjs) хоёуланд ажиллана:
 // fonts-ийг opts.fonts-оор өгч болно, зураг data: URL бол canvas хэрэггүй.
 // =============================================================================
@@ -63,6 +64,11 @@ interface ExportOpts {
   filename?: string;
   language?: AppLang;
   includeImages?: boolean;
+  /**
+   * Full-page appendix: one page per card photo + the thumbnail link and its ↗ mark.
+   * Off by default — schools and scholarships want a short PDF; the cards keep their photos either way.
+   */
+  includeAppendix?: boolean;
   t?: T;
   // "save" (default) -> файл татна; "bloburl" -> preview-д object URL; "arraybuffer" -> Node тест.
   output?: "save" | "bloburl" | "arraybuffer";
@@ -397,15 +403,43 @@ export function lineHeightFor(size: number): number {
  */
 export function wrapLines(doc: jsPDF, text: string, width: number, font?: FontSpec, maxLines = Infinity): string[] {
   if (font) applyFont(doc, font);
-  const clean = String(text ?? "").replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").trim();
+  const clean = cleanText(text);
   if (!clean) return [];
   const lines = doc.splitTextToSize(clean, width) as string[];
   if (lines.length <= maxLines) return lines;
   const kept = lines.slice(0, Math.max(1, maxLines));
-  let last = kept[kept.length - 1];
-  while (last.length > 1 && doc.getTextWidth(last + "…") > width) last = last.slice(0, -1).trimEnd();
-  kept[kept.length - 1] = last + "…";
+  kept[kept.length - 1] = withEllipsis(doc, kept[kept.length - 1], width);
   return kept;
+}
+
+function cleanText(text: string): string {
+  return String(text ?? "").replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").trim();
+}
+
+/** `line` shortened until `line + "…"` fits `width` (current font). */
+function withEllipsis(doc: jsPDF, line: string, width: number): string {
+  let last = line;
+  while (last.length > 1 && doc.getTextWidth(last + "…") > width) last = last.slice(0, -1).trimEnd();
+  return last + "…";
+}
+
+/**
+ * Like wrapLines, but the first line is `firstIndent` mm shorter (something is drawn
+ * before it on the same baseline, e.g. a date). Lines 2+ use the full `width`.
+ * Measured with the one `font`; with `maxLines` the last kept line ends in "…".
+ */
+export function wrapHanging(doc: jsPDF, text: string, width: number, font: FontSpec, firstIndent: number, maxLines = Infinity): string[] {
+  if (firstIndent <= 0) return wrapLines(doc, text, width, font, maxLines);
+  applyFont(doc, font);
+  const clean = cleanText(text);
+  if (!clean) return [];
+  const firstW = width - firstIndent;
+  const first = (doc.splitTextToSize(clean, firstW) as string[])[0] ?? "";
+  if (!first || !clean.startsWith(first)) return wrapLines(doc, text, width, font, maxLines); // defensive: never lose text
+  const rest = clean.slice(first.length).trim();
+  if (!rest) return [first];
+  if (maxLines <= 1) return [withEllipsis(doc, first, firstW)];
+  return [first, ...wrapLines(doc, rest, width, font, maxLines - 1)];
 }
 
 /** Height (mm) `text` takes once wrapped — known before anything is drawn. */
@@ -434,16 +468,33 @@ export function prepValue(a: { prep?: { days: number; minutes: number } }, t: T)
   return hours > 0 ? t("pdf.prepValue", { days: a.prep.days, hours }) : t("pdf.prepValueMin", { days: a.prep.days, minutes: a.prep.minutes });
 }
 
-/** The newest practice-log notes (max 3) written for the goal the achievement came out of, one line each. */
-export function prepNotesFor(a: { prep?: { goalId: string } }, logs: readonly PracticeLog[] | undefined, max = 3): string[] {
+export interface PrepEntry { date: string; minutes: number; text: string }
+
+/** The newest practice-log entries (max 3, empty notes skipped) of the goal the achievement came out of. */
+export function prepEntriesFor(a: { prep?: { goalId: string } }, logs: readonly PracticeLog[] | undefined, max = 3): PrepEntry[] {
   const goalId = a.prep?.goalId;
   if (!goalId || !logs?.length) return [];
   return logs
     .filter((l) => l.goalId === goalId && typeof l.content === "string" && l.content.trim().length > 0)
     .sort((p, q) => (p.date < q.date ? 1 : p.date > q.date ? -1 : 0))
     .slice(0, max)
-    .map((l) => l.content.replace(/\s+/g, " ").trim());
+    .map((l) => ({ date: String(l.date ?? ""), minutes: Number(l.duration) || 0, text: l.content.replace(/\s+/g, " ").trim() }));
 }
+
+/** Just the note texts of prepEntriesFor. */
+export function prepNotesFor(a: { prep?: { goalId: string } }, logs: readonly PracticeLog[] | undefined, max = 3): string[] {
+  return prepEntriesFor(a, logs, max).map((e) => e.text);
+}
+
+/** "10-16 · 45 мин" in front of a practice note; date or minutes may be missing, "" when both are. */
+export function prepEntryMeta(e: { date: string; minutes: number }, t: T): string {
+  const md = /^\d{4}-(\d{2}-\d{2})/.exec(e.date)?.[1] ?? "";
+  const min = e.minutes > 0 ? t("pdf.prepEntryMinutes", { minutes: e.minutes }) : "";
+  return [md, min].filter(Boolean).join(" · ");
+}
+
+/** A practice note never takes more than this many lines on a card; the last one ends in "…" when cut. */
+export const PREP_NOTE_MAX_LINES = 3;
 
 interface CardImage { dataUrl: string; naturalW: number; naturalH: number }
 
@@ -572,19 +623,49 @@ async function drawCard(ctx: CardCtx, flow: Flow, a: Achievement): Promise<numbe
   const prep = prepValue(a, t);
   if (prep) row(t("pdf.labels.prep"), prep);
 
-  const section = (heading: string, texts: string[], font: FontSpec, bullet: boolean, maxLines?: number) => {
-    const lh = lineHeightFor(font.size);
-    const wrapped = texts.map((tx) => wrapLines(doc, (bullet ? "·  " : "") + tx, leftW, font, maxLines)).filter((l) => l.length);
-    if (!wrapped.length) return;
+  const heading = (text: string) => {
     lines.push({ h: 3, draw: () => {} });
-    lines.push({ h: 4.5, draw: (lx, ly) => drawLabel(doc, heading, lx, ly + 3.4, 7, INK3) });
-    for (const ls of wrapped) for (const text of ls) {
+    lines.push({ h: 4.5, draw: (lx, ly) => drawLabel(doc, text, lx, ly + 3.4, 7, INK3) });
+  };
+  if (a.description && a.description.trim()) {
+    const font: FontSpec = { size: 9.5, color: INK2 };
+    const lh = lineHeightFor(font.size);
+    heading(t("pdf.labels.notes"));
+    for (const text of wrapLines(doc, a.description, leftW, font)) {
       lines.push({ h: lh, draw: (lx, ly) => { applyFont(doc, font); doc.text(text, lx, ly + lh * 0.78); } });
     }
-  };
-  if (a.description && a.description.trim()) section(t("pdf.labels.notes"), [a.description], { size: 9.5, color: INK2 }, false);
-  const notes = prepNotesFor(a, ctx.practiceLogs);
-  if (notes.length) section(t("pdf.labels.prepNotes"), notes, { size: 8.5, color: INK2 }, true, 1);
+  }
+
+  // Practice notes: "· 10-16 · 45 мин  note text that wraps…" — up to 3 lines per note,
+  // lines 2-3 hang under the text after the bullet (not under the bullet).
+  const entries = prepEntriesFor(a, ctx.practiceLogs);
+  if (entries.length) {
+    const font: FontSpec = { size: 8.5, color: INK2 };
+    const metaFont: FontSpec = { size: 7, color: INK3 };
+    const lh = lineHeightFor(font.size);
+    applyFont(doc, font);
+    const bulletW = doc.getTextWidth("· ");
+    const textW = leftW - bulletW;
+    heading(t("pdf.labels.prepNotes"));
+    for (const e of entries) {
+      const meta = prepEntryMeta(e, t);
+      applyFont(doc, metaFont);
+      const metaW = meta ? doc.getTextWidth(meta) + 2 : 0;
+      wrapHanging(doc, e.text, textW, font, metaW, PREP_NOTE_MAX_LINES).forEach((text, k) => lines.push({
+        h: lh,
+        draw: (lx, ly) => {
+          const base = ly + lh * 0.78;
+          if (k === 0) {
+            applyFont(doc, font);
+            doc.text("·", lx, base);
+            if (meta) { applyFont(doc, metaFont); doc.text(meta, lx + bulletW, base); }
+          }
+          applyFont(doc, font);
+          doc.text(text, lx + bulletW + (k === 0 ? metaW : 0), base);
+        },
+      }));
+    }
+  }
 
   const leftH = lines.reduce((s, l) => s + l.h, 0);
   const totalH = pad * 2 + headerH + Math.max(leftH, rightH);
@@ -671,6 +752,7 @@ export async function exportPortfolio(
     t = (k: string) => k,
     filename,
     includeImages = true,
+    includeAppendix = false,
     output = "save",
     fonts,
     now = new Date(),
@@ -688,14 +770,18 @@ export async function exportPortfolio(
   const imgRefs: ImgRef[] = [];
   const dateStr = now.toISOString().slice(0, 10);
 
+  // Appendix pages (and the thumbnail links / ↗ marks pointing at them) only when asked for.
   if (template === "official") {
     await renderOfficial(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    if (includeAppendix) await addAppendix(doc, imgRefs, t);
     addFooters(doc, t, dateStr, { align: "left", x: M, y: A4.h - 8 });
   } else if (template === "framed") {
     await renderFramed(doc, child, achievements, t, includeImages, imgRefs, practiceLogs, onPages);
+    if (includeAppendix) await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - FRAME.content + 4 });
   } else {
     await renderPortfolio(doc, child, achievements, t, includeImages, imgRefs, practiceLogs);
+    if (includeAppendix) await addAppendix(doc, imgRefs, t);
     addFooters(doc, t, dateStr, { align: "center", x: A4.w / 2, y: A4.h - 8 });
   }
 
@@ -763,8 +849,6 @@ async function renderOfficial(doc: jsPDF, child: Child, achievements: Achievemen
   const flow = makeFlow(doc, 114, A4.h - 20, M + 10, () => {});
   const ctx: CardCtx = { doc, t, style: "official", x: M, w: CW, includeImages, imgRefs, practiceLogs };
   for (const a of achievements) await drawCard(ctx, flow, a);
-
-  await addAppendix(doc, imgRefs, t);
 }
 
 // =============================================================================
@@ -876,12 +960,10 @@ async function renderFramed(
   }
   while (pages.length <= flow.pageIdx) pages.push([]);
   onPages?.(pages.map((p) => [...p]));
-
-  await addAppendix(doc, imgRefs, t, { margin: FRAME.content, top: FRAME.content + 4, bottom: FRAME.content + 6, decorate: drawFrame });
 }
 
 // =============================================================================
-// Template 3: Portfolio — rounded cards, certificates full-page in the appendix
+// Template 3: Portfolio — rounded cards on a cover-led layout (appendix optional, like the others)
 // =============================================================================
 
 async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achievement[], t: T, includeImages: boolean, imgRefs: ImgRef[], practiceLogs?: PracticeLog[]) {
@@ -943,8 +1025,6 @@ async function renderPortfolio(doc: jsPDF, child: Child, achievements: Achieveme
   const flow = makeFlow(doc, y, bottomLimit, 22, () => {});
   const ctx: CardCtx = { doc, t, style: "portfolio", x: M, w: CW, includeImages, imgRefs, practiceLogs };
   for (const a of achievements) await drawCard(ctx, flow, a);
-
-  await addAppendix(doc, imgRefs, t);
 }
 
 // =============================================================================
