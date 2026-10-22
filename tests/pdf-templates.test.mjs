@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import {
   PDF_TEMPLATES, PAID_PDF_TEMPLATES, LEGACY_TEMPLATE_MAP, normalizePdfTemplate, isPaidTemplate,
   dataUrlDims, exportPortfolio, prepValue, prepNotesFor, CARD, cardColumns, fitImage,
+  initialOf, AVATAR_INITIAL,
 } from "../src/lib/pdfExport.ts";
 import { makeT, fonts, fixtures } from "./helpers/pdf-fixtures.mjs";
 
@@ -110,6 +111,49 @@ for (const template of PDF_TEMPLATES) {
     assert.ok(pages >= 4, `${template}: expected ≥4 pages, got ${pages}`);
     assert.ok(/NotoSans/.test(text), "NotoSans font embedded");
     writeFileSync(new URL(`${template}.pdf`, OUT), bytes);
+  });
+}
+
+// No photo → filled circle + initial. Spy on the doc: the first filled circle is the avatar
+// (header), and the next text call draws the initial into it.
+const PT_MM = 0.3528;
+async function avatarInitial(template, name) {
+  const calls = [];
+  const onDoc = (doc) => {
+    const circle = doc.circle.bind(doc), text = doc.text.bind(doc);
+    doc.circle = (x, y, r, style) => { calls.push({ kind: "circle", x, y, r, style }); return circle(x, y, r, style); };
+    doc.text = (str, x, y, o) => { calls.push({ kind: "text", str, x, y, o, size: doc.getFontSize() }); return text(str, x, y, o); };
+  };
+  await exportPortfolio({ ...child, name, avatarUrl: undefined }, achievements.slice(0, 1), { template, t, fonts, includeImages: false, output: "arraybuffer", onDoc });
+  const i = calls.findIndex((c) => c.kind === "circle" && c.style === "F" && c.r >= 10);
+  assert.ok(i >= 0, `${template}: avatar circle drawn`);
+  const txt = calls.slice(i + 1).find((c) => c.kind === "text");
+  return { circle: calls[i], txt };
+}
+
+test("initialOf: first letter uppercased, trimmed, '?' when empty", () => {
+  assert.equal(initialOf("тэнгэр"), "Т");
+  assert.equal(initialOf("  үүрцай"), "Ү");
+  assert.equal(initialOf("anu"), "A");
+  assert.equal(initialOf(""), "?");
+  assert.equal(initialOf(undefined), "?");
+});
+
+for (const template of PDF_TEMPLATES) {
+  test(`${template}: avatar initial without a photo is centred in the circle at 45% of the diameter`, async () => {
+    for (const name of ["Тэнгэр", "Үүрцай", "Өлзий", "Гэрэл", "Анар", "Anu", "Temuulen", "Gerel"]) {
+      const { circle, txt } = await avatarInitial(template, name);
+      assert.equal(txt.str, initialOf(name), `${template} ${name}: initial`);
+      assert.equal(txt.o?.align, "center", `${template} ${name}: centred horizontally`);
+      const d = circle.r * 2;
+      const sizeMm = txt.size * PT_MM;
+      assert.ok(Math.abs(sizeMm - 0.45 * d) < 0.05, `${template} ${name}: font ${sizeMm.toFixed(2)}mm vs ${(0.45 * d).toFixed(2)}mm`);
+      // glyph box: baseline y, cap top y - capHeight; its middle must sit on the circle centre ±1 mm
+      const capMid = txt.y - (AVATAR_INITIAL.capHeight * sizeMm) / 2;
+      assert.ok(Math.abs(txt.x - circle.x) <= 1, `${template} ${name}: x ${txt.x} vs ${circle.x}`);
+      assert.ok(Math.abs(capMid - circle.y) <= 1, `${template} ${name}: cap middle ${capMid.toFixed(2)} vs ${circle.y}`);
+      assert.ok(txt.y < circle.y + circle.r && txt.y - AVATAR_INITIAL.capHeight * sizeMm > circle.y - circle.r, `${template} ${name}: glyph inside the circle`);
+    }
   });
 }
 
