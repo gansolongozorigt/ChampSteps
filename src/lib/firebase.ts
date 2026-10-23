@@ -16,6 +16,8 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  initializeAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -105,7 +107,9 @@ if (isFirebaseConfigured) {
       _db = getFirestore(app);
     }
   _storage = getStorage(app);
-  _auth = getAuth(app);
+  // Native WKWebView: getAuth() pulls in the popup/redirect resolver (iframe on authDomain), which never
+  // settles under capacitor:// so onAuthStateChanged never fires. Sign-in there goes through nativeAuth.ts.
+  _auth = isNative ? initializeAuth(app, { persistence: indexedDBLocalPersistence }) : getAuth(app);
 }
 
 export const db = _db;

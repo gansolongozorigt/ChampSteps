@@ -43,6 +43,10 @@
       </array>
     </dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>ChampStep uses the camera only when you take a photo for an achievement or a child's profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ChampStep opens your photo library only when you choose photos for an achievement or a child's profile.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

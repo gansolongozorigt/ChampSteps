@@ -41,3 +41,7 @@ android/local.properties
 *.keystore
 !android/app/debug.keystore
 resources/.cache/
+
+# Firebase native client configs — not secret, but kept out of this public repo (copy from Firebase Console)
+ios/App/App/GoogleService-Info.plist
+android/app/google-services.json
