@@ -17,6 +17,7 @@
     "api/child",
     "api/account",
     "shared/plans.d.ts",
+    "shared/age.d.ts",
     "api/subscription",
     "api/push",
     "api/cron"

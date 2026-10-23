@@ -56,6 +56,7 @@ import {
   deletePracticeLog,
   deleteReflection,
   createInviteCode,
+  markGuestMigrated,
   useInviteCode,
   deleteAchievement,
   getChildrenForParent,
@@ -619,6 +620,7 @@ function Dashboard() {
       for (const g of data.goals ?? []) if (g.status === "active") await createGoal(newChild.childId, user!.uid, { title: g.title, date: g.date, category: g.category, targetSessionsPerWeek: g.targetSessionsPerWeek, targetMinutes: g.targetMinutes });
       for (const r of [...data.reflections].reverse()) await createReflection(newChild.childId, { date: r.date, mood: r.mood, content: r.content, parentNote: r.parentNote });
       clearLocalData();
+      void markGuestMigrated(user.uid);
       setChildren([newChild]);
       setActiveChildIdx(0);
       setShowMigrate(null);
@@ -1298,6 +1300,7 @@ function Dashboard() {
         canUsePaidTemplates={tierLimits.hasPdf}
         onUpgrade={() => { setPreviewOpen(false); setShowSubscription(true); }}
         includeImages={includeImages}
+        practiceLogs={practiceLogs}
       />
       {showAddChild && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}

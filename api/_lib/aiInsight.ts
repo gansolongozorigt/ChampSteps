@@ -7,6 +7,7 @@
 // from another child can never reach the prompt.
 
 import { createHash } from "node:crypto";
+import { ageFromBirthDate, stripAgeFromBio } from "../../shared/age.js";
 
 export type InsightLanguage = "mn" | "en" | "ru";
 
@@ -100,16 +101,12 @@ export function toMs(v: unknown): number | null {
 
 const str = (v: unknown, max = 200): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
-/** Whole years from a YYYY-MM-DD birth date, or null when unknown/invalid. */
+/**
+ * Whole years from a YYYY-MM-DD birth date on today's Ulaanbaatar date, or null
+ * when unknown/invalid/future — the same rule the app and the PDF use (shared/age.js).
+ */
 export function childAge(birthDate: unknown, now: number | Date = Date.now()): number | null {
-  if (typeof birthDate !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(birthDate)) return null;
-  const b = new Date(birthDate.slice(0, 10) + "T00:00:00Z");
-  if (Number.isNaN(b.getTime())) return null;
-  const n = typeof now === "number" ? new Date(now) : now;
-  let age = n.getUTCFullYear() - b.getUTCFullYear();
-  const m = n.getUTCMonth() - b.getUTCMonth();
-  if (m < 0 || (m === 0 && n.getUTCDate() < b.getUTCDate())) age -= 1;
-  return age >= 0 && age < 120 ? age : null;
+  return ageFromBirthDate(typeof birthDate === "string" ? birthDate.slice(0, 10) : birthDate, now);
 }
 
 // -----------------------------------------------------------------------------
@@ -160,7 +157,9 @@ export function buildInsightInput(args: {
 
   const logDates = logs.map((l) => str(l.date, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   const cutoff = new Date(nowMs - 30 * DAY_MS).toISOString().slice(0, 10);
-  const interestsRaw = str(args.child.interests) || str(args.child.bio);
+  // The bio often starts with a typed-in age ("11 настай · …") that goes stale; the
+  // computed `age` is passed instead, so the model only gets the rest of the bio.
+  const interestsRaw = str(args.child.interests) || stripAgeFromBio(str(args.child.bio));
 
   return {
     child: {

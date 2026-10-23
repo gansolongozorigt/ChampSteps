@@ -219,7 +219,20 @@
     "premiumMessage": "Framed and Portfolio templates — from the Family plan. Choose a plan",
     "lockedCaption": "From the Family plan",
     "portfolioLabel": "Achievement portfolio",
-    "footerLine": "Generated with ChampStep · champstep.mn · {{date}} · {{page}}/{{total}}"
+    "footerLine": "Generated with ChampStep · champstep.mn · {{date}} · {{page}}/{{total}}",
+    "labels": {
+      "date": "Date",
+      "location": "Location",
+      "category": "Category",
+      "award": "Award",
+      "prep": "Preparation",
+      "notes": "Notes",
+      "prepNotes": "Practice notes",
+      "morePhotos": "+{{n}} more photos"
+    },
+    "prepValue": "{{days}} days · {{hours}} h",
+    "prepValueMin": "{{days}} days · {{minutes}} min",
+    "prepEntryMinutes": "{{minutes}} min"
   },
   "pdfPreview": {
     "title": "PDF Preview",
@@ -236,7 +249,8 @@
     "back": "Back",
     "cancel": "Cancel",
     "close": "Close",
-    "downloadN": "Download ({{n}})"
+    "downloadN": "Download ({{n}})",
+    "appendix": "Appendix — full-page photos"
   },
   "guest": {
     "banner": "Trial mode: your data is stored on this device only.",
@@ -271,9 +285,11 @@
     "fields": {
       "name": "Name",
       "bio": "Bio",
-      "bioPlaceholder": "e.g. 11 y/o · loves chess and watercolor",
+      "bioPlaceholder": "e.g. dancesport, violin; loves chess",
       "birthDate": "Birth date",
-      "avatar": "Avatar"
+      "avatar": "Avatar",
+      "ageNow": "Now {{age}} — the age updates automatically",
+      "bioAgeHint": "The age is shown automatically from the birth date — no need to write it here."
     },
     "actions": {
       "save": "Save",
@@ -806,5 +822,9 @@
     "s7": "info@champstep.mn — Champ Step LLC. Changes to this policy are posted here with a new date.",
     "linkTerms": "Terms of service",
     "backToApp": "Back to the app"
+  },
+  "age": {
+    "years_one": "{{count}} year old",
+    "years_other": "{{count}} years old"
   }
 }

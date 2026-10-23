@@ -98,7 +98,7 @@ export async function expectToast(page: Page, text: string) {
 }
 
 /** Fill the 4-step achievement form and save. */
-export async function addAchievement(page: Page, a: { title: string; location: string; category: "Sports" | "Arts" | "Academic"; award?: "Gold" | "Silver" | "Bronze" | "Participant"; description: string; photos?: number; childName: string }) {
+export async function addAchievement(page: Page, a: { title: string; location: string; category: "Sports" | "Arts" | "Academic"; award?: "Gold" | "Silver" | "Bronze" | "Participant"; description: string; photos?: number; /** real image files instead of the 1×1 PNG */ photoFiles?: Array<{ name: string; mimeType: string; buffer: Buffer }>; childName: string }) {
   await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click();
   await page.getByPlaceholder(tr("form.fields.titlePlaceholder")).fill(a.title);
   await page.getByPlaceholder(tr("form.fields.locationPlaceholder")).fill(a.location);
@@ -107,8 +107,9 @@ export async function addAchievement(page: Page, a: { title: string; location: s
   if (a.award) await field(page, "form.fields.award").locator("button", { hasText: tr(`awards.${a.award}`) }).first().click();
   await page.getByPlaceholder(tr("form.fields.descriptionPlaceholder")).fill(a.description);
   await page.getByRole("button", { name: tr("form.actions.continue") }).click();
-  for (let i = 0; i < (a.photos ?? 0); i++) {
-    await page.locator('input[type="file"]').setInputFiles(pngFile(`photo${i}.png`));
+  const files = a.photoFiles ?? Array.from({ length: a.photos ?? 0 }, (_, i) => pngFile(`photo${i}.png`));
+  for (let i = 0; i < files.length; i++) {
+    await page.locator('input[type="file"]').setInputFiles(files[i]);
     await expect(page.locator("img[alt^='photo']")).toHaveCount(i + 1);
   }
   await page.getByRole("button", { name: tr("form.actions.continue") }).click();

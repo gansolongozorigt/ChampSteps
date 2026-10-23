@@ -8,10 +8,10 @@ import { currentFromUserDoc, planNextSubscription } from "../_lib/subscriptionMa
 import { adminDb, verifyIdToken } from "../_lib/firebaseAdmin.js";
 import { subscriptionFields } from "../_lib/activate.js";
 import {
-  DAY_MS, normalizeCode, promoDurationMs, promoExpiresAt, promoPlan, type PromoCodeDoc,
+  DAY_MS, normalizeCode, promoDurationMs, promoPlan, promoRejectReason, type PromoCodeDoc, type PromoRejectReason,
 } from "../_lib/promo.js";
 
-type Reason = "not_found" | "inactive" | "expired" | "used" | "exhausted" | "downgrade";
+type Reason = PromoRejectReason | "downgrade";
 class PromoReject extends Error {
   constructor(public reason: Reason) { super(reason); }
 }
@@ -32,20 +32,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(promoRef);
-      if (!snap.exists) throw new PromoReject("not_found");
-      const promo = snap.data() as PromoCodeDoc;
-      const usedBy = Array.isArray(promo.usedBy) ? promo.usedBy : [];
-
-      if (promo.active === false) throw new PromoReject("inactive");
-      const exp = promoExpiresAt(promo);
-      if (exp && exp.getTime() < Date.now()) throw new PromoReject("expired");
-      if (usedBy.includes(uid)) throw new PromoReject("used");
-      if (promo.maxUses && usedBy.length >= Number(promo.maxUses)) throw new PromoReject("exhausted");
+      const promo = snap.exists ? (snap.data() as PromoCodeDoc) : null;
+      const now = new Date();
+      // not_found / inactive / expired / used / exhausted — pure check in api/_lib/promo.ts (unit-tested)
+      const reject = promoRejectReason(promo, uid, now);
+      if (reject || !promo) throw new PromoReject(reject ?? "not_found");
 
       const plan = promoPlan(promo);
       const durationMs = promoDurationMs(promo);
       const days = Math.round(durationMs / DAY_MS);
-      const now = new Date();
       const userSnap = await tx.get(userRef);
       // Lower plan than the user's active one → 409 downgrade (same rule as paid upgrades).
       const next = planNextSubscription(currentFromUserDoc(userSnap.data()), plan, now, durationMs);

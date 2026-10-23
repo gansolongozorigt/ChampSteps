@@ -219,7 +219,20 @@
     "premiumMessage": "Хүрээтэй, Портфолио загвар — Гэр бүл багцаас. Багц сонгох",
     "lockedCaption": "Гэр бүл багцаас",
     "portfolioLabel": "Амжилтын портфолио",
-    "footerLine": "ChampStep-ээр үүсгэсэн · champstep.mn · {{date}} · {{page}}/{{total}}"
+    "footerLine": "ChampStep-ээр үүсгэсэн · champstep.mn · {{date}} · {{page}}/{{total}}",
+    "labels": {
+      "date": "Огноо",
+      "location": "Газар",
+      "category": "Төрөл",
+      "award": "Шагнал",
+      "prep": "Бэлтгэл",
+      "notes": "Тэмдэглэл",
+      "prepNotes": "Бэлтгэлийн тэмдэглэл",
+      "morePhotos": "+{{n}} зураг"
+    },
+    "prepValue": "{{days}} өдөр · {{hours}} цаг",
+    "prepValueMin": "{{days}} өдөр · {{minutes}} мин",
+    "prepEntryMinutes": "{{minutes}} мин"
   },
   "pdfPreview": {
     "title": "PDF урьдчилж харах",
@@ -236,7 +249,8 @@
     "back": "Буцах",
     "cancel": "Болих",
     "close": "Хаах",
-    "downloadN": "Татах ({{n}})"
+    "downloadN": "Татах ({{n}})",
+    "appendix": "Хавсралт — зураг бүрийг бүтэн хуудсаар"
   },
   "guest": {
     "banner": "Туршилтын горим: өгөгдөл зөвхөн энэ төхөөрөмжид хадгалагдана.",
@@ -271,9 +285,11 @@
     "fields": {
       "name": "Нэр",
       "bio": "Товч танилцуулга",
-      "bioPlaceholder": "жишээ нь: 11 настай, шатар болон усан будаг дуртай",
+      "bioPlaceholder": "жишээ нь: бүжгийн спорт, хийл; шатарт дуртай",
       "birthDate": "Төрсөн огноо",
-      "avatar": "Профайл зураг"
+      "avatar": "Профайл зураг",
+      "ageNow": "Одоо {{age}} — нас автоматаар нэмэгдэнэ",
+      "bioAgeHint": "Насыг төрсөн огнооноос автоматаар харуулна — энд бичих шаардлагагүй."
     },
     "actions": {
       "save": "Хадгалах",
@@ -806,5 +822,9 @@
     "s7": "info@champstep.mn — «Чамп степ» ХХК. Бодлого өөрчлөгдвөл энэ хуудсанд огноотой нь шинэчилнэ.",
     "linkTerms": "Үйлчилгээний нөхцөл",
     "backToApp": "Апп руу"
+  },
+  "age": {
+    "years_one": "{{count}} настай",
+    "years_other": "{{count}} настай"
   }
 }

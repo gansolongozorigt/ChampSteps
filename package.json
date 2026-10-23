@@ -14,15 +14,18 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report scratch/qa-20261007/report",
     "test:plans": "node --test tests/plans.test.mjs",
-    "test:pdf": "node --import tsx --test tests/pdf-templates.test.mjs",
+    "test:pdf": "node --import tsx --test tests/pdf-templates.test.mjs tests/pdf-layout.test.mjs",
     "test:export": "node --import tsx --test tests/export-data.test.mjs",
     "test:goals": "node --import tsx --test tests/goals.test.mjs",
-    "test:api": "node --test tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs tests/push.test.mjs tests/streak.test.mjs",
+    "test:api": "node --test tests/age.test.mjs tests/ai-insight-cors.test.mjs tests/ai-insight-prompt.test.mjs tests/subscription-math.test.mjs tests/deletion.test.mjs tests/promo.test.mjs tests/qpay-token.test.mjs tests/qpay-callback.test.mjs tests/push.test.mjs tests/streak.test.mjs",
     "cap:sync": "vite build --mode native && cap sync",
     "cap:ios": "npm run cap:sync && cap run ios",
     "cap:android": "npm run cap:sync && cap run android",
     "cap:assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#FFFFFF' --iconBackgroundColorDark '#FFFFFF' --splashBackgroundColor '#FFFFFF' --splashBackgroundColorDark '#FFFFFF'",
-    "cap:bump": "node scripts/cap-bump.mjs"
+    "cap:bump": "node scripts/cap-bump.mjs",
+    "marketing:shots": "node --import tsx scripts/marketing/screenshots.mjs",
+    "marketing:og": "node scripts/marketing/og-image.mjs",
+    "metrics": "node scripts/admin/metrics.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
