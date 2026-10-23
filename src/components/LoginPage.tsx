@@ -110,8 +110,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col bg-bg font-sans text-ink">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
-        <Logo size={40} />
+      {/* Logo 40 is 228px wide + the 144px toggle: too wide below sm, so 28 there, mark only under 360px. */}
+      <header className="flex items-center justify-between gap-3 px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6">
+        <Logo size={28} wordmark={false} className="min-[360px]:hidden" />
+        <Logo size={28} className="hidden min-[360px]:inline-flex sm:hidden" />
+        <Logo size={40} className="hidden sm:inline-flex" />
         <LanguageToggle />
       </header>
 
