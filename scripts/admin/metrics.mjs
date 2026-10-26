@@ -6,6 +6,10 @@
 // and, after it, the same numbers as JSON (or writes the JSON to --json). Nothing is written to
 // Firestore; no uid / e-mail is printed. Credentials: FIREBASE_SERVICE_ACCOUNT_B64 (env or .env).
 //
+// Owner / admin accounts are left out of every number: METRICS_EXCLUDE (env or .env) is a comma-separated
+// list of e-mails and/or uids. Their users docs, children, and everything made for those children are
+// skipped; the report says only how many accounts were excluded.
+//
 // Metrics (all "in range" unless noted):
 //   signups            users created (by role)            users.createdAt (Timestamp or ISO string → full scan, users are few)
 //   guestToSignup      guest trial migrated into account  users.guestMigratedAt (written by the app since marketing-assets)
@@ -50,11 +54,33 @@ function toMs(v) {
 const inRange = (v) => { const ms = toMs(v); return ms !== null && ms >= startMs && ms < endMs; };
 const bump = (obj, key, by = 1) => { obj[key] = (obj[key] ?? 0) + by; };
 
-const { db } = admin();
+const { db, auth } = admin();
 
+// ---- excluded accounts (METRICS_EXCLUDE, resolved after admin() has loaded .env) ----
+const excludeList = (process.env.METRICS_EXCLUDE ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+const excluded = new Set();
+for (const id of excludeList) {
+  try {
+    excluded.add(id.includes("@") ? (await auth.getUserByEmail(id)).uid : (await auth.getUser(id)).uid);
+  } catch {
+    console.error(`METRICS_EXCLUDE: entry #${excludeList.indexOf(id) + 1} not found, ignored`);
+  }
+}
+const excludedChildIds = [];
+for (const uid of excluded) {
+  for (const d of (await db.collection("children").where("parentId", "==", uid).get()).docs) excludedChildIds.push(d.id);
+}
+
+/** createdAt-in-range count minus the docs that belong to excluded accounts' children. */
 async function countCreated(col) {
   const agg = await db.collection(col).where("createdAt", ">=", startTs).where("createdAt", "<", endTs).count().get();
-  return agg.data().count;
+  let minus = 0;
+  // "in" takes ≤30 values; range is checked in memory so no composite index is needed (excluded data is small)
+  for (let i = 0; i < excludedChildIds.length; i += 30) {
+    const snap = await db.collection(col).where("childId", "in", excludedChildIds.slice(i, i + 30)).get();
+    minus += snap.docs.filter((d) => inRange(d.get("createdAt"))).length;
+  }
+  return agg.data().count - minus;
 }
 
 // ---- users: one scan serves signups, guest migrations, reminders and promo activations ----
@@ -65,6 +91,7 @@ const reminders = { turnedOnInRange: 0, onTotal: 0 };
 const promo = { redeemed: 0, byCode: {} };
 let usersTotal = 0;
 for (const d of users.docs) {
+  if (excluded.has(d.id)) continue;
   const u = d.data();
   usersTotal++;
   if (inRange(u.createdAt)) { signups.total++; bump(signups.byRole, u.role ?? "unknown"); }
@@ -101,6 +128,7 @@ const paySnap = await db.collection("payments").where("createdAt", ">=", startTs
 const payments = { created: 0, paid: 0, paidMnt: 0, byPlan: {} };
 for (const d of paySnap.docs) {
   const p = d.data();
+  if (excluded.has(p.uid)) continue;
   payments.created++;
   if (p.status === "paid") {
     payments.paid++;
@@ -117,6 +145,7 @@ const result = {
   generatedAt: new Date().toISOString(),
   signups, guestToSignup, children, goals, reminders, practiceLogs, achievements, promo, promoCodes, payments,
   usersTotal,
+  excludedAccounts: excluded.size,
 };
 
 const fmtRole = (o) => Object.entries(o).map(([k, v]) => `${k} ${v}`).join(", ") || "—";
@@ -139,6 +168,7 @@ const md = [
   "",
   `Промо кодын нийт хэрэглээ (бүх цаг): ${Object.entries(promoCodes).map(([c, v]) => `${c} ${v.used}/${v.maxUses || "∞"}${v.active ? "" : " (идэвхгүй)"}`).join(", ") || "—"}`,
   `Нийт хэрэглэгч: ${usersTotal}`,
+  `Хассан: ${excluded.size} бүртгэл (эзэмшигч/админ, METRICS_EXCLUDE)`,
 ].join("\n");
 
 if (!quiet) console.log(md);
