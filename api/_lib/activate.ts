@@ -19,6 +19,8 @@ export interface PaymentDoc {
   paymentId?: string;
   createdAt?: Timestamp;
   paidAt?: Timestamp;
+  /** Last QPay payment/check made by the /api/qpay/status fallback (throttle). */
+  lastCheckAt?: Timestamp;
   /** Set when the paid plan was applied differently (e.g. a downgrade converted into days of the active tier). */
   appliedAs?: { tier: PaidPlan; days: number } | null;
 }
