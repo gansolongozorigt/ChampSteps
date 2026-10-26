@@ -22,9 +22,11 @@ export interface GoalFormProps {
   /** Free plan: one active goal per child. Shown as a note; the form stays usable for edits. */
   limitReached?: boolean;
   onUpgrade?: () => void;
+  /** First-steps flow right after the first child: "When is the next competition?" + why, cancel = "no competition yet". */
+  intro?: boolean;
 }
 
-export default function GoalForm({ childName, initial, onSubmit, onCancel, limitReached = false, onUpgrade }: GoalFormProps) {
+export default function GoalForm({ childName, initial, onSubmit, onCancel, limitReached = false, onUpgrade, intro = false }: GoalFormProps) {
   const { t } = useTranslation();
   const today = localDateKey(new Date());
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -66,8 +68,9 @@ export default function GoalForm({ childName, initial, onSubmit, onCancel, limit
           {childName && <p className="t-label">{childName}</p>}
           <h2 id="goal-form-title" className="t-h1 mt-1 inline-flex items-center gap-2">
             <Target size={22} strokeWidth={2.2} className="text-primary" aria-hidden />
-            {initial ? t("goals.editTitle") : t("goals.formTitle")}
+            {initial ? t("goals.editTitle") : intro ? t("onboarding.goalIntro.title") : t("goals.formTitle")}
           </h2>
+          {intro && <p className="t-body text-ink-2 mt-1" data-testid="goal-intro-hint">{t("onboarding.goalIntro.hint")}</p>}
 
           {blocked && (
             <div className="mt-4 rounded-input bg-bg-soft px-3 py-2 t-caption text-ink-2" role="status">
@@ -113,9 +116,10 @@ export default function GoalForm({ childName, initial, onSubmit, onCancel, limit
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="cs-btn cs-btn-ghost">{t("goals.cancel")}</button>
-            <button type="button" onClick={() => void submit()} disabled={saving || blocked} className="cs-btn cs-btn-primary" data-testid="goal-submit">
+          {/* intro: the long "no competition yet" label → full-width buttons, save on top */}
+          <div className={intro ? "mt-6 flex flex-col-reverse gap-2" : "mt-6 flex justify-end gap-2"}>
+            <button type="button" onClick={onCancel} className={`cs-btn cs-btn-ghost ${intro ? "w-full" : ""}`} data-testid={intro ? "goal-intro-skip" : undefined}>{intro ? t("onboarding.goalIntro.skip") : t("goals.cancel")}</button>
+            <button type="button" onClick={() => void submit()} disabled={saving || blocked} className={`cs-btn cs-btn-primary ${intro ? "w-full" : ""}`} data-testid="goal-submit">
               {saving ? t("goals.saving") : t("goals.save")}
             </button>
           </div>

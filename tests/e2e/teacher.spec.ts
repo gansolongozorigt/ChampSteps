@@ -37,6 +37,14 @@ test("parent links with invite code → teacher sees child, writes coach note, c
   await teacherPage.reload();
   await expect(teacherPage.getByText(tr("status.teacherMode"))).toBeVisible({ timeout: 20_000 });
   await expect(teacherPage.locator("aside").getByRole("button", { name: "Хүүхэд" })).toBeVisible();
+  // first steps are for parents only: the teacher never sees the card (dashboard or Today), the parent does
+  await expect(teacherPage.getByRole("button", { name: tr("app.addAchievement"), exact: true })).toHaveCount(0);
+  await expect(teacherPage.getByTestId("first-steps")).toHaveCount(0);
+  await nav(teacherPage, "today");
+  await expect(teacherPage.getByTestId("today-page")).toBeVisible();
+  await expect(teacherPage.getByTestId("first-steps")).toHaveCount(0);
+  await nav(parentPage, "achievements");
+  await expect(parentPage.getByTestId("first-steps")).toBeVisible();
   await nav(teacherPage, "coach");
   await teacherPage.getByPlaceholder(tr("coach.placeholder", { name: "Хүүхэд" })).fill("Багш: дараагийн долоо хоногт техник дээр ажиллана.");
   await teacherPage.getByRole("button", { name: tr("coach.addButton") }).click();

@@ -49,7 +49,7 @@ test("guest: add child + achievement locally, survive reload, migrate on sign-up
   await expect(page.getByTestId("sub-guest-notice")).toContainText(tr("sub.guestNotice"));
   await expect(page.getByRole("button", { name: tr("sub.pay"), exact: true })).toHaveCount(0);
   await expect(page.getByPlaceholder(tr("promo.placeholder"))).toHaveCount(0);
-  await page.getByRole("button", { name: tr("sub.close") }).click();
+  await page.getByLabel(tr("sub.close"), { exact: true }).click(); // icon button (the first-steps card has a text "Хаах" too)
   await expect(page.getByRole("heading", { name: tr("sub.title") })).toBeHidden();
   await page.locator("header").getByTitle(tr("nav.subscription")).click();
   await page.getByTestId("sub-guest-signup").click();

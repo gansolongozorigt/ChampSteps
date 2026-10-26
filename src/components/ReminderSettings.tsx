@@ -13,6 +13,7 @@ import type { AppUser } from "../lib/auth";
 import { currentIdToken, getReminderPrefs, setReminderPrefs, type ReminderPrefs } from "../lib/firebase";
 import { disablePush, enablePush, pushState, storedPushToken } from "../lib/push";
 import { canPromptInstall, onInstallPromptChange, promptInstall } from "../lib/install";
+import { reminderFailureKey } from "../lib/reminders";
 
 interface Props {
   user: AppUser;
@@ -48,12 +49,8 @@ export default function ReminderSettings({ user, onShowInstall }: Props) {
       if (next[key] && !storedPushToken()) {
         const r = await enablePush(currentIdToken, i18n.language);
         if (!r.ok) {
-          if (r.reason === "ios-not-installed") setNote({ kind: "info", text: t("reminders.installFirst"), install: true });
-          else if (r.reason === "denied") setNote({ kind: "error", text: t("reminders.denied") });
-          else if (r.reason === "unsupported") setNote({ kind: "error", text: t("reminders.unsupported") });
-          else if (r.reason === "not-configured") setNote({ kind: "error", text: t("reminders.notConfigured") });
-          else if (r.reason === "permission-dismissed") setNote({ kind: "info", text: t("reminders.dismissed") });
-          else setNote({ kind: "error", text: t("reminders.error") });
+          const info = r.reason === "ios-not-installed" || r.reason === "permission-dismissed";
+          setNote({ kind: info ? "info" : "error", text: t(reminderFailureKey(r.reason)), install: r.reason === "ios-not-installed" });
           return;
         }
       }

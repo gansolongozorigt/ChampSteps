@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, ArrowUp, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
+  AlertTriangle, ArrowUp, BellRing, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
   Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
@@ -30,6 +30,12 @@ import { useAchievements } from "./hooks/useAchievements";
 import { usePracticeLogs } from "./hooks/usePracticeLogs";
 import { useGoals } from "./hooks/useGoals";
 import GoalForm from "./components/GoalForm";
+import FirstStepsCard from "./components/FirstStepsCard";
+import StepPrompt from "./components/StepPrompt";
+import {
+  dismissFirstSteps, firstSteps, firstStepsDismissed, markReminderAsked, preferTodayTab, reminderAsked, showFirstSteps, type StepId,
+} from "./lib/onboarding";
+import { reminderFailureKey, turnOnDailyReminder } from "./lib/reminders";
 import GoalDetailModal from "./components/GoalDetailModal";
 import { activeGoals, goalStats, nextGoal as pickNextGoal, prepFromStats } from "./lib/goals";
 import { localDateKey } from "./lib/streak";
@@ -58,7 +64,9 @@ import {
   useInviteCode,
   deleteAchievement,
   getChildrenForParent,
+  getReminderPrefs,
   subscribeChildrenForTeacher,
+  type ReminderPrefs,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -190,6 +198,18 @@ function Dashboard() {
   const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal }>({ open: false });
   const [goalDetail, setGoalDetail] = useState<Goal | null>(null);
   const [resultGoal, setResultGoal] = useState<Goal | null>(null);
+  // First steps (src/lib/onboarding.ts): goal question after the first child, "log today?", "remind at 20:00?".
+  const [goalIntro, setGoalIntro] = useState(false);
+  const [practiceAsk, setPracticeAsk] = useState(false);
+  const [reminderAsk, setReminderAsk] = useState<{ busy: boolean; note: { kind: "info" | "error"; text: string } | null } | null>(null);
+  const [reminderPrefs, setReminderPrefsState] = useState<ReminderPrefs | null>(null);
+  const [todayFocus, setTodayFocus] = useState(0);
+  const [stepsClosed, setStepsClosed] = useState<string[]>([]);
+  // Default tab is decided once per app open; a deep link (/today, ?action=) always wins.
+  const tabDecided = useRef(false);
+  const deepLinked = useRef(initialSection() === "today" || pendingAction() !== null);
+  // Until then a parent's main area shows a spinner instead of flashing the achievements tab first.
+  const [tabReady, setTabReady] = useState(() => user?.role !== "parent" || deepLinked.current);
   // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
   const child = children[activeChildIdx];
@@ -197,7 +217,7 @@ function Dashboard() {
 
   const { achievements, loading: loadingAch, error: achError, addLocal, replaceLocal, removeLocal } =
     useAchievements(child?.childId ?? "", seedAchievements, localMode);
-  const { logs: practiceLogs, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
+  const { logs: practiceLogs, loadedFor: logsLoadedFor, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
     usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
@@ -230,6 +250,32 @@ function Dashboard() {
     return () => { off?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, localMode]);
+
+  // Reminder state for the first-steps card (account users only; guests have no push).
+  function loadReminderPrefs() {
+    if (!user || localMode || user.role !== "parent") return;
+    getReminderPrefs(user.uid).then(setReminderPrefsState).catch(() => setReminderPrefsState({ daily: false, competition: false }));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(loadReminderPrefs, [user?.uid, localMode]);
+
+  // A parent who has not logged any practice yet starts on Today (the daily habit), once per open.
+  useEffect(() => {
+    if (tabDecided.current || !child || logsLoadedFor !== child.childId) return;
+    tabDecided.current = true;
+    if (activeSection === "achievements" && preferTodayTab({ role: user?.role, practiceLogs: practiceLogs.length, deepLinked: deepLinked.current })) {
+      setActiveSection("today");
+    }
+    setTabReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [child?.childId, logsLoadedFor]);
+  // Logs that never arrive (error, very slow network) must not keep the spinner: open where we are.
+  useEffect(() => {
+    if (tabReady || !child) return;
+    const id = window.setTimeout(() => { tabDecided.current = true; setTabReady(true); }, 4000);
+    return () => window.clearTimeout(id);
+  }, [tabReady, child?.childId]);
+  useEffect(() => { if (logsError && !tabReady) { tabDecided.current = true; setTabReady(true); } }, [logsError, tabReady]);
 
   // Manifest shortcut "Амжилт нэмэх": open the add form once a child is ready (parents only).
   useEffect(() => {
@@ -397,6 +443,7 @@ function Dashboard() {
 
   async function handleAddNewChild(name: string, birthDate: string) {
     if (!user) return;
+    const firstChild = children.length === 0;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
       setToast({ kind: "info", message: t("status.childLimit", { max: tierLimits.maxChildren }) });
@@ -421,6 +468,7 @@ function Dashboard() {
     setActiveChildIdx(children.length);
     setShowAddChild(false);
     setToast({ kind: "success", message: t("status.childAdded", { name }) });
+    if (firstChild && user.role === "parent") setGoalIntro(true);
   }
 
   async function handleDeleteAchievement(id: string) {
@@ -442,8 +490,12 @@ function Dashboard() {
     if (!localMode) {
       // Offline (or a stalled connection): the write sits in Firestore's queue and the
       // listener already shows it (hasPendingWrites); don't block the form on the server ack.
-      try { return await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
+      const first = practiceLogs.length === 0;
+      let outcome: SaveOutcome;
+      try { outcome = await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
+      if (first) askReminderOnce();
+      return outcome;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
     return "saved";
@@ -482,8 +534,8 @@ function Dashboard() {
   const activeGoalCount = activeGoals(goals).length;
   const goalLimitReached = tierLimits.maxActiveGoals !== -1 && activeGoalCount >= tierLimits.maxActiveGoals;
 
-  async function handleSaveGoal(draft: GoalDraft) {
-    if (!child || !user) return;
+  async function handleSaveGoal(draft: GoalDraft): Promise<boolean> {
+    if (!child || !user) return false;
     const editing = goalForm.goal;
     try {
       if (localMode) {
@@ -499,9 +551,46 @@ function Dashboard() {
       setGoalForm({ open: false });
       setGoalDetail(null);
       setToast({ kind: "success", message: t("status.saved") });
+      return true;
     } catch {
       setToast({ kind: "error", message: t("status.errorSaving") });
+      return false;
     }
+  }
+
+  // ---- first steps -------------------------------------------------------------
+  const remindersOn = reminderPrefs ? reminderPrefs.daily || reminderPrefs.competition : null;
+
+  /** After the first practice log of an account user: "remind at 20:00?" once per account on this device. */
+  function askReminderOnce() {
+    if (!user || localMode || user.role !== "parent" || remindersOn !== false || reminderAsked(user.uid)) return;
+    markReminderAsked(user.uid);
+    setReminderAsk({ busy: false, note: null });
+  }
+
+  async function confirmReminder() {
+    if (!user) return;
+    setReminderAsk({ busy: true, note: null });
+    const r = await turnOnDailyReminder(user.uid, i18n.language, reminderPrefs);
+    if (r.ok) {
+      setReminderPrefsState(r.prefs);
+      setReminderAsk(null);
+      setToast({ kind: "success", message: t("onboarding.reminderAsk.on") });
+    } else if (r.reason === "ios-not-installed") {
+      // iOS tab: notifications only reach the installed app → the existing install guide
+      setReminderAsk(null);
+      setShowInstallGuide(true);
+    } else {
+      setReminderAsk({ busy: false, note: { kind: r.reason === "permission-dismissed" ? "info" : "error", text: t(reminderFailureKey(r.reason)) } });
+    }
+  }
+
+  function openStep(id: StepId) {
+    if (id === "goal") openGoalForm();
+    else if (id === "practice") { setActiveSection("today"); setTodayFocus((n) => n + 1); }
+    else if (id === "achievement") setShowForm(true);
+    else if (id === "reminder") { if (user) markReminderAsked(user.uid); setReminderAsk({ busy: false, note: null }); }
+    else setShowAddChild(true);
   }
 
   async function handleCancelGoal(goal: Goal) {
@@ -726,6 +815,29 @@ function Dashboard() {
     { id: "terms", label: t("nav.terms"), Icon: ScrollText },
   ];
 
+  const steps = firstSteps({
+    hasChild: true,
+    goals: goals.length,
+    practiceLogs: practiceLogs.length,
+    achievements: achievements.length,
+    remindersOn,
+    guest: localMode,
+  });
+  const stepsKey = `${user?.uid}.${child.childId}`;
+  const stepsVisible = showFirstSteps({
+    role: user?.role,
+    dismissed: stepsClosed.includes(stepsKey) || (!!user && firstStepsDismissed(user.uid, child.childId)),
+    steps,
+    // wait until the data behind the steps is in, so a finished account never sees the card flash
+    remindersKnown: (localMode || remindersOn !== null) && logsLoadedFor === child.childId && !(loadingAch && !localMode),
+  });
+  function closeFirstSteps() {
+    if (user) dismissFirstSteps(user.uid, child.childId);
+    setStepsClosed((k) => [...k, stepsKey]);
+  }
+  const firstStepsCard = (className: string) =>
+    stepsVisible ? <FirstStepsCard steps={steps} onStep={openStep} onClose={closeFirstSteps} className={className} /> : null;
+
   const tierLabel =
     subscription === "family" ? t("sub.tierNames.family") :
     subscription === "master" ? t("sub.tierNames.master") :
@@ -898,11 +1010,16 @@ function Dashboard() {
         <main ref={mainRef} className="flex-1 overflow-y-auto bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
           <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && <TeacherBanner label={t("status.teacherMode")} />}
+          {!tabReady ? (
+            <div className="flex justify-center py-16" data-testid="tab-pending"><Loader2 size={20} className="animate-spin text-ink-3" aria-hidden /></div>
+          ) : (
           <div key={activeSection} className="cs-section-in">
           {activeSection === "today" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
               <SectionHeader title={t("today.title")} subtitle={child.name} />
+              {firstStepsCard("mb-4")}
               <TodayPage
+                focusForm={todayFocus}
                 kids={children}
                 activeIdx={activeChildIdx}
                 onSelectChild={setActiveChildIdx}
@@ -931,6 +1048,7 @@ function Dashboard() {
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
               onToast={(kind, message) => setToast({ kind, message })}
+              topSlot={firstStepsCard("mb-5")}
             />
           )}
           {activeSection === "practice" && (
@@ -1047,6 +1165,7 @@ function Dashboard() {
             </div>
           )}
           </div>
+          )}
         </main>
       </div>
 
@@ -1089,7 +1208,7 @@ function Dashboard() {
       </nav>
 
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
-      {activeSection === "achievements" && !isTeacher && (
+      {tabReady && activeSection === "achievements" && !isTeacher && (
         <button
           type="button"
           onClick={() => setShowForm(true)}
@@ -1165,8 +1284,42 @@ function Dashboard() {
           initial={goalForm.goal}
           limitReached={goalLimitReached}
           onUpgrade={() => { setGoalForm({ open: false }); setShowSubscription(true); }}
-          onSubmit={handleSaveGoal}
+          onSubmit={async (d) => { await handleSaveGoal(d); }}
           onCancel={() => setGoalForm({ open: false })}
+        />
+      )}
+      {goalIntro && (
+        <GoalForm
+          intro
+          childName={child.name}
+          onSubmit={async (draft) => { if (await handleSaveGoal(draft)) { setGoalIntro(false); setPracticeAsk(true); } }}
+          onCancel={() => setGoalIntro(false)}
+        />
+      )}
+      {practiceAsk && (
+        <StepPrompt
+          testId="practice-ask"
+          Icon={Clock}
+          title={t("onboarding.practiceAsk.title")}
+          hint={t("onboarding.practiceAsk.hint")}
+          yes={t("onboarding.practiceAsk.yes")}
+          no={t("onboarding.practiceAsk.no")}
+          onYes={() => { setPracticeAsk(false); setActiveSection("today"); setTodayFocus((n) => n + 1); }}
+          onNo={() => setPracticeAsk(false)}
+        />
+      )}
+      {reminderAsk && (
+        <StepPrompt
+          testId="reminder-ask"
+          Icon={BellRing}
+          title={t("onboarding.reminderAsk.title")}
+          hint={t("onboarding.reminderAsk.hint")}
+          yes={t("onboarding.reminderAsk.yes")}
+          no={t("onboarding.reminderAsk.no")}
+          busy={reminderAsk.busy}
+          note={reminderAsk.note}
+          onYes={() => void confirmReminder()}
+          onNo={() => setReminderAsk(null)}
         />
       )}
       {goalDetail && (
@@ -1223,7 +1376,7 @@ function Dashboard() {
           user={user}
           subscriptionInfo={subscriptionInfo}
           childrenCount={isTeacher ? 0 : children.length}
-          onClose={() => setShowAccount(false)}
+          onClose={() => { setShowAccount(false); loadReminderPrefs(); }}
           onDeleteAccount={handleDeleteAccount}
           onShowInstall={() => setShowInstallGuide(true)}
         />
