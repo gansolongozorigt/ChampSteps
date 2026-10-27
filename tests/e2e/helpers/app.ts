@@ -1,0 +1,166 @@
+// UI helpers: labels come from the Mongolian locale so tests follow i18n changes.
+import { readFileSync } from "node:fs";
+import type { Page, BrowserContext, Locator } from "@playwright/test";
+import { expect } from "@playwright/test";
+
+type Dict = Record<string, unknown>;
+function loadLocale(lang: string): Dict {
+  return JSON.parse(readFileSync(new URL(`../../../src/i18n/locales/${lang}.json`, import.meta.url), "utf8"));
+}
+export const LOCALES: Record<string, Dict> = { mn: loadLocale("mn"), en: loadLocale("en"), ru: loadLocale("ru") };
+export function tr(key: string, vars: Record<string, string | number> = {}, lang = "mn"): string {
+  const raw = key.split(".").reduce<unknown>((o, k) => (o as Dict | undefined)?.[k], LOCALES[lang]);
+  if (typeof raw !== "string") throw new Error(`missing i18n key ${lang}:${key}`);
+  return raw.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? `{{${k}}}`));
+}
+
+/** 1×1 transparent PNG */
+export const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+export const pngFile = (name = "photo.png") => ({ name, mimeType: "image/png", buffer: PNG });
+
+export const PASSWORD = "Qa-" + Math.random().toString(36).slice(2, 10) + "!1";
+
+/**
+ * Every page answers "no" to the one-time first-steps question "remind at 20:00?" (first practice
+ * log of an account) so older flows are not blocked; keepReminderAsk() opts a page out.
+ */
+export async function newPage(context: BrowserContext, lang = "mn"): Promise<Page> {
+  await context.addInitScript((l) => { try { localStorage.setItem("champstep.lang", l); } catch {} }, lang);
+  await context.addInitScript(() => {
+    const w = window as unknown as { __keepReminderAsk?: boolean };
+    new MutationObserver(() => {
+      if (w.__keepReminderAsk) return;
+      (document.querySelector('[data-testid="reminder-ask-no"]') as HTMLButtonElement | null)?.click();
+    }).observe(document, { childList: true, subtree: true });
+  });
+  return context.newPage();
+}
+
+export interface Account { email: string; password: string; name: string; role: "parent" | "teacher" }
+
+export const FIRST_CHILD = { name: "Хүүхэд", birthDate: "2014-05-01" };
+
+/**
+ * Sign up. No child is created automatically any more: a new PARENT gets the
+ * add-child modal once, and (unless `firstChild: false`) this helper fills it with
+ * FIRST_CHILD so the dashboard is ready, exactly like the old default child.
+ */
+export async function signUp(page: Page, a: Account, opts: { firstChild?: boolean } = {}) {
+  await page.goto("/");
+  await page.getByRole("button", { name: tr("auth.toggleToSignup") }).click();
+  await page.getByRole("button", { name: tr(a.role === "parent" ? "login.parent" : "login.teacher") }).click();
+  await page.locator("#displayName").fill(a.name);
+  await page.locator("#email").fill(a.email);
+  await page.locator("#password").fill(a.password);
+  await page.getByRole("button", { name: tr("auth.signUp"), exact: true }).click();
+  await expect(page.locator("#email")).toBeHidden({ timeout: 30_000 });
+  if (a.role === "parent" && opts.firstChild !== false) {
+    await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeVisible({ timeout: 30_000 });
+    await fillAddChildModal(page, FIRST_CHILD.name, FIRST_CHILD.birthDate);
+  }
+}
+
+/**
+ * The add-child modal must already be open: name + birth date (both required), then submit.
+ * The FIRST child of a parent is followed by the first-steps goal question ("Дараагийн тэмцээн
+ * хэзээ вэ?"); it opens in the same render as the modal closes, so it is skipped here unless
+ * `keepGoalIntro` (tests/e2e/onboarding.spec.ts covers it).
+ */
+export async function fillAddChildModal(page: Page, name: string, birthDate = "2015-09-15", opts: { keepGoalIntro?: boolean } = {}) {
+  await page.getByPlaceholder(tr("children.namePlaceholder")).fill(name);
+  await page.getByTestId("add-child-birthdate").fill(birthDate);
+  await page.getByTestId("add-child-submit").click();
+  await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeHidden({ timeout: 30_000 });
+  const skip = page.getByTestId("goal-intro-skip");
+  if (!opts.keepGoalIntro && await skip.isVisible()) {
+    await skip.click();
+    await expect(skip).toBeHidden();
+  }
+}
+
+/** fixtures.ts answers the "remind at 20:00?" question automatically; call this (before goto) to test it yourself. */
+export async function keepReminderAsk(page: Page) {
+  await page.addInitScript(() => { (window as unknown as { __keepReminderAsk?: boolean }).__keepReminderAsk = true; });
+}
+
+export async function signIn(page: Page, a: Pick<Account, "email" | "password">) {
+  await page.goto("/");
+  await page.locator("#email").fill(a.email);
+  await page.locator("#password").fill(a.password);
+  await page.getByRole("button", { name: tr("auth.signIn"), exact: true }).click();
+  await expect(page.locator("#email")).toBeHidden({ timeout: 30_000 });
+}
+
+export async function openUserMenu(page: Page) {
+  // App top bar is the FIRST <header> (TimelineDashboard has its own); the avatar button is the
+  // only one with aria-expanded (on phones the child switcher adds more buttons after it).
+  await page.locator("header").first().locator("button[aria-expanded]").last().click();
+}
+
+export async function signOut(page: Page) {
+  await openUserMenu(page);
+  await page.getByRole("button", { name: tr("auth.signOut") }).click();
+  await expect(page.locator("#email")).toBeVisible({ timeout: 20_000 });
+}
+
+/**
+ * Dashboard ready, on the achievements tab. A parent with no practice log opens on Today
+ * (first steps); this helper then switches to achievements so older tests keep their start point.
+ */
+export async function waitForDashboard(page: Page) {
+  const fab = page.getByRole("button", { name: tr("app.addAchievement"), exact: true });
+  const today = page.getByTestId("today-page");
+  await expect(fab.or(today)).toBeVisible({ timeout: 30_000 });
+  if (await today.isVisible()) await nav(page, "achievements");
+  await expect(fab).toBeVisible({ timeout: 30_000 });
+}
+
+export async function nav(page: Page, section: "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms", lang = "mn") {
+  const label = tr(`nav.${section}`, {}, lang);
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  const scope = isMobile ? page.locator("nav").last() : page.locator("aside");
+  if (isMobile && (section === "about" || section === "terms")) {
+    await openUserMenu(page);
+    await page.getByRole("button", { name: label }).click();
+    return;
+  }
+  await scope.getByRole("button", { name: label, exact: true }).click();
+}
+
+export async function expectToast(page: Page, text: string) {
+  await expect(page.getByText(text, { exact: false }).first()).toBeVisible({ timeout: 20_000 });
+}
+
+/** Fill the 4-step achievement form and save. */
+export async function addAchievement(page: Page, a: { title: string; location: string; category: "Sports" | "Arts" | "Academic"; award?: "Gold" | "Silver" | "Bronze" | "Participant"; description: string; photos?: number; /** real image files instead of the 1×1 PNG */ photoFiles?: Array<{ name: string; mimeType: string; buffer: Buffer }>; childName: string }, open?: () => Promise<void>) {
+  if (open) await open();
+  else await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click();
+  await page.getByPlaceholder(tr("form.fields.titlePlaceholder")).fill(a.title);
+  await page.getByPlaceholder(tr("form.fields.locationPlaceholder")).fill(a.location);
+  await field(page, "form.fields.category").locator("button", { hasText: tr(`categories.${a.category}`) }).first().click();
+  await page.getByRole("button", { name: tr("form.actions.continue") }).click();
+  if (a.award) await field(page, "form.fields.award").locator("button", { hasText: tr(`awards.${a.award}`) }).first().click();
+  await page.getByPlaceholder(tr("form.fields.descriptionPlaceholder")).fill(a.description);
+  await page.getByRole("button", { name: tr("form.actions.continue") }).click();
+  const files = a.photoFiles ?? Array.from({ length: a.photos ?? 0 }, (_, i) => pngFile(`photo${i}.png`));
+  for (let i = 0; i < files.length; i++) {
+    await page.locator('input[type="file"]').setInputFiles(files[i]);
+    await expect(page.locator("img[alt^='photo']")).toHaveCount(i + 1);
+  }
+  await page.getByRole("button", { name: tr("form.actions.continue") }).click();
+  await page.getByRole("button", { name: tr("form.actions.saveForChild", { name: a.childName }) }).click();
+  await expectToast(page, tr("status.saved"));
+}
+
+/** The <label> block of a form field (AddAchievementForm / ChildProfileEditor wrap fields in <label>). */
+export function field(page: Page, labelKey: string): Locator {
+  return page.locator("label, div.block").filter({ has: page.locator("span", { hasText: tr(labelKey) }) }).first();
+}
+
+/** Timeline cards: <ol> month → <li> → <ul> → <li> card */
+export function cards(page: Page): Locator {
+  return page.locator("ol > li > ul > li");
+}
+export function card(page: Page, title: string): Locator {
+  return cards(page).filter({ has: page.getByRole("heading", { name: title, exact: true }) }).first();
+}

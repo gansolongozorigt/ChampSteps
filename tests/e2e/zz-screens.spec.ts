@@ -1,0 +1,117 @@
+// Screen capture for design review — NOT part of the regular suite.
+//   SCREENS=1 SCREENS_LABEL=after npx playwright test tests/e2e/zz-screens.spec.ts --project=desktop
+//   (before: start main on another port, then E2E_BASE_URL=http://127.0.0.1:5177 SCREENS_LABEL=before …)
+// Writes scratch/design-refresh/<label>/<screen>-<width>.png at 390×844 and 1280×800.
+import { test, expect } from "./fixtures";
+import { cleanupTestUser, setTier, testEmail } from "./helpers/admin";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, addAchievement, nav, openUserMenu } from "./helpers/app";
+import { mkdirSync } from "node:fs";
+
+const ON = process.env.SCREENS === "1";
+const LABEL = process.env.SCREENS_LABEL ?? "after";
+const DIR = `scratch/design-refresh/${LABEL}`;
+test.skip(!ON, "set SCREENS=1 to capture");
+test.describe.configure({ mode: "serial" });
+test.setTimeout(900_000);
+
+const acc = { email: testEmail("screens"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
+test.afterAll(async () => { if (ON) await cleanupTestUser(acc.email); });
+
+const SIZES = [{ w: 390, h: 844 }, { w: 1280, h: 800 }];
+
+test("capture every screen at phone and desktop width", async ({ browser }) => {
+  mkdirSync(DIR, { recursive: true });
+  // 1) data via a desktop context
+  for (const { w, h } of SIZES) {
+    const c = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 768, hasTouch: w < 768 });
+    const p = await newPage(c);
+    await p.goto("/");
+    await p.waitForTimeout(600);
+    await p.screenshot({ path: `${DIR}/login-${w}.png` });
+    await p.getByRole("button", { name: tr("auth.toggleToSignup") }).click();
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: `${DIR}/signup-${w}.png` });
+    await c.close();
+  }
+  const setup = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const p0 = await newPage(setup);
+  await p0.goto("/");
+  await signUp(p0, acc);
+  await waitForDashboard(p0);
+  await setTier(acc.email, "master");
+  await p0.reload();
+  await waitForDashboard(p0);
+  const CHILD = "Хүүхэд";
+  await addAchievement(p0, { title: "Улсын аварга 2026", location: "Улаанбаатар", category: "Sports", award: "Gold", description: "Жүдо бөхийн улсын аварга шалгаруулах тэмцээн.", photos: 1, childName: CHILD });
+  await addAchievement(p0, { title: "Хөгжмийн наадам", location: "Дархан", category: "Arts", award: "Silver", description: "Морин хуурын тоглолт.", childName: CHILD });
+  await addAchievement(p0, { title: "Математикийн олимпиад", location: "Эрдэнэт", category: "Academic", award: "Participant", description: "Аймгийн олимпиад.", childName: CHILD });
+  await nav(p0, "practice");
+  await p0.getByRole("button", { name: tr("practice.addButton") }).click();
+  await p0.getByPlaceholder(tr("practice.fields.notesPlaceholder")).fill("Өнөөдөр 60 минут бэлтгэл хийсэн.");
+  await p0.getByRole("button", { name: tr("practice.actions.save"), exact: true }).click();
+  await expect(p0.getByPlaceholder(tr("practice.fields.notesPlaceholder"))).toBeHidden();
+  await nav(p0, "reflection");
+  if (!(await p0.getByPlaceholder(tr("reflection.fields.childNotePlaceholder")).isVisible())) await p0.getByRole("button", { name: tr("reflection.addButton") }).click();
+  await p0.getByPlaceholder(tr("reflection.fields.childNotePlaceholder")).fill("Өнөөдөр сайн өдөр байлаа.");
+  await p0.getByRole("button", { name: tr("reflection.actions.save"), exact: true }).click();
+  await setup.close();
+
+  // 2) capture at each size with a fresh signed-in context; every step is best-effort
+  const failures: string[] = [];
+  for (const { w, h } of SIZES) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 768, hasTouch: w < 768 });
+    const page = await newPage(ctx);
+    page.setDefaultTimeout(10_000);
+    const shot = (name: string) => page.screenshot({ path: `${DIR}/${name}-${w}.png` });
+    const step = async (name: string, fn: () => Promise<void>) => {
+      try { await fn(); await page.waitForTimeout(400); await shot(name); }
+      catch (e) { failures.push(`${name}-${w}: ${String(e).split("\n")[0].slice(0, 120)}`); }
+    };
+    const closeOverlay = async () => { await page.keyboard.press("Escape").catch(() => {}); await page.mouse.click(8, 40).catch(() => {}); await page.waitForTimeout(300); await page.mouse.click(8, 40).catch(() => {}); await page.waitForTimeout(200); };
+    const avatarButton = () => page.locator("header").first().locator("button[aria-haspopup='menu']:not([aria-label]), button.rounded-full").last();
+    const openMenu = async () => {
+      await avatarButton().click();
+      const item = page.getByRole("button", { name: tr("nav.subscriptionPage") });
+      if (!(await item.isVisible().catch(() => false))) await openUserMenu(page);
+    };
+    const goto = async (section: "about" | "terms") => {
+      const label = tr(`nav.${section}`);
+      if (w >= 768) { await page.locator("aside").getByRole("button", { name: label, exact: true }).click(); return; }
+      await openMenu();
+      await page.getByRole("button", { name: label }).click();
+    };
+
+    await page.goto("/");
+    await page.locator("#email").fill(acc.email);
+    await page.locator("#password").fill(acc.password);
+    await page.getByRole("button", { name: tr("auth.signIn"), exact: true }).click();
+    await waitForDashboard(page);
+    await page.waitForTimeout(800);
+    await step("achievements", async () => {});
+    await step("achievement-form", async () => { await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click(); });
+    await closeOverlay();
+    await step("practice", async () => { await nav(page, "practice"); });
+    await step("practice-form", async () => { await page.getByRole("button", { name: tr("practice.addButton") }).click(); });
+    await step("reflection", async () => { await nav(page, "reflection"); });
+    await step("coach", async () => { await nav(page, "coach"); });
+    await step("pdf", async () => { await nav(page, "pdf"); });
+    await step("pdf-preview", async () => {
+      await page.getByRole("button", { name: tr("pdf.official") }).click();
+      await expect(page.getByText(tr("pdfPreview.title"))).toBeVisible({ timeout: 30_000 });
+      await page.waitForTimeout(1500);
+    });
+    await closeOverlay();
+    await step("subscription-modal", async () => {
+      await page.locator("header").first().getByTitle(tr("nav.subscription")).click();
+      await expect(page.getByRole("heading", { name: tr("sub.title") })).toBeVisible();
+    });
+    await closeOverlay();
+    await step("user-menu", async () => { await openMenu(); });
+    await step("subscription-page", async () => { await page.getByRole("button", { name: tr("nav.subscriptionPage") }).click(); });
+    await step("about", async () => { await goto("about"); });
+    await step("terms", async () => { await goto("terms"); });
+    await step("language-menu", async () => { await page.getByRole("button", { name: tr("app.language") }).first().click(); });
+    await ctx.close();
+  }
+  if (failures.length) console.log("[screens] skipped:\n  " + failures.join("\n  "));
+});

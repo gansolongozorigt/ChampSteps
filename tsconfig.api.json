@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ],
+    "jsx": "preserve"
+  },
+  "include": [
+    "api/_lib",
+    "api/qpay",
+    "api/promo",
+    "api/ai-insight.ts",
+    "api/child",
+    "api/account",
+    "shared/plans.d.ts",
+    "shared/age.d.ts",
+    "api/subscription",
+    "api/push",
+    "api/cron"
+  ]
+}

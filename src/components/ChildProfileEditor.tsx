@@ -1,28 +1,37 @@
 // =============================================================================
 // ChildProfileEditor — Modal for editing the child's name, bio, birth date,
 // and avatar photo. Avatar is compressed client-side before it would be
-// uploaded to Firebase Storage.
+// uploaded to Firebase Storage. UI: brand tokens (docs/BRAND.md); logic unchanged.
 // =============================================================================
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Camera, Trash2, Target } from "lucide-react";
 import type { Child } from "../types";
-import { compressImage } from "../utils/image";
+import { ageFromBirthDate, bioMentionsAge, formatAge } from "../lib/age";
+import { compressImage, validateImageFile } from "../utils/image";
 
 export interface ChildProfileEditorProps {
   child: Child;
   onClose: () => void;
+  /** Opens the goal form for this child (closes the editor first). */
+  onAddGoal?: () => void;
   /**
    * Fired with the updated Child record. `avatarFile` is the raw (already
    * compressed) File — upload it to Storage and swap `avatarUrl` with the
    * download URL in your Firebase callback.
    */
   onSave: (next: Child, avatarFile?: File) => Promise<void> | void;
+  /** Rejected/undecodable avatar -> parent shows a toast. */
+  onError?: (message: string) => void;
+  /** Parent only: opens the delete-child confirmation (Danger zone at the bottom). Omit to hide. */
+  onRequestDelete?: () => void;
 }
 
-export default function ChildProfileEditor({ child, onClose, onSave }: ChildProfileEditorProps) {
+export default function ChildProfileEditor({ child, onClose, onSave, onError, onRequestDelete, onAddGoal }: ChildProfileEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Child>(child);
+  const draftAge = ageFromBirthDate(draft.birthDate);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(child.avatarUrl);
   const [saving, setSaving] = useState(false);
@@ -40,7 +49,19 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return;
-    const compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 });
+    const rejected = validateImageFile(file);
+    if (rejected) {
+      onError?.(t(rejected === "size" ? "form.validation.imageSize" : "form.validation.imageType"));
+      return;
+    }
+    let compressed: File;
+    try {
+      compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 });
+    } catch (e) {
+      console.warn("[champstep] avatar decode failed:", e);
+      onError?.(t("form.validation.imageType"));
+      return;
+    }
     setAvatarFile(compressed);
     const url = URL.createObjectURL(compressed);
     setAvatarPreview(url);
@@ -56,117 +77,139 @@ export default function ChildProfileEditor({ child, onClose, onSave }: ChildProf
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(draft, avatarFile);
+      await onSave({ ...draft, name: draft.name.trim() }, avatarFile);
       onClose();
+    } catch {
+      // parent already showed the error toast; keep the editor open with the draft
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-2xl border border-stone-200 bg-stone-50/90 p-6 shadow-xl"
-      >
-        <header>
-          <p className="text-xs uppercase tracking-widest text-stone-500">{t("app.journal")}</p>
-          <h2 className="mt-1 font-serif text-2xl text-stone-900">{t("profile.heading")}</h2>
-        </header>
+    <div className="cs-modal-backdrop cs-backdrop-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="cs-modal cs-panel-in sm:max-w-lg">
+        <div className="cs-handle" />
+        <div className="p-5 sm:p-6">
+          <header>
+            <p className="t-caption">{t("app.journal")}</p>
+            <h2 className="t-h1 mt-1">{t("profile.heading")}</h2>
+          </header>
 
-        <div className="mt-6 flex items-center gap-4">
-          <div className="h-20 w-20 overflow-hidden rounded-full bg-stone-200 ring-2 ring-white shadow">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt={draft.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-stone-500">
-                {initials}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="cursor-pointer rounded-lg bg-stone-900 px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-stone-800">
-              {t("profile.fields.avatar")}
+          <div className="mt-6 flex items-center gap-5">
+            <label className="group relative block h-24 w-24 shrink-0 cursor-pointer overflow-hidden rounded-full bg-primary-soft ring-1 ring-line" title={t("profile.fields.avatar")}>
+              {avatarPreview ? (
+                <img src={avatarPreview} alt={draft.name} className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-3xl font-extrabold text-primary-soft-ink">
+                  {initials}
+                </span>
+              )}
+              <span className="absolute inset-x-0 bottom-0 flex h-8 items-center justify-center bg-ink/70 text-white transition-colors group-hover:bg-ink/85" aria-hidden>
+                <Camera size={16} strokeWidth={2.2} />
+              </span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 hidden
-                onChange={(e) => handleAvatarChange(e.target.files?.[0])}
+                onChange={(e) => void handleAvatarChange(e.target.files?.[0])}
               />
             </label>
-            {avatarPreview && (
+            <div className="flex flex-col items-start gap-1">
+              <span className="t-body-strong text-ink">{t("profile.fields.avatar")}</span>
+              {avatarPreview && (
+                <button type="button" onClick={handleRemoveAvatar} className="cs-btn cs-btn-ghost cs-btn-sm -ml-3 text-error hover:text-error">
+                  {t("profile.actions.removeAvatar")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <Field label={t("profile.fields.name")}>
+              <input
+                value={draft.name}
+                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                className="cs-input"
+              />
+            </Field>
+
+            <Field label={t("profile.fields.birthDate")}>
+              <input
+                type="date"
+                value={draft.birthDate}
+                onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
+                className="cs-input"
+              />
+              {draftAge !== null && (
+                <span className="t-caption block mt-1 text-ink-3" data-testid="profile-age-hint">
+                  {t("profile.fields.ageNow", { age: formatAge(draftAge, t) })}
+                </span>
+              )}
+            </Field>
+
+            <Field label={t("profile.fields.bio")}>
+              <textarea
+                value={draft.bio ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value }))}
+                rows={3}
+                placeholder={t("profile.fields.bioPlaceholder")}
+                className="cs-textarea"
+              />
+              {bioMentionsAge(draft.bio) && (
+                <span className="t-caption block mt-1 text-primary-soft-ink" data-testid="profile-bio-age-hint">
+                  {t("profile.fields.bioAgeHint")}
+                </span>
+              )}
+            </Field>
+          </div>
+
+          {onAddGoal && (
+            <button type="button" onClick={onAddGoal} className="cs-btn cs-btn-outline mt-6 w-full" data-testid="profile-add-goal">
+              <Target size={18} strokeWidth={2.2} aria-hidden />{t("profile.addGoal")}
+            </button>
+          )}
+
+          <div className="mt-8 flex items-center justify-end gap-2">
+            <button type="button" onClick={onClose} className="cs-btn cs-btn-ghost">
+              {t("profile.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={saving || !draft.name.trim()}
+              onClick={handleSave}
+              className="cs-btn cs-btn-primary"
+            >
+              {saving ? t("form.actions.saving") : t("profile.actions.save")}
+            </button>
+          </div>
+
+          {onRequestDelete && (
+            <section className="mt-8 border-t border-line pt-5 pb-[env(safe-area-inset-bottom)]" aria-labelledby="child-danger">
+              <h3 id="child-danger" className="t-h2">{t("danger.zoneTitle")}</h3>
+              <p className="t-caption mt-1">{t("danger.child.hint")}</p>
               <button
                 type="button"
-                onClick={handleRemoveAvatar}
-                className="text-xs text-stone-500 hover:text-rose-600"
+                onClick={onRequestDelete}
+                disabled={saving}
+                className="cs-btn cs-btn-outline mt-4 border-error text-error hover:bg-error-soft"
+                data-testid="child-delete-open"
               >
-                {t("profile.actions.removeAvatar")}
+                <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
+                {t("danger.child.button")}
               </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <Field label={t("profile.fields.name")}>
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              className={inputCls}
-            />
-          </Field>
-
-          <Field label={t("profile.fields.birthDate")}>
-            <input
-              type="date"
-              value={draft.birthDate}
-              onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
-              className={inputCls}
-            />
-          </Field>
-
-          <Field label={t("profile.fields.bio")}>
-            <textarea
-              value={draft.bio ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value }))}
-              rows={3}
-              placeholder={t("profile.fields.bioPlaceholder")}
-              className={`${inputCls} resize-y`}
-            />
-          </Field>
-        </div>
-
-        <div className="mt-8 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
-          >
-            {t("profile.actions.cancel")}
-          </button>
-          <button
-            type="button"
-            disabled={saving || !draft.name.trim()}
-            onClick={handleSave}
-            className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {saving ? t("form.actions.saving") : t("profile.actions.save")}
-          </button>
+            </section>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 shadow-sm placeholder:text-stone-400 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200";
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
+      <span className="cs-field-label">{label}</span>
       {children}
     </label>
   );

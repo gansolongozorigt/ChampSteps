@@ -14,7 +14,8 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "noEmit": true
   },
   "include": ["src"]
 }

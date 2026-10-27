@@ -4,9 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { isFirebaseConfigured, subscribeReflections } from "../lib/firebase";
+import { KEY_REFLECTIONS as KEY } from "../lib/localStore";
 import type { Reflection } from "../types";
-
-const KEY = "champstep.reflections.v1";
 
 function loadLocal(childId: string): Reflection[] {
   try {
@@ -19,26 +18,39 @@ function saveLocal(childId: string, items: Reflection[]) {
   localStorage.setItem(`${KEY}.${childId}`, JSON.stringify(items));
 }
 
-export function useReflections(childId: string) {
+/**
+ * @param enabled  false -> Firestore-д subscribe хийхгүй (багшийн горим:
+ *                 reflections нь эцэг эхэд л зориулагдсан, rules хориглоно).
+ * @param local    true -> localStorage only (Firebase not configured, or a guest / trial user).
+ */
+export function useReflections(childId: string, enabled = true, local: boolean = !isFirebaseConfigured) {
   const [reflections, setReflections] = useState<Reflection[]>(() =>
-    isFirebaseConfigured ? [] : loadLocal(childId)
+    local ? loadLocal(childId) : []
   );
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [loading, setLoading] = useState(!local);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
-    if (!isFirebaseConfigured) {
+    if (!enabled) {
+      setReflections([]);
+      setLoading(false);
+      return;
+    }
+    if (local) {
       setReflections(loadLocal(childId));
       setLoading(false);
       return;
     }
     setLoading(true);
-    const unsub = subscribeReflections(childId, (items) => {
-      setReflections(items);
-      setLoading(false);
-    });
+    setError(null);
+    const unsub = subscribeReflections(
+      childId,
+      (items) => { setReflections(items); setLoading(false); setError(null); },
+      (err) => { setError(err instanceof Error ? err.message : "Failed to load reflections"); setLoading(false); }
+    );
     return unsub;
-  }, [childId]);
+  }, [childId, enabled, local]);
 
   function addLocal(r: Reflection) {
     setReflections((prev) => {
@@ -56,5 +68,5 @@ export function useReflections(childId: string) {
     });
   }
 
-  return { reflections, loading, addLocal, removeLocal };
+  return { reflections, loading, error, addLocal, removeLocal };
 }
