@@ -22,6 +22,8 @@
 //   promoRedeemed      promo activations                  users.subscription.provider == "promo" && subscriptionActivatedAt in range (by code)
 //   promoCodes         usedCount per code                 promoCodes (all time, for the campaign ceiling)
 //   payments           orders created / paid / MNT        payments.createdAt (paid: status == "paid", amount summed), by plan
+//   funnel             users who reached each first step  sign-up → child → goal → practice → achievement → reminder,
+//                      counted per USER (≥1 of each, any time) for the accounts that signed up in range and for all
 import { writeFileSync } from "node:fs";
 import { Timestamp } from "firebase-admin/firestore";
 import { admin } from "./_admin.mjs";
@@ -88,17 +90,19 @@ const users = await db.collection("users").get();
 const signups = { total: 0, byRole: {} };
 let guestToSignup = 0;
 const reminders = { turnedOnInRange: 0, onTotal: 0 };
+const cohort = new Set(), everyone = new Set(), reminderUsers = new Set();
 const promo = { redeemed: 0, byCode: {} };
 let usersTotal = 0;
 for (const d of users.docs) {
   if (excluded.has(d.id)) continue;
   const u = d.data();
   usersTotal++;
-  if (inRange(u.createdAt)) { signups.total++; bump(signups.byRole, u.role ?? "unknown"); }
+  everyone.add(d.id);
+  if (inRange(u.createdAt)) { signups.total++; bump(signups.byRole, u.role ?? "unknown"); cohort.add(d.id); }
   if (inRange(u.guestMigratedAt)) guestToSignup++;
   const r = u.reminders;
   const anyOn = !!(r && (r.daily === true || r.competition === true));
-  if (anyOn) reminders.onTotal++;
+  if (anyOn) { reminders.onTotal++; reminderUsers.add(d.id); }
   if (anyOn && inRange(r.updatedAt)) reminders.turnedOnInRange++;
   if (u.subscription?.provider === "promo" && inRange(u.subscriptionActivatedAt)) {
     promo.redeemed++;
@@ -123,6 +127,20 @@ const [children, goals, practiceLogs, achievements] = await Promise.all([
   countCreated("children"), countCreated("goals"), countCreated("practiceLogs"), countCreated("achievements"),
 ]);
 
+// ---- funnel: per user, from the owner of each child (collections are small → full scans) ----
+const parentOf = new Map();
+for (const d of (await db.collection("children").get()).docs) parentOf.set(d.id, d.get("parentId"));
+async function ownersOf(col) {
+  const owners = new Set();
+  for (const d of (await db.collection(col).get()).docs) { const p = parentOf.get(d.get("childId")); if (p) owners.add(p); }
+  return owners;
+}
+const [goalOwners, logOwners, achOwners] = await Promise.all([ownersOf("goals"), ownersOf("practiceLogs"), ownersOf("achievements")]);
+const childOwners = new Set(parentOf.values());
+const FUNNEL = [["signup", null], ["child", childOwners], ["goal", goalOwners], ["practice", logOwners], ["achievement", achOwners], ["reminder", reminderUsers]];
+const funnelOf = (base) => Object.fromEntries(FUNNEL.map(([k, set]) => [k, set ? [...base].filter((uid) => set.has(uid)).length : base.size]));
+const funnel = { cohort: funnelOf(cohort), all: funnelOf(everyone) };
+
 // ---- payments ----
 const paySnap = await db.collection("payments").where("createdAt", ">=", startTs).where("createdAt", "<", endTs).get();
 const payments = { created: 0, paid: 0, paidMnt: 0, byPlan: {} };
@@ -143,7 +161,7 @@ for (const d of paySnap.docs) {
 const result = {
   range: { from, to, tz: "Asia/Ulaanbaatar", startUtc: start.toISOString(), endUtcExclusive: end.toISOString() },
   generatedAt: new Date().toISOString(),
-  signups, guestToSignup, children, goals, reminders, practiceLogs, achievements, promo, promoCodes, payments,
+  signups, guestToSignup, children, goals, reminders, practiceLogs, achievements, promo, promoCodes, payments, funnel,
   usersTotal,
   excludedAccounts: excluded.size,
 };
@@ -169,6 +187,13 @@ const md = [
   `Промо кодын нийт хэрэглээ (бүх цаг): ${Object.entries(promoCodes).map(([c, v]) => `${c} ${v.used}/${v.maxUses || "∞"}${v.active ? "" : " (идэвхгүй)"}`).join(", ") || "—"}`,
   `Нийт хэрэглэгч: ${usersTotal}`,
   `Хассан: ${excluded.size} бүртгэл (эзэмшигч/админ, METRICS_EXCLUDE)`,
+  "",
+  "#### Эхний алхмууд (хэрэглэгчийн тоо, ≥1 удаа, бүх цаг)",
+  "",
+  `| Алхам | Энэ хугацаанд бүртгүүлсэн (${funnel.cohort.signup}) | Бүх хэрэглэгч (${funnel.all.signup}) |`,
+  "|---|---:|---:|",
+  ...[["signup", "Бүртгэл"], ["child", "Хүүхэд нэмсэн"], ["goal", "Зорилго тавьсан"], ["practice", "Бэлтгэл бичсэн"], ["achievement", "Амжилт нэмсэн"], ["reminder", "Сануулга асаасан"]]
+    .map(([k, label]) => `| ${label} | ${funnel.cohort[k]} | ${funnel.all[k]} |`),
 ].join("\n");
 
 if (!quiet) console.log(md);

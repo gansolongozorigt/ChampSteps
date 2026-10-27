@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, ArrowUp, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
+  AlertTriangle, ArrowUp, BellRing, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
   Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
@@ -30,6 +30,13 @@ import { useAchievements } from "./hooks/useAchievements";
 import { usePracticeLogs } from "./hooks/usePracticeLogs";
 import { useGoals } from "./hooks/useGoals";
 import GoalForm from "./components/GoalForm";
+import FirstStepsCard from "./components/FirstStepsCard";
+import StepPrompt from "./components/StepPrompt";
+import {
+  dismissFirstSteps, firstSteps, firstStepsDismissed, markReminderAsked, preferTodayTab, reminderAsked, showFirstSteps, type StepId,
+} from "./lib/onboarding";
+import { achNearLimit, showUpgradeBar } from "./lib/upgradeBar";
+import { reminderFailureKey, turnOnDailyReminder } from "./lib/reminders";
 import GoalDetailModal from "./components/GoalDetailModal";
 import { activeGoals, goalStats, nextGoal as pickNextGoal, prepFromStats } from "./lib/goals";
 import { localDateKey } from "./lib/streak";
@@ -58,7 +65,9 @@ import {
   useInviteCode,
   deleteAchievement,
   getChildrenForParent,
+  getReminderPrefs,
   subscribeChildrenForTeacher,
+  type ReminderPrefs,
   isFirebaseConfigured,
   updateChild as fbUpdateChild,
 } from "./lib/firebase";
@@ -120,7 +129,7 @@ function migrateAsked(uid: string): boolean {
 function markMigrateAsked(uid: string) {
   try { localStorage.setItem(MIGRATE_ASKED_KEY(uid), "1"); } catch { /* private mode */ }
 }
-/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is >=90 % used. */
+/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is >=90 % used (src/lib/upgradeBar.ts). */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
 const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -190,6 +199,18 @@ function Dashboard() {
   const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal }>({ open: false });
   const [goalDetail, setGoalDetail] = useState<Goal | null>(null);
   const [resultGoal, setResultGoal] = useState<Goal | null>(null);
+  // First steps (src/lib/onboarding.ts): goal question after the first child, "log today?", "remind at 20:00?".
+  const [goalIntro, setGoalIntro] = useState(false);
+  const [practiceAsk, setPracticeAsk] = useState(false);
+  const [reminderAsk, setReminderAsk] = useState<{ busy: boolean; note: { kind: "info" | "error"; text: string } | null } | null>(null);
+  const [reminderPrefs, setReminderPrefsState] = useState<ReminderPrefs | null>(null);
+  const [todayFocus, setTodayFocus] = useState(0);
+  const [stepsClosed, setStepsClosed] = useState<string[]>([]);
+  // Default tab is decided once per app open; a deep link (/today, ?action=) always wins.
+  const tabDecided = useRef(false);
+  const deepLinked = useRef(initialSection() === "today" || pendingAction() !== null);
+  // Until then a parent's main area shows a spinner instead of flashing the achievements tab first.
+  const [tabReady, setTabReady] = useState(() => user?.role !== "parent" || deepLinked.current);
   // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
 
   const child = children[activeChildIdx];
@@ -197,7 +218,7 @@ function Dashboard() {
 
   const { achievements, loading: loadingAch, error: achError, addLocal, replaceLocal, removeLocal } =
     useAchievements(child?.childId ?? "", seedAchievements, localMode);
-  const { logs: practiceLogs, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
+  const { logs: practiceLogs, loadedFor: logsLoadedFor, error: logsError, addLocal: addLocalLog, removeLocal: removeLocalLog } =
     usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
@@ -230,6 +251,32 @@ function Dashboard() {
     return () => { off?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, localMode]);
+
+  // Reminder state for the first-steps card (account users only; guests have no push).
+  function loadReminderPrefs() {
+    if (!user || localMode || user.role !== "parent") return;
+    getReminderPrefs(user.uid).then(setReminderPrefsState).catch(() => setReminderPrefsState({ daily: false, competition: false }));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(loadReminderPrefs, [user?.uid, localMode]);
+
+  // A parent who has not logged any practice yet starts on Today (the daily habit), once per open.
+  useEffect(() => {
+    if (tabDecided.current || !child || logsLoadedFor !== child.childId) return;
+    tabDecided.current = true;
+    if (activeSection === "achievements" && preferTodayTab({ role: user?.role, practiceLogs: practiceLogs.length, deepLinked: deepLinked.current })) {
+      setActiveSection("today");
+    }
+    setTabReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [child?.childId, logsLoadedFor]);
+  // Logs that never arrive (error, very slow network) must not keep the spinner: open where we are.
+  useEffect(() => {
+    if (tabReady || !child) return;
+    const id = window.setTimeout(() => { tabDecided.current = true; setTabReady(true); }, 4000);
+    return () => window.clearTimeout(id);
+  }, [tabReady, child?.childId]);
+  useEffect(() => { if (logsError && !tabReady) { tabDecided.current = true; setTabReady(true); } }, [logsError, tabReady]);
 
   // Manifest shortcut "Амжилт нэмэх": open the add form once a child is ready (parents only).
   useEffect(() => {
@@ -397,6 +444,7 @@ function Dashboard() {
 
   async function handleAddNewChild(name: string, birthDate: string) {
     if (!user) return;
+    const firstChild = children.length === 0;
     if (children.length >= tierLimits.maxChildren) {
       setShowSubscription(true);
       setToast({ kind: "info", message: t("status.childLimit", { max: tierLimits.maxChildren }) });
@@ -421,6 +469,7 @@ function Dashboard() {
     setActiveChildIdx(children.length);
     setShowAddChild(false);
     setToast({ kind: "success", message: t("status.childAdded", { name }) });
+    if (firstChild && user.role === "parent") setGoalIntro(true);
   }
 
   async function handleDeleteAchievement(id: string) {
@@ -442,8 +491,12 @@ function Dashboard() {
     if (!localMode) {
       // Offline (or a stalled connection): the write sits in Firestore's queue and the
       // listener already shows it (hasPendingWrites); don't block the form on the server ack.
-      try { return await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
+      const first = practiceLogs.length === 0;
+      let outcome: SaveOutcome;
+      try { outcome = await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
+      if (first) askReminderOnce();
+      return outcome;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
     return "saved";
@@ -482,8 +535,8 @@ function Dashboard() {
   const activeGoalCount = activeGoals(goals).length;
   const goalLimitReached = tierLimits.maxActiveGoals !== -1 && activeGoalCount >= tierLimits.maxActiveGoals;
 
-  async function handleSaveGoal(draft: GoalDraft) {
-    if (!child || !user) return;
+  async function handleSaveGoal(draft: GoalDraft): Promise<boolean> {
+    if (!child || !user) return false;
     const editing = goalForm.goal;
     try {
       if (localMode) {
@@ -499,9 +552,46 @@ function Dashboard() {
       setGoalForm({ open: false });
       setGoalDetail(null);
       setToast({ kind: "success", message: t("status.saved") });
+      return true;
     } catch {
       setToast({ kind: "error", message: t("status.errorSaving") });
+      return false;
     }
+  }
+
+  // ---- first steps -------------------------------------------------------------
+  const remindersOn = reminderPrefs ? reminderPrefs.daily || reminderPrefs.competition : null;
+
+  /** After the first practice log of an account user: "remind at 20:00?" once per account on this device. */
+  function askReminderOnce() {
+    if (!user || localMode || user.role !== "parent" || remindersOn !== false || reminderAsked(user.uid)) return;
+    markReminderAsked(user.uid);
+    setReminderAsk({ busy: false, note: null });
+  }
+
+  async function confirmReminder() {
+    if (!user) return;
+    setReminderAsk({ busy: true, note: null });
+    const r = await turnOnDailyReminder(user.uid, i18n.language, reminderPrefs);
+    if (r.ok) {
+      setReminderPrefsState(r.prefs);
+      setReminderAsk(null);
+      setToast({ kind: "success", message: t("onboarding.reminderAsk.on") });
+    } else if (r.reason === "ios-not-installed") {
+      // iOS tab: notifications only reach the installed app → the existing install guide
+      setReminderAsk(null);
+      setShowInstallGuide(true);
+    } else {
+      setReminderAsk({ busy: false, note: { kind: r.reason === "permission-dismissed" ? "info" : "error", text: t(reminderFailureKey(r.reason)) } });
+    }
+  }
+
+  function openStep(id: StepId) {
+    if (id === "goal") openGoalForm();
+    else if (id === "practice") { setActiveSection("today"); setTodayFocus((n) => n + 1); }
+    else if (id === "achievement") setShowForm(true);
+    else if (id === "reminder") { if (user) markReminderAsked(user.uid); setReminderAsk({ busy: false, note: null }); }
+    else setShowAddChild(true);
   }
 
   async function handleCancelGoal(goal: Goal) {
@@ -704,12 +794,12 @@ function Dashboard() {
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
-  // >=90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
+  // Mobile upgrade strip: only once the limit is close (src/lib/upgradeBar.ts). The child limit only
   // counts when it can actually be approached (free = 1 child would otherwise pin the bar forever).
-  const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
+  const achNear = achNearLimit({ isPremium, achCount, maxAch });
   const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
   const nearLimit = achNear || childNear;
-  const showUpgradeBar = !isPremium && (!upgradeBarDismissed || nearLimit);
+  const upgradeBarOn = showUpgradeBar({ isPremium, achCount, maxAch, childNear, dismissed: upgradeBarDismissed });
   function dismissUpgradeBar() {
     try { localStorage.setItem(UPGRADE_BAR_KEY, String(Date.now())); } catch { /* private mode */ }
     setUpgradeBarDismissed(true);
@@ -726,6 +816,29 @@ function Dashboard() {
     { id: "terms", label: t("nav.terms"), Icon: ScrollText },
   ];
 
+  const steps = firstSteps({
+    hasChild: true,
+    goals: goals.length,
+    practiceLogs: practiceLogs.length,
+    achievements: achievements.length,
+    remindersOn,
+    guest: localMode,
+  });
+  const stepsKey = `${user?.uid}.${child.childId}`;
+  const stepsVisible = showFirstSteps({
+    role: user?.role,
+    dismissed: stepsClosed.includes(stepsKey) || (!!user && firstStepsDismissed(user.uid, child.childId)),
+    steps,
+    // wait until the data behind the steps is in, so a finished account never sees the card flash
+    remindersKnown: (localMode || remindersOn !== null) && logsLoadedFor === child.childId && !(loadingAch && !localMode),
+  });
+  function closeFirstSteps() {
+    if (user) dismissFirstSteps(user.uid, child.childId);
+    setStepsClosed((k) => [...k, stepsKey]);
+  }
+  const firstStepsCard = (className: string) =>
+    stepsVisible ? <FirstStepsCard steps={steps} onStep={openStep} onClose={closeFirstSteps} className={className} /> : null;
+
   const tierLabel =
     subscription === "family" ? t("sub.tierNames.family") :
     subscription === "master" ? t("sub.tierNames.master") :
@@ -737,13 +850,14 @@ function Dashboard() {
       {/* TOP BAR — мобайл + desktop header */}
       <header className="sticky top-0 z-40 bg-surface border-b border-line print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
         <div className="px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Logo size={22} />
-            <span className={`cs-badge-tier ${isPremium ? "cs-badge-tier-paid" : "cs-badge-tier-free"}`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Logo size={22} className="shrink-0" />
+            {/* long names (RU "БЕСПЛАТНЫЙ") must not run into the globe at 375px: tighter on phones, clipped as a last resort */}
+            <span className={`cs-badge-tier min-w-0 overflow-hidden whitespace-nowrap ${isPremium ? "cs-badge-tier-paid" : "cs-badge-tier-free"}`}>
               {tierLabel.toUpperCase()}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 shrink-0">
             <LanguageChip />
             <button
               type="button"
@@ -758,7 +872,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="ml-1 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
+                className="ml-0.5 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
                 aria-expanded={showUserMenu}
               >
                 {child.avatarUrl
@@ -898,11 +1012,16 @@ function Dashboard() {
         <main ref={mainRef} className="flex-1 overflow-y-auto bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:p-0">
           <ExpiryBanner onRenew={openSubscription} />
           {user?.role === "teacher" && <TeacherBanner label={t("status.teacherMode")} />}
+          {!tabReady ? (
+            <div className="flex justify-center py-16" data-testid="tab-pending"><Loader2 size={20} className="animate-spin text-ink-3" aria-hidden /></div>
+          ) : (
           <div key={activeSection} className="cs-section-in">
           {activeSection === "today" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
               <SectionHeader title={t("today.title")} subtitle={child.name} />
+              {firstStepsCard("mb-4")}
               <TodayPage
+                focusForm={todayFocus}
                 kids={children}
                 activeIdx={activeChildIdx}
                 onSelectChild={setActiveChildIdx}
@@ -931,6 +1050,7 @@ function Dashboard() {
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
               onToast={(kind, message) => setToast({ kind, message })}
+              topSlot={firstStepsCard("mb-5")}
             />
           )}
           {activeSection === "practice" && (
@@ -1047,19 +1167,18 @@ function Dashboard() {
             </div>
           )}
           </div>
+          )}
         </main>
       </div>
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {showUpgradeBar && (
+        {upgradeBarOn && (
           <div className="bg-bg-soft border-b border-line px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="t-caption text-ink-2 min-w-0 truncate">
-              {achNear || showLimitWarning
-                ? <span className="text-warn font-bold inline-flex items-center gap-1"><AlertTriangle size={14} strokeWidth={2.5} aria-hidden />{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
-                : childNear
+              {childNear && !showLimitWarning
                 ? <span className="text-warn font-bold">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
-                : <><span className="font-bold text-ink">{t("sub.tierNames.free").toUpperCase()}</span> · <span className="tabular-nums">{achCount}/{maxAch}</span> {t("summary.entries")}</>}
+                : <span className="text-warn font-bold inline-flex items-center gap-1"><AlertTriangle size={14} strokeWidth={2.5} aria-hidden />{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>}
             </span>
             {!nearLimit && (
               <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="cs-icon-btn cs-icon-btn-sm ml-auto text-ink-3"><X size={16} /></button>
@@ -1078,10 +1197,12 @@ function Dashboard() {
                 type="button"
                 onClick={() => setActiveSection(id)}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors ${active ? "text-primary" : "text-ink-3 hover:text-ink-2"}`}
+                aria-label={label}
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-0.5 py-2 min-h-[56px] transition-colors ${active ? "text-primary" : "text-ink-3 hover:text-ink-2"}`}
               >
-                <Icon size={24} strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[10px] font-bold leading-none">{label}</span>
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} aria-hidden />
+                {/* 6 tabs at 375px ≈ 62px each: a shorter label where the full one does not fit (nav.short.*) */}
+                <span className="text-[10px] font-bold leading-none max-w-full truncate" aria-hidden>{t(`nav.short.${id}`, { defaultValue: label })}</span>
               </button>
             );
           })}
@@ -1089,13 +1210,13 @@ function Dashboard() {
       </nav>
 
       {/* FAB — мобайлд bottom nav дээр, desktop-д доод баруун */}
-      {activeSection === "achievements" && !isTeacher && (
+      {tabReady && activeSection === "achievements" && !isTeacher && (
         <button
           type="button"
           onClick={() => setShowForm(true)}
           aria-label={t("app.addAchievement")}
           className="cs-fab fixed z-30 print:hidden md:bottom-6 md:right-6"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16 }}
+          style={{ bottom: `calc(env(safe-area-inset-bottom) + ${upgradeBarOn ? 116 : 72}px)`, right: 16 }}
         >
           <Plus size={22} strokeWidth={2.5} />
           <span>{t("app.addAchievement")}</span>
@@ -1165,8 +1286,42 @@ function Dashboard() {
           initial={goalForm.goal}
           limitReached={goalLimitReached}
           onUpgrade={() => { setGoalForm({ open: false }); setShowSubscription(true); }}
-          onSubmit={handleSaveGoal}
+          onSubmit={async (d) => { await handleSaveGoal(d); }}
           onCancel={() => setGoalForm({ open: false })}
+        />
+      )}
+      {goalIntro && (
+        <GoalForm
+          intro
+          childName={child.name}
+          onSubmit={async (draft) => { if (await handleSaveGoal(draft)) { setGoalIntro(false); setPracticeAsk(true); } }}
+          onCancel={() => setGoalIntro(false)}
+        />
+      )}
+      {practiceAsk && (
+        <StepPrompt
+          testId="practice-ask"
+          Icon={Clock}
+          title={t("onboarding.practiceAsk.title")}
+          hint={t("onboarding.practiceAsk.hint")}
+          yes={t("onboarding.practiceAsk.yes")}
+          no={t("onboarding.practiceAsk.no")}
+          onYes={() => { setPracticeAsk(false); setActiveSection("today"); setTodayFocus((n) => n + 1); }}
+          onNo={() => setPracticeAsk(false)}
+        />
+      )}
+      {reminderAsk && (
+        <StepPrompt
+          testId="reminder-ask"
+          Icon={BellRing}
+          title={t("onboarding.reminderAsk.title")}
+          hint={t("onboarding.reminderAsk.hint")}
+          yes={t("onboarding.reminderAsk.yes")}
+          no={t("onboarding.reminderAsk.no")}
+          busy={reminderAsk.busy}
+          note={reminderAsk.note}
+          onYes={() => void confirmReminder()}
+          onNo={() => setReminderAsk(null)}
         />
       )}
       {goalDetail && (
@@ -1223,7 +1378,7 @@ function Dashboard() {
           user={user}
           subscriptionInfo={subscriptionInfo}
           childrenCount={isTeacher ? 0 : children.length}
-          onClose={() => setShowAccount(false)}
+          onClose={() => { setShowAccount(false); loadReminderPrefs(); }}
           onDeleteAccount={handleDeleteAccount}
           onShowInstall={() => setShowInstallGuide(true)}
         />
@@ -1231,7 +1386,7 @@ function Dashboard() {
       {installKind !== "none" && !showInstallGuide && (
         <InstallBanner
           kind={installKind}
-          bottomOffset={showUpgradeBar ? 116 : 72}
+          bottomOffset={upgradeBarOn ? 116 : 72}
           onHow={() => setShowInstallGuide(true)}
           onInstall={() => { void promptInstall().then((r) => { if (r === "accepted") setInstallKind("none"); }); }}
           onLater={() => { snoozeInstall(); setInstallKind("none"); }}

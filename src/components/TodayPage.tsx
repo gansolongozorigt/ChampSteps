@@ -6,7 +6,7 @@
 // Brand: docs/BRAND.md (cards 1px line, pill chips, lucide, no emoji).
 // =============================================================================
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, ChevronRight, Clock, Flame, Plus, Target, Trophy } from "lucide-react";
 import type { Child, Goal, PracticeLog } from "../types";
@@ -38,6 +38,8 @@ export interface TodayPageProps {
   onEditGoal?: (goal: Goal) => void;
   /** "Record the result" → achievement form prefilled (App.tsx). */
   onGoalResult?: (goal: Goal) => void;
+  /** Changes → the quick form is scrolled into view and focused (first-steps "log today's practice"). */
+  focusForm?: number;
 }
 
 function readLastChild(): string | null {
@@ -53,7 +55,7 @@ function writeLastGoal(childId: string, goalId: string) {
   try { localStorage.setItem(LAST_GOAL_KEY(childId), goalId); } catch { /* private mode */ }
 }
 
-export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd, onDelete, readOnly = false, goals = [], onAddGoal, onOpenGoal, onEditGoal, onGoalResult }: TodayPageProps) {
+export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd, onDelete, readOnly = false, goals = [], onAddGoal, onOpenGoal, onEditGoal, onGoalResult, focusForm }: TodayPageProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language ?? "mn";
   const today = localDateKey(new Date());
@@ -66,6 +68,12 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const child = kids[activeIdx];
   const childId = child?.childId ?? "";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!focusForm || !textareaRef.current) return;
+    textareaRef.current.scrollIntoView({ block: "center" });
+    textareaRef.current.focus({ preventScroll: true });
+  }, [focusForm]);
 
   // Goals: active ones drive the cards, the goal chips and the competition-day screen.
   const active = useMemo(() => activeGoals(goals), [goals]);
@@ -262,6 +270,7 @@ export default function TodayPage({ kids, activeIdx, onSelectChild, logs, onAdd,
       ) : (
         <div className="cs-card p-4 mb-4">
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={2}

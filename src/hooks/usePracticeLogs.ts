@@ -25,11 +25,14 @@ export function usePracticeLogs(childId: string, local: boolean = !isFirebaseCon
   );
   const [loading, setLoading] = useState(!local);
   const [error, setError] = useState<string | null>(null);
+  /** childId whose logs are in `logs` (they lag one render behind a child switch). */
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
     if (local) {
       setLogs(loadLocal(childId));
+      setLoadedFor(childId);
       setLoading(false);
       return;
     }
@@ -37,7 +40,7 @@ export function usePracticeLogs(childId: string, local: boolean = !isFirebaseCon
     setError(null);
     const unsub = subscribePracticeLogs(
       childId,
-      (items) => { setLogs(items); setLoading(false); setError(null); },
+      (items) => { setLogs(items); setLoadedFor(childId); setLoading(false); setError(null); },
       (err) => { setError(err instanceof Error ? err.message : "Failed to load practice logs"); setLoading(false); }
     );
     return unsub;
@@ -59,5 +62,5 @@ export function usePracticeLogs(childId: string, local: boolean = !isFirebaseCon
     });
   }
 
-  return { logs, loading, error, addLocal, removeLocal };
+  return { logs, loading, loadedFor, error, addLocal, removeLocal };
 }

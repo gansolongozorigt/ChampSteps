@@ -3,7 +3,7 @@
 // Logic unchanged — only markup classes and icons.
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { BookOpen, CalendarCheck, Camera, Dumbbell, Medal, Award, Palette, Pencil, Search, Target, Trash2, type LucideIcon } from "lucide-react";
 import { hoursLabel } from "../lib/goals";
@@ -43,6 +43,8 @@ export interface TimelineDashboardProps {
   loading?: boolean;
   /** AI картын мэдэгдэл (жишээ: "Шинэ өгөгдөл байхгүй") */
   onToast?: (kind: ToastKind, message: string) => void;
+  /** Rendered above the profile header (first-steps card). */
+  topSlot?: ReactNode;
 }
 
 export default function TimelineDashboard({
@@ -57,6 +59,7 @@ export default function TimelineDashboard({
   readOnly = false,
   loading = false,
   onToast,
+  topSlot,
 }: TimelineDashboardProps) {
   const { t, i18n } = useTranslation();
   const ageLine = ageBioLine(child, t);
@@ -108,6 +111,7 @@ export default function TimelineDashboard({
   return (
     <div className="min-h-screen bg-bg">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+        {topSlot}
 
         {/* -- Profile header ------------------------------------------- */}
         <header className="flex items-start justify-between gap-3 mb-5">

@@ -20,8 +20,19 @@ export const pngFile = (name = "photo.png") => ({ name, mimeType: "image/png", b
 
 export const PASSWORD = "Qa-" + Math.random().toString(36).slice(2, 10) + "!1";
 
+/**
+ * Every page answers "no" to the one-time first-steps question "remind at 20:00?" (first practice
+ * log of an account) so older flows are not blocked; keepReminderAsk() opts a page out.
+ */
 export async function newPage(context: BrowserContext, lang = "mn"): Promise<Page> {
   await context.addInitScript((l) => { try { localStorage.setItem("champstep.lang", l); } catch {} }, lang);
+  await context.addInitScript(() => {
+    const w = window as unknown as { __keepReminderAsk?: boolean };
+    new MutationObserver(() => {
+      if (w.__keepReminderAsk) return;
+      (document.querySelector('[data-testid="reminder-ask-no"]') as HTMLButtonElement | null)?.click();
+    }).observe(document, { childList: true, subtree: true });
+  });
   return context.newPage();
 }
 
@@ -49,12 +60,27 @@ export async function signUp(page: Page, a: Account, opts: { firstChild?: boolea
   }
 }
 
-/** The add-child modal must already be open: name + birth date (both required), then submit. */
-export async function fillAddChildModal(page: Page, name: string, birthDate = "2015-09-15") {
+/**
+ * The add-child modal must already be open: name + birth date (both required), then submit.
+ * The FIRST child of a parent is followed by the first-steps goal question ("Дараагийн тэмцээн
+ * хэзээ вэ?"); it opens in the same render as the modal closes, so it is skipped here unless
+ * `keepGoalIntro` (tests/e2e/onboarding.spec.ts covers it).
+ */
+export async function fillAddChildModal(page: Page, name: string, birthDate = "2015-09-15", opts: { keepGoalIntro?: boolean } = {}) {
   await page.getByPlaceholder(tr("children.namePlaceholder")).fill(name);
   await page.getByTestId("add-child-birthdate").fill(birthDate);
   await page.getByTestId("add-child-submit").click();
   await expect(page.getByPlaceholder(tr("children.namePlaceholder"))).toBeHidden({ timeout: 30_000 });
+  const skip = page.getByTestId("goal-intro-skip");
+  if (!opts.keepGoalIntro && await skip.isVisible()) {
+    await skip.click();
+    await expect(skip).toBeHidden();
+  }
+}
+
+/** fixtures.ts answers the "remind at 20:00?" question automatically; call this (before goto) to test it yourself. */
+export async function keepReminderAsk(page: Page) {
+  await page.addInitScript(() => { (window as unknown as { __keepReminderAsk?: boolean }).__keepReminderAsk = true; });
 }
 
 export async function signIn(page: Page, a: Pick<Account, "email" | "password">) {
@@ -77,12 +103,20 @@ export async function signOut(page: Page) {
   await expect(page.locator("#email")).toBeVisible({ timeout: 20_000 });
 }
 
+/**
+ * Dashboard ready, on the achievements tab. A parent with no practice log opens on Today
+ * (first steps); this helper then switches to achievements so older tests keep their start point.
+ */
 export async function waitForDashboard(page: Page) {
-  await expect(page.getByRole("button", { name: tr("app.addAchievement"), exact: true })).toBeVisible({ timeout: 30_000 });
+  const fab = page.getByRole("button", { name: tr("app.addAchievement"), exact: true });
+  const today = page.getByTestId("today-page");
+  await expect(fab.or(today)).toBeVisible({ timeout: 30_000 });
+  if (await today.isVisible()) await nav(page, "achievements");
+  await expect(fab).toBeVisible({ timeout: 30_000 });
 }
 
-export async function nav(page: Page, section: "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms") {
-  const label = tr(`nav.${section}`);
+export async function nav(page: Page, section: "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms", lang = "mn") {
+  const label = tr(`nav.${section}`, {}, lang);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   const scope = isMobile ? page.locator("nav").last() : page.locator("aside");
   if (isMobile && (section === "about" || section === "terms")) {
@@ -98,8 +132,9 @@ export async function expectToast(page: Page, text: string) {
 }
 
 /** Fill the 4-step achievement form and save. */
-export async function addAchievement(page: Page, a: { title: string; location: string; category: "Sports" | "Arts" | "Academic"; award?: "Gold" | "Silver" | "Bronze" | "Participant"; description: string; photos?: number; /** real image files instead of the 1×1 PNG */ photoFiles?: Array<{ name: string; mimeType: string; buffer: Buffer }>; childName: string }) {
-  await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click();
+export async function addAchievement(page: Page, a: { title: string; location: string; category: "Sports" | "Arts" | "Academic"; award?: "Gold" | "Silver" | "Bronze" | "Participant"; description: string; photos?: number; /** real image files instead of the 1×1 PNG */ photoFiles?: Array<{ name: string; mimeType: string; buffer: Buffer }>; childName: string }, open?: () => Promise<void>) {
+  if (open) await open();
+  else await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click();
   await page.getByPlaceholder(tr("form.fields.titlePlaceholder")).fill(a.title);
   await page.getByPlaceholder(tr("form.fields.locationPlaceholder")).fill(a.location);
   await field(page, "form.fields.category").locator("button", { hasText: tr(`categories.${a.category}`) }).first().click();

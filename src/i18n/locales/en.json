@@ -115,7 +115,10 @@
     "pdf": "PDF",
     "about": "About",
     "terms": "Terms",
-    "today": "Today"
+    "today": "Today",
+    "short": {
+      "achievements": "Awards"
+    }
   },
   "auth": {
     "resetEnterEmail": "Enter your e-mail first.",
@@ -801,5 +804,52 @@
   "age": {
     "years_one": "{{count}} year old",
     "years_other": "{{count}} years old"
+  },
+  "onboarding": {
+    "card": {
+      "title": "First steps",
+      "close": "Close",
+      "done": "Done"
+    },
+    "steps": {
+      "child": {
+        "title": "Add a child",
+        "why": "Achievements and practice are kept in each child's own book"
+      },
+      "goal": {
+        "title": "Competition goal",
+        "why": "Every practice links to the goal, so your child sees how much work went in"
+      },
+      "practice": {
+        "title": "First practice",
+        "why": "One line a day. After a month your child can see the path they have walked"
+      },
+      "achievement": {
+        "title": "First achievement",
+        "why": "Medals, certificates and photos in one place, ready for a PDF for school or club"
+      },
+      "reminder": {
+        "title": "Evening reminder",
+        "why": "Once in the evening. Nothing gets forgotten"
+      }
+    },
+    "goalIntro": {
+      "title": "When is the next competition?",
+      "hint": "Every practice links to this goal, so your child sees how hard they have worked",
+      "skip": "No competition yet"
+    },
+    "practiceAsk": {
+      "title": "Log today's practice?",
+      "hint": "One line a day is enough.",
+      "yes": "Log it",
+      "no": "Later"
+    },
+    "reminderAsk": {
+      "title": "Remind you at 20:00?",
+      "hint": "One notification, only on days with no practice logged.",
+      "yes": "Yes, remind me",
+      "no": "No thanks",
+      "on": "Evening reminder is on"
+    }
   }
 }
