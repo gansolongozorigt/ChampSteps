@@ -13,16 +13,14 @@ test("390×844: bottom nav has 6 tabs; modal scrolls; save buttons reachable", a
   const bottomNav = page.locator("nav").last();
   for (const s of ["today", "achievements", "practice", "reflection", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
 
-  // upgrade bar (free tier): dismiss → hidden, stays hidden after reload (7-day snooze)
-  const bar = page.getByTestId("upgrade-bar");
-  await expect(bar).toBeVisible();
-  await expect(bottomNav.getByRole("button")).toHaveCount(8); // 6 tabs + dismiss + upgrade
-  await bar.getByRole("button", { name: tr("sub.upgradeBarDismiss") }).click();
-  await expect(bar).toBeHidden();
-  await page.reload();
-  await waitForDashboard(page);
-  await expect(page.getByTestId("upgrade-bar")).toBeHidden();
+  // upgrade bar (free tier): not shown far from the limit (only from 25/30, src/lib/upgradeBar.ts — unit-tested);
+  // the header star still opens the plans. The FAB is not covered.
+  await expect(page.getByTestId("upgrade-bar")).toHaveCount(0);
   await expect(bottomNav.getByRole("button")).toHaveCount(6);
+  await expect(page.locator("header").getByTitle(tr("nav.subscription"))).toBeVisible();
+  const fab = page.getByRole("button", { name: tr("app.addAchievement"), exact: true });
+  const [fabBox, navBox] = [await fab.boundingBox(), await bottomNav.boundingBox()];
+  expect(fabBox!.y + fabBox!.height).toBeLessThanOrEqual(navBox!.y);
 
   // iOS safe areas: header/nav carry env(safe-area-inset-*) padding; computed value is 0 outside iOS
   const header = page.locator("header").first();

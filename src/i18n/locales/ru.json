@@ -117,7 +117,11 @@
     "pdf": "PDF",
     "about": "О нас",
     "terms": "Условия",
-    "today": "Сегодня"
+    "today": "Сегодня",
+    "short": {
+      "achievements": "Успехи",
+      "practice": "Занятия"
+    }
   },
   "auth": {
     "resetEnterEmail": "Сначала введите e-mail.",

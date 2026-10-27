@@ -115,7 +115,10 @@
     "pdf": "PDF",
     "about": "About",
     "terms": "Terms",
-    "today": "Today"
+    "today": "Today",
+    "short": {
+      "achievements": "Awards"
+    }
   },
   "auth": {
     "resetEnterEmail": "Enter your e-mail first.",

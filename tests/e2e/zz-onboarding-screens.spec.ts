@@ -13,7 +13,7 @@ test.skip(!ON, "set SCREENS=1 to capture");
 test.setTimeout(300_000);
 const VIEW = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true };
 const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-const shot = (page: import("@playwright/test").Page, name: string) => page.screenshot({ path: `${DIR}/${name}.png` });
+const shot = async (page: import("@playwright/test").Page, name: string) => { await page.waitForTimeout(600); await page.screenshot({ path: `${DIR}/${name}.png` }); }; // let section fade-ins finish
 async function toastGone(page: import("@playwright/test").Page) { await page.waitForTimeout(4500); }
 
 for (const lang of ["mn", "en", "ru"] as const) {
@@ -55,7 +55,7 @@ for (const lang of ["mn", "en", "ru"] as const) {
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
     await shot(page, `${lang}-05-dashboard-card`);
     if (lang === "mn") {
-      // opened from the card's "first achievement" step (the FAB sits under the upgrade strip at 375px)
+      // opened from the card's "first achievement" step
       await addAchievement(page, { title: "Сургуулийн тэмцээн", location: "УБ", category: "Sports", description: "Хоёрдугаар байр.", childName: "Анар" },
         () => page.getByTestId("first-step-achievement").getByRole("button").click());
       await expect(page.getByTestId("first-steps")).toHaveCount(0);

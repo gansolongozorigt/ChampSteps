@@ -35,6 +35,7 @@ import StepPrompt from "./components/StepPrompt";
 import {
   dismissFirstSteps, firstSteps, firstStepsDismissed, markReminderAsked, preferTodayTab, reminderAsked, showFirstSteps, type StepId,
 } from "./lib/onboarding";
+import { achNearLimit, showUpgradeBar } from "./lib/upgradeBar";
 import { reminderFailureKey, turnOnDailyReminder } from "./lib/reminders";
 import GoalDetailModal from "./components/GoalDetailModal";
 import { activeGoals, goalStats, nextGoal as pickNextGoal, prepFromStats } from "./lib/goals";
@@ -128,7 +129,7 @@ function migrateAsked(uid: string): boolean {
 function markMigrateAsked(uid: string) {
   try { localStorage.setItem(MIGRATE_ASKED_KEY(uid), "1"); } catch { /* private mode */ }
 }
-/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is >=90 % used. */
+/** "Upgrade" strip dismissal (mobile bottom bar): hidden for 7 days unless a limit is >=90 % used (src/lib/upgradeBar.ts). */
 const UPGRADE_BAR_KEY = "champstep.upgradeBarDismissedAt";
 const UPGRADE_BAR_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -793,12 +794,12 @@ function Dashboard() {
   const maxAch = tierLimits.maxAchievements;
   const achCount = achievements.length;
   const showLimitWarning = !isPremium && maxAch > 0 && achCount >= Math.floor(maxAch * 0.8);
-  // >=90 % of a limit: the upgrade bar comes back even if dismissed. The child limit only
+  // Mobile upgrade strip: only once the limit is close (src/lib/upgradeBar.ts). The child limit only
   // counts when it can actually be approached (free = 1 child would otherwise pin the bar forever).
-  const achNear = !isPremium && maxAch > 0 && achCount >= Math.ceil(maxAch * 0.9);
+  const achNear = achNearLimit({ isPremium, achCount, maxAch });
   const childNear = !isPremium && tierLimits.maxChildren > 1 && children.length >= tierLimits.maxChildren;
   const nearLimit = achNear || childNear;
-  const showUpgradeBar = !isPremium && (!upgradeBarDismissed || nearLimit);
+  const upgradeBarOn = showUpgradeBar({ isPremium, achCount, maxAch, childNear, dismissed: upgradeBarDismissed });
   function dismissUpgradeBar() {
     try { localStorage.setItem(UPGRADE_BAR_KEY, String(Date.now())); } catch { /* private mode */ }
     setUpgradeBarDismissed(true);
@@ -849,13 +850,14 @@ function Dashboard() {
       {/* TOP BAR — мобайл + desktop header */}
       <header className="sticky top-0 z-40 bg-surface border-b border-line print:hidden cs-app-header pt-[env(safe-area-inset-top)]">
         <div className="px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Logo size={22} />
-            <span className={`cs-badge-tier ${isPremium ? "cs-badge-tier-paid" : "cs-badge-tier-free"}`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Logo size={22} className="shrink-0" />
+            {/* long names (RU "БЕСПЛАТНЫЙ") must not run into the globe at 375px: tighter on phones, clipped as a last resort */}
+            <span className={`cs-badge-tier min-w-0 overflow-hidden whitespace-nowrap ${isPremium ? "cs-badge-tier-paid" : "cs-badge-tier-free"}`}>
               {tierLabel.toUpperCase()}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 shrink-0">
             <LanguageChip />
             <button
               type="button"
@@ -870,7 +872,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="ml-1 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
+                className="ml-0.5 w-9 h-9 rounded-full overflow-hidden border border-line-strong hover:border-primary transition-colors shrink-0"
                 aria-expanded={showUserMenu}
               >
                 {child.avatarUrl
@@ -1171,14 +1173,12 @@ function Dashboard() {
 
       {/* BOTTOM NAV — зөвхөн мобайлд */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line print:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {showUpgradeBar && (
+        {upgradeBarOn && (
           <div className="bg-bg-soft border-b border-line px-3 py-2 flex items-center justify-between gap-2" data-testid="upgrade-bar">
             <span className="t-caption text-ink-2 min-w-0 truncate">
-              {achNear || showLimitWarning
-                ? <span className="text-warn font-bold inline-flex items-center gap-1"><AlertTriangle size={14} strokeWidth={2.5} aria-hidden />{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>
-                : childNear
+              {childNear && !showLimitWarning
                 ? <span className="text-warn font-bold">{t("status.childLimit", { max: tierLimits.maxChildren })}</span>
-                : <><span className="font-bold text-ink">{t("sub.tierNames.free").toUpperCase()}</span> · <span className="tabular-nums">{achCount}/{maxAch}</span> {t("summary.entries")}</>}
+                : <span className="text-warn font-bold inline-flex items-center gap-1"><AlertTriangle size={14} strokeWidth={2.5} aria-hidden />{t("sub.nearLimit", { count: achCount, max: maxAch })}</span>}
             </span>
             {!nearLimit && (
               <button type="button" onClick={dismissUpgradeBar} aria-label={t("sub.upgradeBarDismiss")} className="cs-icon-btn cs-icon-btn-sm ml-auto text-ink-3"><X size={16} /></button>
@@ -1197,10 +1197,12 @@ function Dashboard() {
                 type="button"
                 onClick={() => setActiveSection(id)}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors ${active ? "text-primary" : "text-ink-3 hover:text-ink-2"}`}
+                aria-label={label}
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 px-0.5 py-2 min-h-[56px] transition-colors ${active ? "text-primary" : "text-ink-3 hover:text-ink-2"}`}
               >
-                <Icon size={24} strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[10px] font-bold leading-none">{label}</span>
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} aria-hidden />
+                {/* 6 tabs at 375px ≈ 62px each: a shorter label where the full one does not fit (nav.short.*) */}
+                <span className="text-[10px] font-bold leading-none max-w-full truncate" aria-hidden>{t(`nav.short.${id}`, { defaultValue: label })}</span>
               </button>
             );
           })}
@@ -1214,7 +1216,7 @@ function Dashboard() {
           onClick={() => setShowForm(true)}
           aria-label={t("app.addAchievement")}
           className="cs-fab fixed z-30 print:hidden md:bottom-6 md:right-6"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)", right: 16 }}
+          style={{ bottom: `calc(env(safe-area-inset-bottom) + ${upgradeBarOn ? 116 : 72}px)`, right: 16 }}
         >
           <Plus size={22} strokeWidth={2.5} />
           <span>{t("app.addAchievement")}</span>
@@ -1384,7 +1386,7 @@ function Dashboard() {
       {installKind !== "none" && !showInstallGuide && (
         <InstallBanner
           kind={installKind}
-          bottomOffset={showUpgradeBar ? 116 : 72}
+          bottomOffset={upgradeBarOn ? 116 : 72}
           onHow={() => setShowInstallGuide(true)}
           onInstall={() => { void promptInstall().then((r) => { if (r === "accepted") setInstallKind("none"); }); }}
           onLater={() => { snoozeInstall(); setInstallKind("none"); }}
