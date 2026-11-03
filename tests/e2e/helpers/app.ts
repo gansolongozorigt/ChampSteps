@@ -121,7 +121,8 @@ export async function nav(page: Page, section: Section, lang = "mn") {
   const label = tr(`nav.${section}`, {}, lang);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   const scope = isMobile ? page.locator("nav").last() : page.locator("aside");
-  if (isMobile && (section === "about" || section === "terms")) {
+  // About / Terms live in the profile (avatar) menu on every width
+  if (section === "about" || section === "terms") {
     await openUserMenu(page);
     await page.getByRole("button", { name: label }).click();
     return;

@@ -33,6 +33,7 @@ test("no active goal: the parent starts on Goals (/goals)", async () => {
 
 test("goal with a target result: chips, card and detail show 'Зорьсон'", async () => {
   await page.getByTestId("goal-add-card").click();
+  await expect(page.getByTestId("goal-form")).not.toContainText(tr("goals.limitFree")); // 0 of 1 active: no upgrade note
   await page.getByTestId("goal-title").fill(TITLE);
   await page.getByTestId("goal-date").fill(DATE);
   // own words first, then a preset replaces them
@@ -67,7 +68,9 @@ test("practice: three questions, at least one text, history shows only the answe
   await expect(page.getByTestId("practice-streak")).toContainText(tr("today.streakNone"));
   await expect(page.getByTestId("practice-save")).toBeDisabled(); // nothing written yet
   // the active goal is preselected
-  await expect(page.getByTestId("goal-chips").getByRole("button", { name: TITLE })).toHaveAttribute("aria-pressed", "true");
+  const chip = page.getByTestId("goal-chips").getByRole("button", { name: TITLE });
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await expect(chip).toHaveAttribute("title", TITLE); // full name when the chip is cut with "…"
   await logPractice(page, { wentWell: "Эргэлт тэгш болсон", learned: "Шинэ алхам", minutes: 45 });
   await expect(page.getByTestId("practice-wentWell")).toHaveValue(""); // form cleared
   const entry = page.getByTestId("practice-entry").first();
@@ -93,6 +96,7 @@ test("feelings: 'how do you feel' + focus; focus alone is enough", async () => {
   await nav(page, "reflection");
   await page.getByRole("button", { name: tr("reflection.addButton") }).click();
   await expect(page.getByText(tr("reflection.fields.childNote"), { exact: true })).toBeVisible();
+  await expect(page.getByTestId("reflection-date")).toHaveAttribute("type", "date"); // same native field as the other forms
   await page.getByTestId("reflection-focus").fill("Тайзан дээр гарахын өмнө амьсгалаа тайвшруулах");
   await page.getByTestId("reflection-save").click();
   await expect(page.getByTestId("reflection-focus")).toBeHidden();

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-type Tab = "terms" | "refund" | "privacy";
+export type TermsTab = "terms" | "refund" | "privacy";
+type Tab = TermsTab;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -12,9 +13,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function TermsPage() {
+export default function TermsPage({ initialTab = "terms" }: { initialTab?: Tab } = {}) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>("terms");
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "terms",   label: t("terms.tabTerms") },

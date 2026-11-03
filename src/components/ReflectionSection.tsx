@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Annoyed, Frown, Heart, Laugh, Lock, Meh, Smile, Trash2, type LucideIcon } from "lucide-react";
 import { REFLECTION_FOCUS_MAX, type Reflection } from "../types";
+import { dayLabel, localDateKey } from "../lib/streak";
 
 export interface ReflectionSectionProps {
   childId: string;
@@ -30,7 +31,7 @@ export default function ReflectionSection({
   const { t, i18n } = useTranslation();
 
   const [showForm, setShowForm] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localDateKey(new Date()));
   const [mood, setMood] = useState<Reflection["mood"]>(3);
   const [content, setContent] = useState("");
   const [focus, setFocus] = useState("");
@@ -53,7 +54,7 @@ export default function ReflectionSection({
       setFocus("");
       setParentNote("");
       setMood(3);
-      setDate(new Date().toISOString().slice(0, 10));
+      setDate(localDateKey(new Date()));
       setShowForm(false);
     } catch {
       // parent already showed the error toast; keep the form open with the text
@@ -66,7 +67,7 @@ export default function ReflectionSection({
     ? (reflections.reduce((s, r) => s + r.mood, 0) / reflections.length).toFixed(1)
     : null;
 
-  const locale = i18n.language === "mn" ? "mn-MN" : "en-US";
+  const lang = i18n.language ?? "mn";
 
   return (
     <div className="mt-8 mb-10">
@@ -99,20 +100,18 @@ export default function ReflectionSection({
         <div className="mb-4 cs-card p-4 sm:p-5 cs-item-in">
           <div className="flex flex-col gap-4 mb-4">
             <div>
-              <label className="cs-field-label">
+              <label className="cs-field-label" htmlFor="reflection-date">
                 {t("reflection.fields.date")}
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
-                <div className="cs-input flex items-center justify-center text-center pointer-events-none">
-                  {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
-                </div>
-              </div>
+              <input
+                id="reflection-date"
+                type="date"
+                value={date}
+                max={localDateKey(new Date())}
+                onChange={(e) => setDate(e.target.value)}
+                className="cs-input"
+                data-testid="reflection-date"
+              />
             </div>
             <div>
               <label className="cs-field-label">
@@ -236,9 +235,7 @@ export default function ReflectionSection({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="t-caption">
-                          {new Date(r.date).toLocaleDateString(locale, {
-                            year: "numeric", month: "long", day: "numeric"
-                          })} · {moodLabel}
+                          {dayLabel(r.date, lang)} · {moodLabel}
                         </p>
                         {r.content && (
                           <div className="mt-1.5 border-l-[3px] border-primary pl-3">

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { GraduationCap, Users, type LucideIcon } from "lucide-react";
 import Logo from "./Logo";
 import LanguageToggle from "./LanguageToggle";
+import LegalSheet, { LegalLinks, type LegalView } from "./LegalSheet";
 import PasswordInput from "./PasswordInput";
 import { useAuth } from "../lib/auth";
 import { isFirebaseConfigured, sendPasswordReset } from "../lib/firebase";
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const { signIn, signUp, signInWithGoogle, signInOffline } = useAuth();
   // One-shot notice left by the app before signing out (e.g. account deleted).
   // Read in the initializer, cleared in an effect (StrictMode runs initializers twice).
+  const [legal, setLegal] = useState<LegalView | null>(null);
   const [info, setInfo] = useState<string | null>(() => {
     try { return sessionStorage.getItem(NOTICE_KEY) === "accountDeleted" ? t("danger.account.done") : null; }
     catch { return null; }
@@ -238,9 +240,12 @@ export default function LoginPage() {
         </div>
       </main>
 
+      {/* Terms + privacy reachable before sign-in (app store requirement) */}
       <footer className="pb-[calc(1rem+env(safe-area-inset-bottom))] text-center t-caption">
+        <LegalLinks privacy onOpen={setLegal} className="mb-1" />
         © {new Date().getFullYear()} ChampStep
       </footer>
+      {legal && <LegalSheet view={legal} onClose={() => setLegal(null)} />}
     </div>
   );
 }

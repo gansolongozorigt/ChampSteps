@@ -234,9 +234,10 @@ export default function PracticePage({ kids, activeIdx, onSelectChild, logs, onA
             <div className="mt-3 flex items-center gap-2 flex-wrap" data-testid="goal-chips">
               <span className="t-caption mr-1 inline-flex items-center gap-1"><Target size={14} aria-hidden />{t("goals.linkLabel")}</span>
               {active.map((g) => (
-                <button key={g.id} type="button" onClick={() => pickGoal(g.id)} aria-pressed={goalId === g.id}
-                  className={`cs-chip h-10 px-3.5 text-[13px] max-w-[60%] truncate ${goalId === g.id ? "bg-primary text-white" : "cs-chip-outline"}`}>
-                  {g.title}
+                // long names: one chip never wider than the row, cut with "…" (full name in the tooltip); several wrap
+                <button key={g.id} type="button" onClick={() => pickGoal(g.id)} aria-pressed={goalId === g.id} title={g.title}
+                  className={`cs-chip h-10 px-3.5 text-[13px] max-w-full sm:max-w-xs min-w-0 ${goalId === g.id ? "bg-primary text-white" : "cs-chip-outline"}`}>
+                  <span className="truncate">{g.title}</span>
                 </button>
               ))}
             </div>

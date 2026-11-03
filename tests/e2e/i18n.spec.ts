@@ -36,7 +36,7 @@ test("MN → EN → RU: main screens show no raw keys / [object] / empty labels"
     await page.getByRole("button", { name }).click();
     await expect(page.locator("aside").getByRole("button", { name: tr("nav.achievements", {}, code), exact: true })).toBeVisible();
     for (const s of ["goals", "practice", "reflection", "achievements", "coach", "pdf", "about", "terms"] as const) {
-      await page.locator("aside").getByRole("button", { name: tr(`nav.${s}`, {}, code), exact: true }).click();
+      await nav(page, s, code);
       await scan(page, `${code}/${s}`, problems);
     }
     await page.locator("header").first().getByTitle(tr("nav.subscription", {}, code)).click();
@@ -46,5 +46,4 @@ test("MN → EN → RU: main screens show no raw keys / [object] / empty labels"
     await expect(page.getByRole("heading", { name: tr("sub.title", {}, code) })).toBeHidden();
   }
   expect(problems, problems.join("\n")).toEqual([]);
-  void nav;
 });

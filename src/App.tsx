@@ -18,6 +18,7 @@ import DeleteChildModal from "./components/DeleteChildModal";
 import AdminPage from "./components/AdminPage";
 import CoachNotes from "./components/CoachNotes";
 import TermsPage from "./components/TermsPage";
+import LegalSheet, { LegalLinks, type LegalView } from "./components/LegalSheet";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
@@ -207,7 +208,10 @@ function Dashboard() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
   // Goals: form (create / edit), detail modal, and the goal whose result is being recorded.
-  const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal }>({ open: false });
+  // `limit`: the free-plan limit was already reached when the form opened (a goal saved from this
+  // form must not flash the upgrade note while the form closes).
+  const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal; limit?: boolean }>({ open: false });
+  const [legal, setLegal] = useState<LegalView | null>(null);
   const [goalDetail, setGoalDetail] = useState<Goal | null>(null);
   const [resultGoal, setResultGoal] = useState<Goal | null>(null);
   // First steps (src/lib/onboarding.ts): goal question after the first child, "log today?", "remind at 20:00?".
@@ -644,7 +648,7 @@ function Dashboard() {
   function openGoalForm(goal?: Goal) {
     setGoalDetail(null);
     setShowProfile(false);
-    setGoalForm({ open: true, goal });
+    setGoalForm({ open: true, goal, limit: !goal && goalLimitReached });
   }
 
   // "official" is open to every plan; "framed" / "portfolio" need hasPdf (Family+).
@@ -803,7 +807,9 @@ function Dashboard() {
             <div className="mt-6">
               <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
             </div>
+            <LegalLinks onOpen={setLegal} className="mt-8" />
           </main>
+          {legal && <LegalSheet view={legal} onClose={() => setLegal(null)} />}
           {showAccount && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
           {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
         </div>
@@ -835,7 +841,9 @@ function Dashboard() {
               {t("children.empty.add")}
             </button>
           </div>
+          <LegalLinks onOpen={setLegal} className="mt-6" />
         </main>
+        {legal && <LegalSheet view={legal} onClose={() => setLegal(null)} />}
         {showMigrate !== null && <MigrateModal count={showMigrate} busy={migrating} onConfirm={handleMigrate} onDecline={handleMigrateDecline} />}
         {showAddChild && showMigrate === null && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
         {showAccount && user && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
@@ -1003,9 +1011,9 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Nav items */}
+          {/* Nav items — About / Terms live in the profile (avatar) menu */}
           <nav className="px-3 py-3 flex-1">
-            {navItems.map(({ id, label, Icon }) => {
+            {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map(({ id, label, Icon }) => {
               const active = activeSection === id;
               return (
                 <button
@@ -1328,7 +1336,7 @@ function Dashboard() {
         <GoalForm
           childName={child.name}
           initial={goalForm.goal}
-          limitReached={goalLimitReached}
+          limitReached={!!goalForm.limit}
           onUpgrade={() => { setGoalForm({ open: false }); setShowSubscription(true); }}
           onSubmit={async (d) => { await handleSaveGoal(d); }}
           onCancel={() => setGoalForm({ open: false })}
