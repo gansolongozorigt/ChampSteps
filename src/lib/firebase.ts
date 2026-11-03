@@ -15,6 +15,7 @@ import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -28,8 +29,11 @@ import {
 import {
   addDoc,
   collection,
+  connectFirestoreEmulator,
+  deleteField,
   doc,
   getDoc,
+  limit,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -48,6 +52,7 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 import {
+  connectStorageEmulator,
   getDownloadURL,
   getStorage,
   ref,
@@ -105,6 +110,12 @@ if (isFirebaseConfigured) {
     }
   _storage = getStorage(app);
   _auth = getAuth(app);
+  // Local E2E only (playwright.emulator.config.ts): auth/firestore/storage emulators, never production.
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === "1") {
+    connectAuthEmulator(_auth, "http://127.0.0.1:9099", { disableWarnings: true });
+    if (_db) connectFirestoreEmulator(_db, "127.0.0.1", 8080);
+    connectStorageEmulator(_storage, "127.0.0.1", 9199);
+  }
 }
 
 export const db = _db;
@@ -504,7 +515,7 @@ function toAchievement(snap: QueryDocumentSnapshot<DocumentData>): Achievement {
     description: d.description ?? "",
     awardType: d.awardType ?? "Participant",
     imageURLs: Array.isArray(d.imageURLs) ? d.imageURLs : [],
-    ...(d.prep && typeof d.prep === "object" ? { prep: { goalId: String(d.prep.goalId ?? ""), days: Number(d.prep.days) || 0, sessions: Number(d.prep.sessions) || 0, minutes: Number(d.prep.minutes) || 0, daysTotal: Number(d.prep.daysTotal) || 0 } } : {}),
+    ...(d.prep && typeof d.prep === "object" ? { prep: { goalId: String(d.prep.goalId ?? ""), days: Number(d.prep.days) || 0, sessions: Number(d.prep.sessions) || 0, minutes: Number(d.prep.minutes) || 0, daysTotal: Number(d.prep.daysTotal) || 0, ...(typeof d.prep.targetResult === "string" && d.prep.targetResult ? { targetResult: d.prep.targetResult } : {}) } } : {}),
     createdAt: tsToIso(d.createdAt),
     updatedAt: tsToIso(d.updatedAt),
   };
@@ -567,6 +578,7 @@ export async function createGoal(childId: string, parentId: string, draft: GoalD
       category: draft.category,
       targetSessionsPerWeek: draft.targetSessionsPerWeek,
       targetMinutes: draft.targetMinutes,
+      targetResult: draft.targetResult?.trim() || undefined,
     }),
     status: "active",
     createdAt: serverTimestamp(),
@@ -575,9 +587,31 @@ export async function createGoal(childId: string, parentId: string, draft: GoalD
   return docRef.id;
 }
 
-export async function updateGoal(id: string, patch: Partial<Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes" | "status" | "linkedAchievementId">>): Promise<void> {
+export async function updateGoal(id: string, patch: Partial<Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes" | "targetResult" | "status" | "linkedAchievementId">>): Promise<void> {
   const db = requireDb();
-  await updateDoc(doc(db, "goals", id), { ...omitUndefined(patch as Record<string, unknown>), updatedAt: serverTimestamp() });
+  // targetResult "" (cleared in the edit form) removes the field.
+  const clear = "targetResult" in patch && !patch.targetResult?.trim();
+  const rest = { ...patch } as Record<string, unknown>;
+  if (clear) delete rest.targetResult;
+  else if (typeof patch.targetResult === "string") rest.targetResult = patch.targetResult.trim();
+  await updateDoc(doc(db, "goals", id), { ...omitUndefined(rest), ...(clear ? { targetResult: deleteField() } : {}), updatedAt: serverTimestamp() });
+}
+
+/**
+ * First-steps card across all of a parent's children: does any goal / practice log / achievement exist?
+ * One `limit(1)` read per child and collection (rules allow childId == queries for the owner).
+ */
+export async function accountStepFlags(childIds: string[]): Promise<{ goal: boolean; practice: boolean; achievement: boolean }> {
+  const db = requireDb();
+  const any = async (col: string) => {
+    for (const id of childIds) {
+      const snap = await getDocs(query(collection(db, col), where("childId", "==", id), limit(1)));
+      if (!snap.empty) return true;
+    }
+    return false;
+  };
+  const [goal, practice, achievement] = await Promise.all([any("goals"), any("practiceLogs"), any("achievements")]);
+  return { goal, practice, achievement };
 }
 
 export async function deleteGoal(id: string): Promise<void> {

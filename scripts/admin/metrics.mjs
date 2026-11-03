@@ -23,7 +23,9 @@
 //   promoCodes         usedCount per code                 promoCodes (all time, for the campaign ceiling)
 //   payments           orders created / paid / MNT        payments.createdAt (paid: status == "paid", amount summed), by plan
 //   funnel             users who reached each first step  sign-up → child → goal → practice → achievement → reminder,
-//                      counted per USER (≥1 of each, any time) for the accounts that signed up in range and for all
+//                      counted per USER (≥1 of each, any time) for the accounts that signed up in range and for all;
+//                      since 2026-11 also: goal with targetResult, practice with ≥1 of wentWell/toImprove/learned,
+//                      reflection with focus (field presence only — reflection text is never printed)
 import { writeFileSync } from "node:fs";
 import { Timestamp } from "firebase-admin/firestore";
 import { admin } from "./_admin.mjs";
@@ -130,14 +132,28 @@ const [children, goals, practiceLogs, achievements] = await Promise.all([
 // ---- funnel: per user, from the owner of each child (collections are small → full scans) ----
 const parentOf = new Map();
 for (const d of (await db.collection("children").get()).docs) parentOf.set(d.id, d.get("parentId"));
-async function ownersOf(col) {
+/** Owners with ≥1 doc in `col`; `has` (optional) = the doc must also carry that field (presence only, text is never read out). */
+async function ownersOf(col, has = null) {
   const owners = new Set();
-  for (const d of (await db.collection(col).get()).docs) { const p = parentOf.get(d.get("childId")); if (p) owners.add(p); }
+  for (const d of (await db.collection(col).get()).docs) {
+    if (has && !has(d)) continue;
+    const p = parentOf.get(d.get("childId")); if (p) owners.add(p);
+  }
   return owners;
 }
-const [goalOwners, logOwners, achOwners] = await Promise.all([ownersOf("goals"), ownersOf("practiceLogs"), ownersOf("achievements")]);
+const filled = (d, k) => typeof d.get(k) === "string" && d.get(k).trim() !== "";
+const [goalOwners, logOwners, achOwners, targetOwners, answerOwners, focusOwners] = await Promise.all([
+  ownersOf("goals"), ownersOf("practiceLogs"), ownersOf("achievements"),
+  // pages redesign (2026-11): goal with a target result, practice with ≥1 of the 3 answers, feelings note with a focus
+  ownersOf("goals", (d) => filled(d, "targetResult")),
+  ownersOf("practiceLogs", (d) => ["wentWell", "toImprove", "learned"].some((k) => filled(d, k))),
+  ownersOf("reflections", (d) => filled(d, "focus")),
+]);
 const childOwners = new Set(parentOf.values());
-const FUNNEL = [["signup", null], ["child", childOwners], ["goal", goalOwners], ["practice", logOwners], ["achievement", achOwners], ["reminder", reminderUsers]];
+const FUNNEL = [
+  ["signup", null], ["child", childOwners], ["goal", goalOwners], ["goalTarget", targetOwners], ["practice", logOwners],
+  ["practiceAnswers", answerOwners], ["focus", focusOwners], ["achievement", achOwners], ["reminder", reminderUsers],
+];
 const funnelOf = (base) => Object.fromEntries(FUNNEL.map(([k, set]) => [k, set ? [...base].filter((uid) => set.has(uid)).length : base.size]));
 const funnel = { cohort: funnelOf(cohort), all: funnelOf(everyone) };
 
@@ -192,7 +208,8 @@ const md = [
   "",
   `| Алхам | Энэ хугацаанд бүртгүүлсэн (${funnel.cohort.signup}) | Бүх хэрэглэгч (${funnel.all.signup}) |`,
   "|---|---:|---:|",
-  ...[["signup", "Бүртгэл"], ["child", "Хүүхэд нэмсэн"], ["goal", "Зорилго тавьсан"], ["practice", "Бэлтгэл бичсэн"], ["achievement", "Амжилт нэмсэн"], ["reminder", "Сануулга асаасан"]]
+  ...[["signup", "Бүртгэл"], ["child", "Хүүхэд нэмсэн"], ["goal", "Зорилго тавьсан"], ["goalTarget", "· зорьсон үр дүнтэй"], ["practice", "Бэлтгэл бичсэн"],
+    ["practiceAnswers", "· 3 асуултын аль нэгийг бөглөсөн"], ["focus", "Сэтгэл: анхаарах зүйл бичсэн"], ["achievement", "Амжилт нэмсэн"], ["reminder", "Сануулга асаасан"]]
     .map(([k, label]) => `| ${label} | ${funnel.cohort[k]} | ${funnel.all[k]} |`),
 ].join("\n");
 

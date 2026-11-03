@@ -4,7 +4,7 @@
 // local E2E API server (real handlers, Admin SDK) — see helpers/api-server.mjs.
 import { test, expect } from "./fixtures";
 import { authUserGone, childFootprint, childIdsOf, cleanupTestUser, testEmail, uidByEmail, userDocExists } from "./helpers/admin";
-import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, addAchievement, expectToast, openUserMenu, fillAddChildModal } from "./helpers/app";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, addAchievement, expectToast, openUserMenu, fillAddChildModal, logPractice } from "./helpers/app";
 
 test.describe.configure({ mode: "serial" });
 const parent = { email: testEmail("delete"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
@@ -22,10 +22,7 @@ test("parent: delete child → Firestore + Storage footprint is zero; delete acc
   // data to be deleted: 1 achievement with 1 photo, 1 practice log
   await addAchievement(page, { title: "Устгах тест", location: "УБ", category: "Sports", description: "Устгагдах бичлэг.", photos: 1, childName: "Хүүхэд" });
   await nav(page, "practice");
-  await page.getByRole("button", { name: tr("practice.addButton") }).click();
-  await page.getByPlaceholder(tr("practice.fields.notesPlaceholder")).fill("30 минут бэлтгэл.");
-  await page.getByRole("button", { name: tr("practice.actions.save"), exact: true }).click();
-  await expect(page.getByPlaceholder(tr("practice.fields.notesPlaceholder"))).toBeHidden();
+  await logPractice(page, { content: "30 минут бэлтгэл.", learned: "Шинэ алхам" });
   await nav(page, "achievements");
 
   const [childId] = await childIdsOf(parent.email);

@@ -9,6 +9,7 @@ import { Award, CalendarDays, Clock, Flame, Pencil, Target, X } from "lucide-rea
 import type { Goal, PracticeLog } from "../types";
 import { goalStats, hoursLabel, logsForGoal } from "../lib/goals";
 import { dayLabel } from "../lib/streak";
+import { practiceNoteText } from "../lib/practice";
 
 interface Props {
   goal: Goal;
@@ -46,6 +47,7 @@ export default function GoalDetailModal({ goal, logs, today, readOnly = false, o
             <div className="min-w-0">
               <p className="t-label inline-flex items-center gap-1.5"><Target size={14} aria-hidden />{t(`categories.${goal.category}`)} · {dayLabel(goal.date, lang)}</p>
               <h2 id="goal-detail-title" className="t-h1 mt-1 break-words">{goal.title}</h2>
+              {goal.targetResult && <p className="t-body text-ink-2 mt-0.5 break-words" data-testid="goal-detail-target">{t("goals.targetLine", { target: goal.targetResult })}</p>}
               <p className={`t-body-strong mt-1 ${active && stats.daysLeft >= 0 ? "text-primary" : "text-ink-2"}`} data-testid="goal-detail-countdown">{countdown}</p>
             </div>
             <button type="button" onClick={onClose} aria-label={t("goals.detail.close")} className="cs-icon-btn cs-icon-btn-sm text-ink-3 shrink-0"><X size={18} /></button>
@@ -67,7 +69,7 @@ export default function GoalDetailModal({ goal, logs, today, readOnly = false, o
                 <li key={l.id} className="flex items-start gap-2 t-caption text-ink-2">
                   <span className="tabular-nums shrink-0 w-24">{l.date}</span>
                   <span className="tabular-nums shrink-0 w-10 text-ink">{l.duration}m</span>
-                  <span className="min-w-0 break-words">{l.content}</span>
+                  <span className="min-w-0 break-words">{practiceNoteText(l)}</span>
                 </li>
               ))}
             </ul>

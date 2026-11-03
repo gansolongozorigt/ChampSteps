@@ -128,6 +128,8 @@ export interface AchievementPrep {
   minutes: number;
   /** days from the goal's creation to the competition, inclusive */
   daysTotal: number;
+  /** goals.targetResult at the time the result was recorded ("Зорьсон: …") */
+  targetResult?: string;
 }
 
 /** Form draft */
@@ -154,9 +156,16 @@ export interface PracticeLog {
   childId: string;
   date: string;              // YYYY-MM-DD
   duration: number;          // минутаар
+  /** "Юу хийсэн бэ?" — may be "" when only the questions below were answered */
   content: string;
   /** goals/{id} this session prepares for (optional; old logs have none) */
   goalId?: string;
+  /** "Юу сайн болсон бэ?" (optional, <= PRACTICE_TEXT_MAX) */
+  wentWell?: string;
+  /** "Юуг сайжруулах вэ?" (optional) */
+  toImprove?: string;
+  /** "Юу шинээр сурсан бэ?" (optional) */
+  learned?: string;
   createdAt?: string;
 }
 
@@ -179,13 +188,20 @@ export interface Goal {
   category: AchievementCategory;
   targetSessionsPerWeek?: number;
   targetMinutes?: number;
+  /** "Ямар үр дүнд хүрэхийг зорьж байна вэ?" — free text <= GOAL_TARGET_MAX (optional) */
+  targetResult?: string;
   status: GoalStatus;
   linkedAchievementId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type GoalDraft = Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes">;
+export type GoalDraft = Pick<Goal, "title" | "date" | "category" | "targetSessionsPerWeek" | "targetMinutes" | "targetResult">;
+
+/** Length limits of the optional text fields (same numbers in firestore.rules). */
+export const GOAL_TARGET_MAX = 80;
+export const PRACTICE_TEXT_MAX = 300;
+export const REFLECTION_FOCUS_MAX = 300;
 
 // -----------------------------------------------------------------------------
 // Reflection (сэтгэлзүйн тэмдэглэл) — НУУЦ
@@ -200,7 +216,9 @@ export interface Reflection {
   childId: string;
   date: string;              // YYYY-MM-DD
   mood: 1 | 2 | 3 | 4 | 5;  // 1=маш муу, 5=маш сайн
-  content: string;           // хүүхдийн өөрийн тэмдэглэл
+  content: string;           // хүүхдийн өөрийн тэмдэглэл ("Юу мэдэрч байна вэ?")
+  /** "Цаашид юунд анхаарах вэ?" (optional, <= REFLECTION_FOCUS_MAX) */
+  focus?: string;
   parentNote?: string;       // эцэг эхийн нэмэлт тэмдэглэл
   createdAt?: string;
 }

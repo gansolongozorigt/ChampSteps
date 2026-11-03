@@ -83,9 +83,18 @@ export function goalStats(goal: Pick<Goal, "id" | "date" | "createdAt">, logs: P
 }
 
 /** What gets copied onto the achievement when the result is recorded. */
-export function prepFromStats(goalId: string, s: GoalStats): AchievementPrep {
-  return { goalId, days: s.days, sessions: s.sessions, minutes: s.minutes, daysTotal: s.daysTotal };
+export function prepFromStats(goalId: string, s: GoalStats, targetResult?: string): AchievementPrep {
+  const target = targetResult?.trim();
+  return { goalId, days: s.days, sessions: s.sessions, minutes: s.minutes, daysTotal: s.daysTotal, ...(target ? { targetResult: target } : {}) };
 }
+
+/** Finished / cancelled goals, newest competition first ("Дууссан зорилгууд"). */
+export function pastGoals(goals: Goal[]): Goal[] {
+  return goals.filter((g) => g.status !== "active").sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+/** Quick picks for goals.targetResult (i18n keys goals.target.<id>); "custom" opens a text field. */
+export const TARGET_PRESETS = ["participate", "medal", "gold", "top3"] as const;
 
 export function activeGoals(goals: Goal[]): Goal[] {
   return goals.filter((g) => g.status === "active").sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

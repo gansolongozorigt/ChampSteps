@@ -11,15 +11,17 @@ import type { Goal } from "../types";
 export function useGoals(childId: string, local: boolean = !isFirebaseConfigured) {
   const [goals, setGoals] = useState<Goal[]>(() => (local && childId ? loadLocalGoals(childId) : []));
   const [error, setError] = useState<string | null>(null);
+  /** childId whose goals are in `goals` (lags one snapshot behind a child switch); first-steps card + start tab wait for it. */
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!childId) return;
-    if (local) { setGoals(loadLocalGoals(childId)); return; }
+    if (local) { setGoals(loadLocalGoals(childId)); setLoadedFor(childId); return; }
     setError(null);
     return subscribeGoals(
       childId,
-      (items) => { setGoals(items); setError(null); },
-      (err) => setError(err instanceof Error ? err.message : "Failed to load goals")
+      (items) => { setGoals(items); setLoadedFor(childId); setError(null); },
+      (err) => { setError(err instanceof Error ? err.message : "Failed to load goals"); setLoadedFor(childId); }
     );
   }, [childId, local]);
 
@@ -34,5 +36,5 @@ export function useGoals(childId: string, local: boolean = !isFirebaseConfigured
     setGoals((prev) => { const next = prev.filter((g) => g.id !== id); saveLocalGoals(childId, next); return next; });
   }
 
-  return { goals, error, upsertLocal, removeLocal, storageKey: `${KEY_GOALS}.${childId}` };
+  return { goals, error, loadedFor, upsertLocal, removeLocal, storageKey: `${KEY_GOALS}.${childId}` };
 }

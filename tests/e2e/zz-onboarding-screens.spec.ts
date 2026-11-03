@@ -40,20 +40,20 @@ for (const lang of ["mn", "en", "ru"] as const) {
     await toastGone(page);
     await shot(page, `${lang}-02-practice-question`);
     await page.getByTestId("practice-ask-yes").click();
-    await expect(page.getByTestId("today-page")).toBeVisible();
+    await expect(page.getByTestId("practice-page")).toBeVisible();
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
-    await shot(page, `${lang}-03-today-card`);
+    await shot(page, `${lang}-03-practice-card`);
 
-    await page.getByPlaceholder(T("today.whatPlaceholder")).fill(lang === "mn" ? "Гүйлт 3 км, сунгалт." : lang === "en" ? "3 km run, stretching." : "Бег 3 км, растяжка.");
-    await page.getByTestId("today-save").click();
+    await page.getByTestId("practice-content").fill(lang === "mn" ? "Гүйлт 3 км, сунгалт." : lang === "en" ? "3 km run, stretching." : "Бег 3 км, растяжка.");
+    await page.getByTestId("practice-save").click();
     await expect(page.getByTestId("first-step-practice")).toHaveAttribute("data-done", "1");
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
-    await shot(page, `${lang}-04-today-card-practice-done`);
+    await shot(page, `${lang}-04-practice-card-practice-done`);
 
-    await nav(page, "achievements", lang);
+    await nav(page, "goals", lang);
     await expect(page.getByTestId("first-steps")).toBeVisible();
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
-    await shot(page, `${lang}-05-dashboard-card`);
+    await shot(page, `${lang}-05-goals-card`);
     if (lang === "mn") {
       // opened from the card's "first achievement" step
       await addAchievement(page, { title: "Сургуулийн тэмцээн", location: "УБ", category: "Sports", description: "Хоёрдугаар байр.", childName: "Анар" },
@@ -61,7 +61,7 @@ for (const lang of ["mn", "en", "ru"] as const) {
       await expect(page.getByTestId("first-steps")).toHaveCount(0);
       await toastGone(page);
       await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
-      await shot(page, `${lang}-06-dashboard-all-done`);
+      await shot(page, `${lang}-06-goals-all-done`);
     }
     await context.close();
   });
@@ -75,12 +75,13 @@ test.describe("account", () => {
     const page = await newPage(context);
     await keepReminderAsk(page);
     await signUp(page, parent);
-    await expect(page.getByTestId("today-page")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("goals-page")).toBeVisible({ timeout: 30_000 });
     await toastGone(page);
     await page.locator("main").evaluate((el) => { el.scrollTop = 0; });
     await shot(page, "mn-07-account-card-5-steps");
-    await page.getByPlaceholder(tr("today.whatPlaceholder")).fill("Сунгалт 20 мин.");
-    await page.getByTestId("today-save").click();
+    await nav(page, "practice");
+    await page.getByTestId("practice-content").fill("Сунгалт 20 мин.");
+    await page.getByTestId("practice-save").click();
     await expect(page.getByTestId("reminder-ask")).toBeVisible();
     await shot(page, "mn-08-reminder-question");
     await page.getByTestId("reminder-ask-no").click();

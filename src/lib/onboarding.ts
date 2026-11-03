@@ -2,7 +2,7 @@
 // onboarding — "Эхлэх алхмууд" (first steps) for parents. Pure: the steps are
 // derived from the data the dashboard already has (no new Firestore fields), so
 // accounts that existed before this card see their real progress.
-// Dismissal / one-time prompts live in localStorage (per user, per child).
+// Steps count across the whole account; dismissal / one-time prompts live in localStorage (per user).
 // Tests: tests/onboarding.test.mjs.
 // =============================================================================
 
@@ -10,7 +10,7 @@ export type StepId = "child" | "goal" | "practice" | "achievement" | "reminder";
 
 export interface StepInput {
   hasChild: boolean;
-  /** Goals of the active child in any status (a finished or cancelled goal still counts as "made one"). */
+  /** Goals in any status (a finished or cancelled goal still counts as "made one"), across the account — see accountStepCounts. */
   goals: number;
   practiceLogs: number;
   achievements: number;
@@ -48,14 +48,38 @@ export function showFirstSteps(opts: { role: string | null | undefined; dismisse
   return !allStepsDone(opts.steps);
 }
 
-/** Parent opening the app with no practice log yet → start on the Today screen (the daily habit). */
-export function preferTodayTab(opts: { role: string | null | undefined; practiceLogs: number; deepLinked: boolean }): boolean {
-  return opts.role === "parent" && !opts.deepLinked && opts.practiceLogs === 0;
+/**
+ * The steps are about learning the app, so they count for the whole account: a parent of three who
+ * has done each step for one child must not see the card again on the second child.
+ * `active` = live counts of the open child, `others` = "exists for another child" (null = not known yet).
+ */
+export function accountStepCounts(
+  active: { goals: number; practiceLogs: number; achievements: number },
+  others: { goal: boolean; practice: boolean; achievement: boolean } | null,
+): { goals: number; practiceLogs: number; achievements: number } {
+  return {
+    goals: active.goals + (others?.goal ? 1 : 0),
+    practiceLogs: active.practiceLogs + (others?.practice ? 1 : 0),
+    achievements: active.achievements + (others?.achievement ? 1 : 0),
+  };
+}
+
+/**
+ * Parent's start tab once per app open (a deep link always wins): with an active goal the daily
+ * habit (Practice), otherwise Goals ("what are we preparing for?"). Teachers: unchanged (null).
+ */
+export function defaultParentTab(opts: { role: string | null | undefined; hasActiveGoal: boolean; deepLinked: boolean }): "practice" | "goals" | null {
+  if (opts.role !== "parent" || opts.deepLinked) return null;
+  return opts.hasActiveGoal ? "practice" : "goals";
 }
 
 // ---- localStorage (every access wrapped: private mode / blocked storage must not break the app) ----
 
-const DISMISS_KEY = (uid: string, childId: string) => `champstep.firstSteps.dismissed.${uid}.${childId}`;
+/** Per account. Before 2026-11 the card was closed per child: those keys still count (any child). */
+const DISMISS_KEY = (uid: string) => `champstep.firstSteps.dismissed.${uid}`;
+const LEGACY_DISMISS_PREFIX = (uid: string) => `champstep.firstSteps.dismissed.${uid}.`;
+/** Set the first time every step is seen done: deleting data later must not bring the card back. */
+const COMPLETE_KEY = (uid: string) => `champstep.firstSteps.complete.${uid}`;
 const REMINDER_ASKED_KEY = (uid: string) => `champstep.firstSteps.reminderAsked.${uid}`;
 
 function read(key: string): boolean {
@@ -65,8 +89,19 @@ function write(key: string) {
   try { localStorage.setItem(key, "1"); } catch { /* private mode */ }
 }
 
-export const firstStepsDismissed = (uid: string, childId: string) => read(DISMISS_KEY(uid, childId));
-export const dismissFirstSteps = (uid: string, childId: string) => write(DISMISS_KEY(uid, childId));
+function anyLegacyDismissed(uid: string): boolean {
+  try {
+    const prefix = LEGACY_DISMISS_PREFIX(uid);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix) && localStorage.getItem(k) === "1") return true;
+    }
+  } catch { /* private mode */ }
+  return false;
+}
+export const firstStepsDismissed = (uid: string) => read(DISMISS_KEY(uid)) || read(COMPLETE_KEY(uid)) || anyLegacyDismissed(uid);
+export const dismissFirstSteps = (uid: string) => write(DISMISS_KEY(uid));
+export const markFirstStepsComplete = (uid: string) => write(COMPLETE_KEY(uid));
 /** "Remind me at 20:00?" is asked once per account per device, after the first practice log. */
 export const reminderAsked = (uid: string) => read(REMINDER_ASKED_KEY(uid));
 export const markReminderAsked = (uid: string) => write(REMINDER_ASKED_KEY(uid));

@@ -110,7 +110,7 @@
     "subscription": "Subscription",
     "achievements": "Achievements",
     "practice": "Practice",
-    "reflection": "Journal",
+    "reflection": "Feelings",
     "coach": "Coach",
     "pdf": "PDF",
     "about": "About",
@@ -118,7 +118,8 @@
     "today": "Today",
     "short": {
       "achievements": "Awards"
-    }
+    },
+    "goals": "Goals"
   },
   "auth": {
     "resetEnterEmail": "Enter your e-mail first.",
@@ -324,7 +325,21 @@
       "title": "No practice entries yet",
       "subtitle": "Start logging daily practice sessions"
     },
-    "title": "Practice Log"
+    "title": "Practice",
+    "durationOther": "Other",
+    "minutesUnit": "min",
+    "historyTitle": "History",
+    "q": {
+      "content": "What did you do?",
+      "contentPlaceholder": "e.g. Practised two routines",
+      "wentWell": "What went well?",
+      "wentWellPlaceholder": "e.g. My turns were steady",
+      "toImprove": "What to improve?",
+      "toImprovePlaceholder": "e.g. Don't rush ahead of the music",
+      "learned": "What did you learn?",
+      "learnedPlaceholder": "e.g. A new step",
+      "hint": "Filling in one is enough."
+    }
   },
   "reflection": {
     "heading": "Child's journal",
@@ -334,11 +349,13 @@
     "fields": {
       "date": "Date",
       "mood": "How are you feeling?",
-      "childNote": "Child's note",
-      "childNotePlaceholder": "How did you feel today? What went well, what was hard?",
+      "childNote": "How do you feel?",
+      "childNotePlaceholder": "How did you feel today? What made you glad, what worried you?",
       "parentNote": "Parent's note",
       "parentNotePlaceholder": "Parent observations, thoughts...",
-      "parentNoteOptional": "(optional)"
+      "parentNoteOptional": "(optional)",
+      "focus": "What to pay attention to next?",
+      "focusPlaceholder": "e.g. Calm my breathing before going on stage"
     },
     "actions": {
       "cancel": "Cancel",
@@ -362,7 +379,8 @@
       "4": "Good",
       "5": "Great"
     },
-    "title": "Child Journal"
+    "title": "Feelings",
+    "focusLabel": "Focus"
   },
   "invite": {
     "teacher": {
@@ -743,7 +761,9 @@
       "date": "Date",
       "category": "Category",
       "sessionsPerWeek": "Sessions per week (optional)",
-      "minutes": "Minutes per session (optional)"
+      "minutes": "Minutes per session (optional)",
+      "targetResult": "What result are you aiming for?",
+      "targetPlaceholder": "e.g. Beat my personal best"
     },
     "validation": {
       "future": "Pick today or a future date"
@@ -799,7 +819,22 @@
     },
     "prepLine": "Preparation: {{days}} days · {{hours}} h",
     "prepLineMin": "Preparation: {{days}} days · {{minutes}} min",
-    "resultFormHint": "Goal result: the practice statistics are attached to the achievement."
+    "resultFormHint": "Goal result: the practice statistics are attached to the achievement.",
+    "page": {
+      "title": "Goals",
+      "addAnother": "Add another goal",
+      "past_one": "Finished and cancelled ({{count}})",
+      "past_other": "Finished and cancelled ({{count}})",
+      "emptyTitle": "No active goal"
+    },
+    "target": {
+      "participate": "Take part",
+      "medal": "A medal",
+      "gold": "Gold medal",
+      "top3": "Top 3",
+      "custom": "Write my own"
+    },
+    "targetLine": "Aiming for: {{target}}"
   },
   "age": {
     "years_one": "{{count}} year old",

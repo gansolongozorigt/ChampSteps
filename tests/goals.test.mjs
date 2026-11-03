@@ -1,7 +1,7 @@
 // node --import tsx --test tests/goals.test.mjs — src/lib/goals.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeGoals, diffDays, goalStats, goalStartDay, goalsToday, longestStreak, nextGoal, overdueGoals, prepFromStats, weekStart } from "../src/lib/goals.ts";
+import { activeGoals, diffDays, goalStats, goalStartDay, goalsToday, longestStreak, nextGoal, overdueGoals, pastGoals, prepFromStats, weekStart } from "../src/lib/goals.ts";
 
 const TODAY = "2026-10-14"; // Wednesday
 const goal = { id: "g1", childId: "k", parentId: "p", title: "Cup", date: "2026-12-13", category: "Sports", status: "active", createdAt: "2026-10-14T03:00:00.000Z" };
@@ -63,6 +63,22 @@ test("goalStats: daysTotal is at least 1 and daysLeft goes negative after the da
 test("prepFromStats copies the four numbers", () => {
   const s = goalStats(goal, [log("2026-10-14", 30)], TODAY);
   assert.deepEqual(prepFromStats("g1", s), { goalId: "g1", days: 1, sessions: 1, minutes: 30, daysTotal: 61 });
+});
+
+test("prepFromStats carries the goal's target result (trimmed; blank left out)", () => {
+  const s = goalStats(goal, [log("2026-10-14", 30)], TODAY);
+  assert.equal(prepFromStats("g1", s, " Алт медаль ").targetResult, "Алт медаль");
+  assert.equal("targetResult" in prepFromStats("g1", s, "  "), false);
+  assert.equal("targetResult" in prepFromStats("g1", s), false);
+});
+
+test("pastGoals: done + cancelled, newest competition first; active left out", () => {
+  const goals = [
+    { ...goal, id: "a", status: "active", date: "2026-12-01" },
+    { ...goal, id: "d1", status: "done", date: "2026-05-01" },
+    { ...goal, id: "c1", status: "cancelled", date: "2026-09-01" },
+  ];
+  assert.deepEqual(pastGoals(goals).map((g) => g.id), ["c1", "d1"]);
 });
 
 test("activeGoals / nextGoal / goalsToday / overdueGoals", () => {

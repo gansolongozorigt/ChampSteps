@@ -50,6 +50,16 @@ test("prepNotesFor: newest 3 notes of the achievement's goal, one line each; not
   assert.deepEqual(prepNotesFor({ prep: { goalId: "g1" } }, []), []);
 });
 
+test("prepNotesFor: a log without a note uses learned, then wentWell (3-line limit unchanged)", () => {
+  const logs = [
+    { id: "q1", childId: "c1", date: "2026-04-01", duration: 30, content: "", goalId: "g1", wentWell: "Эргэлт сайн", learned: "Шинэ алхам" },
+    { id: "q2", childId: "c1", date: "2026-04-02", duration: 30, content: "", goalId: "g1", wentWell: "Хэмнэл", toImprove: "Гар" },
+    { id: "q3", childId: "c1", date: "2026-04-03", duration: 30, content: "", goalId: "g1", toImprove: "Зөвхөн сайжруулах" },
+    { id: "q4", childId: "c1", date: "2026-04-04", duration: 30, content: "Тэмдэглэл", goalId: "g1", learned: "Ашиглагдахгүй" },
+  ];
+  assert.deepEqual(prepNotesFor({ prep: { goalId: "g1" } }, logs), ["Тэмдэглэл", "Хэмнэл", "Шинэ алхам"], "toImprove alone is not printed");
+});
+
 test("template ids: exactly 3, official is free, framed/portfolio paid", () => {
   assert.deepEqual([...PDF_TEMPLATES], ["official", "framed", "portfolio"]);
   assert.deepEqual([...PAID_PDF_TEMPLATES], ["framed", "portfolio"]);

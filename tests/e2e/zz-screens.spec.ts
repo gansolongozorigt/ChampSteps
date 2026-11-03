@@ -4,7 +4,7 @@
 // Writes scratch/design-refresh/<label>/<screen>-<width>.png at 390×844 and 1280×800.
 import { test, expect } from "./fixtures";
 import { cleanupTestUser, setTier, testEmail } from "./helpers/admin";
-import { newPage, signUp, waitForDashboard, tr, PASSWORD, addAchievement, nav, openUserMenu } from "./helpers/app";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, addAchievement, nav, openUserMenu, logPractice } from "./helpers/app";
 import { mkdirSync } from "node:fs";
 
 const ON = process.env.SCREENS === "1";
@@ -46,10 +46,7 @@ test("capture every screen at phone and desktop width", async ({ browser }) => {
   await addAchievement(p0, { title: "Хөгжмийн наадам", location: "Дархан", category: "Arts", award: "Silver", description: "Морин хуурын тоглолт.", childName: CHILD });
   await addAchievement(p0, { title: "Математикийн олимпиад", location: "Эрдэнэт", category: "Academic", award: "Participant", description: "Аймгийн олимпиад.", childName: CHILD });
   await nav(p0, "practice");
-  await p0.getByRole("button", { name: tr("practice.addButton") }).click();
-  await p0.getByPlaceholder(tr("practice.fields.notesPlaceholder")).fill("Өнөөдөр 60 минут бэлтгэл хийсэн.");
-  await p0.getByRole("button", { name: tr("practice.actions.save"), exact: true }).click();
-  await expect(p0.getByPlaceholder(tr("practice.fields.notesPlaceholder"))).toBeHidden();
+  await logPractice(p0, { content: "Өнөөдөр 60 минут бэлтгэл хийсэн.", minutes: 60 });
   await nav(p0, "reflection");
   if (!(await p0.getByPlaceholder(tr("reflection.fields.childNotePlaceholder")).isVisible())) await p0.getByRole("button", { name: tr("reflection.addButton") }).click();
   await p0.getByPlaceholder(tr("reflection.fields.childNotePlaceholder")).fill("Өнөөдөр сайн өдөр байлаа.");
@@ -91,7 +88,7 @@ test("capture every screen at phone and desktop width", async ({ browser }) => {
     await step("achievement-form", async () => { await page.getByRole("button", { name: tr("app.addAchievement"), exact: true }).click(); });
     await closeOverlay();
     await step("practice", async () => { await nav(page, "practice"); });
-    await step("practice-form", async () => { await page.getByRole("button", { name: tr("practice.addButton") }).click(); });
+    await step("goals", async () => { await nav(page, "goals"); });
     await step("reflection", async () => { await nav(page, "reflection"); });
     await step("coach", async () => { await nav(page, "coach"); });
     await step("pdf", async () => { await nav(page, "pdf"); });

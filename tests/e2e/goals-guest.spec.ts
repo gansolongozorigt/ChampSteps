@@ -1,8 +1,9 @@
 // Goals in guest (local) mode — the same UI flow as goals.spec.ts but on localStorage,
 // so it runs before the goals rules are deployed. Covers: create → countdown → tagged log →
-// stats → competition day (page.clock) → celebration → result → achievement with prep, goal done.
+// stats → competition day (page.clock) → celebration → result → achievement with prep + target, goal done.
+// Also: the 3 practice questions and the feelings focus are kept in localStorage like the rest.
 import { test, expect } from "./fixtures";
-import { newPage, waitForDashboard, tr, fillAddChildModal, nav } from "./helpers/app";
+import { newPage, waitForDashboard, tr, fillAddChildModal, nav, logPractice } from "./helpers/app";
 
 const TITLE = "Хотын аварга";
 const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -18,13 +19,14 @@ test("guest: goal lifecycle from creation to the recorded result", async ({ cont
   await waitForDashboard(page);
 
   // create
-  await nav(page, "today");
+  await nav(page, "goals");
   await page.getByTestId("goal-add-card").click();
   await page.getByTestId("goal-submit").click(); // validation: both required fields
   await expect(page.getByTestId("goal-form")).toContainText(tr("form.validation.required"));
   await page.getByTestId("goal-title").fill(TITLE);
   await page.getByTestId("goal-date").fill(DATE);
   await page.getByTestId("goal-sessions").fill("3");
+  await page.getByTestId("goal-target-top3").click();
   await page.getByTestId("goal-submit").click();
   await expect(page.getByTestId("goal-form")).toBeHidden();
   const card = page.getByTestId("goal-card");
@@ -39,11 +41,21 @@ test("guest: goal lifecycle from creation to the recorded result", async ({ cont
   await expect(page.getByTestId("goal-submit")).toBeDisabled();
   await page.getByRole("button", { name: tr("goals.cancel") }).click();
 
-  // tagged log
-  await nav(page, "today");
-  await page.getByPlaceholder(tr("today.whatPlaceholder")).fill("Гамм, этюд.");
-  await page.getByRole("button", { name: tr("today.minutes", { count: 45 }), exact: true }).click();
-  await page.getByTestId("today-save").click();
+  // tagged log with the three questions
+  await nav(page, "practice");
+  await logPractice(page, { content: "Гамм, этюд.", wentWell: "Хэмнэл", toImprove: "Гарын байрлал", learned: "Шинэ этюд", minutes: 45 });
+  await expect(page.getByTestId("practice-answers")).toContainText("Гарын байрлал");
+  const logs = await page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("champstep.practiceLogs.v1.")); return k ? JSON.parse(localStorage.getItem(k)!) : []; });
+  expect([logs[0].wentWell, logs[0].toImprove, logs[0].learned]).toEqual(["Хэмнэл", "Гарын байрлал", "Шинэ этюд"]);
+
+  // feelings focus
+  await nav(page, "reflection");
+  await page.getByRole("button", { name: tr("reflection.addButton") }).click();
+  await page.getByTestId("reflection-focus").fill("Амьсгалаа тайвшруулах");
+  await page.getByTestId("reflection-save").click();
+  await expect(page.getByTestId("reflection-focus-line")).toContainText("Амьсгалаа тайвшруулах");
+
+  await nav(page, "goals");
   await expect(card.getByTestId("goal-stats")).toContainText(tr("goals.statsMin", { sessions: 1, minutes: 45 }));
   await expect(card).toContainText(tr("goals.weekProgress", { done: 1, target: 3 }));
   await card.click();
@@ -52,7 +64,7 @@ test("guest: goal lifecycle from creation to the recorded result", async ({ cont
 
   // competition day
   await page.clock.install({ time: new Date(DATE + "T10:00:00") });
-  await page.reload(); // the URL is /today, so the app reopens on the Today screen
+  await page.reload(); // the URL is /goals, so the app reopens on the Goals screen
   const cele = page.getByTestId("celebration");
   await expect(cele).toBeVisible({ timeout: 30_000 });
   await expect(cele).toContainText(tr("goals.celebration.headline", { name: "Тэмүүлэн", title: TITLE }));
@@ -77,6 +89,7 @@ test("guest: goal lifecycle from creation to the recorded result", async ({ cont
   await expect(page.getByTestId("goal-add-card")).toBeVisible();
   await nav(page, "achievements");
   await expect(page.getByTestId("prep-line")).toContainText(tr("goals.prepLineMin", { days: 1, minutes: 45 }));
+  await expect(page.getByTestId("achievement-target-line")).toHaveText(tr("goals.targetLine", { target: tr("goals.target.top3") }));
   await expect(page.getByTestId("next-goal-line")).toBeHidden();
   const goals = await page.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("champstep.goals.v1.")); return k ? JSON.parse(localStorage.getItem(k)!) : []; });
   expect(goals[0].status).toBe("done");

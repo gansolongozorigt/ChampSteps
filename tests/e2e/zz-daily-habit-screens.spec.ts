@@ -29,19 +29,19 @@ test("today / offline / install / reminders at phone width", async ({ browser })
   await page.screenshot({ path: `${DIR}/install-guide-390.png` });
   await page.getByRole("button", { name: tr("install.done") }).click();
 
-  await nav(page, "today");
-  await expect(page.getByTestId("today-page")).toBeVisible();
-  await page.getByPlaceholder(tr("today.whatPlaceholder")).fill("Хэмнэл, гамм 30 мин, шинэ хэсэг давтсан.");
-  await page.getByTestId("today-save").click();
-  await expect(page.getByTestId("today-flash")).toBeVisible();
+  await nav(page, "practice");
+  await expect(page.getByTestId("practice-page")).toBeVisible();
+  await page.getByTestId("practice-content").fill("Хэмнэл, гамм 30 мин, шинэ хэсэг давтсан.");
+  await page.getByTestId("practice-save").click();
+  await expect(page.getByTestId("practice-flash")).toBeVisible();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${DIR}/today-390.png` });
 
   await context.setOffline(true);
   await expect(page.getByTestId("offline-banner")).toBeVisible();
-  await page.getByPlaceholder(tr("today.whatPlaceholder")).fill("Офлайн бичлэг.");
-  await page.getByTestId("today-save").click();
-  await expect(page.getByTestId("today-flash")).toContainText(tr("today.queued"));
+  await page.getByTestId("practice-content").fill("Офлайн бичлэг.");
+  await page.getByTestId("practice-save").click();
+  await expect(page.getByTestId("practice-flash")).toContainText(tr("today.queued"));
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${DIR}/today-offline-390.png` });
   await context.setOffline(false);

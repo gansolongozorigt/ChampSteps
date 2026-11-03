@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Annoyed, Frown, Heart, Laugh, Lock, Meh, Smile, Trash2, type LucideIcon } from "lucide-react";
-import type { Reflection } from "../types";
+import { REFLECTION_FOCUS_MAX, type Reflection } from "../types";
 
 export interface ReflectionSectionProps {
   childId: string;
@@ -33,6 +33,7 @@ export default function ReflectionSection({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [mood, setMood] = useState<Reflection["mood"]>(3);
   const [content, setContent] = useState("");
+  const [focus, setFocus] = useState("");
   const [parentNote, setParentNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -40,14 +41,16 @@ export default function ReflectionSection({
 
   async function handleAdd() {
     const childText = content.trim();
+    const focusText = focus.trim().slice(0, REFLECTION_FOCUS_MAX);
     const parentText = parentNote.trim();
-    // Either section may be filled; an empty one stays empty. Never send
+    // Any of the three may be filled; an empty one stays empty. Never send
     // `undefined` to Firestore (addDoc rejects it) — omit the key instead.
-    if (!childText && !parentText) return;
+    if (!childText && !focusText && !parentText) return;
     setSaving(true);
     try {
-      await onAdd({ date, mood, content: childText, ...(parentText ? { parentNote: parentText } : {}) });
+      await onAdd({ date, mood, content: childText, ...(focusText ? { focus: focusText } : {}), ...(parentText ? { parentNote: parentText } : {}) });
       setContent("");
+      setFocus("");
       setParentNote("");
       setMood(3);
       setDate(new Date().toISOString().slice(0, 10));
@@ -151,7 +154,25 @@ export default function ReflectionSection({
               onChange={(e) => setContent(e.target.value)}
               rows={3}
               placeholder={t("reflection.fields.childNotePlaceholder")}
+              data-testid="reflection-content"
               className="cs-textarea"
+            />
+          </div>
+
+          {/* what to focus on next — primary left bar, short */}
+          <div className="mb-4 border-l-[3px] border-primary pl-3">
+            <label className="cs-field-label" htmlFor="reflection-focus">
+              {t("reflection.fields.focus")}
+            </label>
+            <textarea
+              id="reflection-focus"
+              value={focus}
+              onChange={(e) => setFocus(e.target.value)}
+              rows={2}
+              maxLength={REFLECTION_FOCUS_MAX}
+              placeholder={t("reflection.fields.focusPlaceholder")}
+              className="cs-textarea min-h-[72px]"
+              data-testid="reflection-focus"
             />
           </div>
 
@@ -181,7 +202,8 @@ export default function ReflectionSection({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={saving || (!content.trim() && !parentNote.trim())}
+              disabled={saving || (!content.trim() && !focus.trim() && !parentNote.trim())}
+              data-testid="reflection-save"
               className="cs-btn cs-btn-primary"
             >
               {saving ? t("reflection.actions.saving") : t("reflection.actions.save")}
@@ -225,7 +247,7 @@ export default function ReflectionSection({
                             </p>
                           </div>
                         )}
-                        {r.content.length > 100 && (
+                        {(r.content ?? "").length > 100 && (
                           <button
                             type="button"
                             onClick={() => setExpandedId(isExpanded ? null : r.id)}
@@ -233,6 +255,12 @@ export default function ReflectionSection({
                           >
                             {isExpanded ? t("reflection.actions.collapse") : t("reflection.actions.expand")}
                           </button>
+                        )}
+                        {r.focus && (
+                          <div className="mt-2 border-l-[3px] border-primary-soft pl-3" data-testid="reflection-focus-line">
+                            <p className="t-label mb-0.5">{t("reflection.focusLabel")}</p>
+                            <p className="t-body text-ink">{r.focus}</p>
+                          </div>
                         )}
                         {(isExpanded || !r.content) && r.parentNote && (
                           <div className="mt-2 border-l-[3px] border-ink-3 pl-3">

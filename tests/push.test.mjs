@@ -86,7 +86,7 @@ test("messagesFor: one message per token in that token's language, same tag per 
   assert.equal(msgs.length, 2);
   assert.equal(msgs[0].body, "Анар: өнөөдрийн бэлтгэлээ тэмдэглэх үү?");
   assert.equal(msgs[1].body, "Анар: log today's practice?");
-  assert.equal(msgs[0].url, "/today");
+  assert.equal(msgs[0].url, "/practice");
   assert.equal(msgs[0].tag, "reminder-2026-10-14");
   assert.equal(messagesFor({ kind: "competition", childName: "A", title: "T" }, [{ token: TOKEN_A, lang: "mn" }], "2026-10-14")[0].url, "/");
   assert.deepEqual(messagesFor({ kind: "none", reason: "disabled" }, [{ token: TOKEN_A, lang: "mn" }], "x"), []);
@@ -333,7 +333,7 @@ test("evening priority: goal tomorrow > achievement tomorrow > goal in 7 days > 
   assert.equal(dW.kind, "goalWeek");
   assert.equal(dW.sessions, 9);
   const dD = decideEvening(U, KIDS, new Set(), [], ctx([gL]));
-  assert.deepEqual([dD.kind, dD.daysLeft, dD.url], ["goalDaily", 60, "/today"]);
+  assert.deepEqual([dD.kind, dD.daysLeft, dD.url], ["goalDaily", 60, "/practice"]);
   assert.equal(decideEvening(U, KIDS, new Set(), [], ctx([])).kind, "daily");
 });
 
@@ -351,7 +351,7 @@ test("evening: logged today → nothing even with a goal; competition day → no
 test("morning: only a goal dated today; any toggle on; nothing otherwise", () => {
   const gToday = { id: "t", childId: "k1", title: "Хотын аварга", date: "2026-10-14" };
   const d = decideMorning({ uid: "u", daily: true, competition: false }, KIDS, [gToday], "2026-10-14");
-  assert.deepEqual([d.kind, d.title, d.childName, d.url], ["goalToday", "Хотын аварга", "Анар", "/today"]);
+  assert.deepEqual([d.kind, d.title, d.childName, d.url], ["goalToday", "Хотын аварга", "Анар", "/goals"]);
   assert.deepEqual(decideMorning(U, KIDS, [{ ...gToday, date: "2026-10-15" }], "2026-10-14"), { kind: "none", reason: "no-goal-today" });
   assert.deepEqual(decideMorning({ uid: "u", daily: false, competition: false }, KIDS, [gToday], "2026-10-14"), { kind: "none", reason: "disabled" });
   assert.deepEqual(decideMorning(U, [], [gToday], "2026-10-14"), { kind: "none", reason: "no-children" });
@@ -368,7 +368,7 @@ test("cron: morning slot sends the competition-day push once, evening the same d
   assert.equal(m.summary.slot, "morning");
   assert.deepEqual(m.summary.byKind, { ...KINDS, goalToday: 1 });
   assert.equal(w.sent[0].body, "Өнөөдөр Хотын аварга! Анар бэлэн.");
-  assert.equal(w.sent[0].url, "/today");
+  assert.equal(w.sent[0].url, "/goals");
   assert.equal((await runReminders(w.deps, "morning")).claimed, false, "morning is idempotent");
   const e = await runReminders(w.deps, "evening");
   assert.ok(e.claimed, "evening run doc is a different key");

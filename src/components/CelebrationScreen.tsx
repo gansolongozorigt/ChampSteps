@@ -42,6 +42,7 @@ export default function CelebrationScreen({ child, goal, stats, readOnly = false
           <span className="cs-rise-bar w-4 h-10 rounded-md bg-ink" />
         </div>
         <h1 id="celebration-title" className="t-display mt-6 text-ink text-balance break-words">{t("goals.celebration.headline", { name: child.name, title: goal.title })}</h1>
+        {goal.targetResult && <p className="t-h2 mt-3 text-primary-soft-ink break-words" data-testid="celebration-target">{t("goals.targetLine", { target: goal.targetResult })}</p>}
         <p className="t-h2 mt-5 text-ink-2">{t("goals.celebration.days", { days: stats.days, total: stats.daysTotal })}</p>
         <p className="t-stat text-primary mt-2 text-[34px] leading-none">{h.hours > 0 ? t("goals.celebration.hours", { hours: h.hours }) : t("goals.celebration.minutes", { minutes: stats.minutes })}</p>
         <p className="t-display mt-6 text-primary">{t("goals.celebration.ready")}</p>
