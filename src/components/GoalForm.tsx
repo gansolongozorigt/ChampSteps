@@ -1,13 +1,14 @@
 // =============================================================================
 // GoalForm — create / edit a goal (competition the child prepares for).
-// One screen, two required fields (name, date), category chips, optional targets.
+// One screen, two required fields (name, date), category chips, target result chips, optional targets.
 // Brand: docs/BRAND.md (modal, pill chips, lucide icons, no emoji).
 // =============================================================================
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Dumbbell, Palette, Target, type LucideIcon } from "lucide-react";
-import type { AchievementCategory, Goal, GoalDraft } from "../types";
+import { BookOpen, Dumbbell, Palette, PenLine, Target, type LucideIcon } from "lucide-react";
+import { GOAL_TARGET_MAX, type AchievementCategory, type Goal, type GoalDraft } from "../types";
+import { TARGET_PRESETS } from "../lib/goals";
 import { localDateKey } from "../lib/streak";
 
 const CATEGORIES: AchievementCategory[] = ["Sports", "Arts", "Academic"];
@@ -34,6 +35,10 @@ export default function GoalForm({ childName, initial, onSubmit, onCancel, limit
   const [category, setCategory] = useState<AchievementCategory>(initial?.category ?? "Sports");
   const [sessions, setSessions] = useState(initial?.targetSessionsPerWeek ? String(initial.targetSessionsPerWeek) : "");
   const [minutes, setMinutes] = useState(initial?.targetMinutes ? String(initial.targetMinutes) : "");
+  // Target result: a preset label (stored as the text the parent saw) or their own words.
+  const presetLabels = TARGET_PRESETS.map((id) => ({ id, label: t(`goals.target.${id}`) }));
+  const [target, setTarget] = useState(initial?.targetResult ?? "");
+  const [customTarget, setCustomTarget] = useState(() => !!initial?.targetResult && !presetLabels.some((p) => p.label === initial.targetResult));
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; date?: string }>({});
   const blocked = limitReached && !initial;
@@ -54,6 +59,8 @@ export default function GoalForm({ childName, initial, onSubmit, onCancel, limit
         category,
         targetSessionsPerWeek: Number.isFinite(s) && s > 0 ? Math.round(s) : undefined,
         targetMinutes: Number.isFinite(m) && m > 0 ? Math.round(m) : undefined,
+        // edit: "" clears the field (lib/firebase updateGoal); new goal: left out
+        targetResult: target.trim() ? target.trim().slice(0, GOAL_TARGET_MAX) : initial?.targetResult ? "" : undefined,
       });
     } finally {
       setSaving(false);
@@ -103,6 +110,25 @@ export default function GoalForm({ childName, initial, onSubmit, onCancel, limit
                   );
                 })}
               </div>
+            </div>
+            <div data-testid="goal-target">
+              <span className="cs-field-label">{t("goals.fields.targetResult")}</span>
+              <div className="flex gap-2 flex-wrap">
+                {presetLabels.map((p) => {
+                  const active = !customTarget && target === p.label;
+                  return (
+                    <button key={p.id} type="button" onClick={() => { setCustomTarget(false); setTarget(active ? "" : p.label); }} aria-pressed={active} className={`cs-chip h-10 px-3.5 text-[13px] ${active ? "bg-primary text-white" : "cs-chip-outline"}`} data-testid={`goal-target-${p.id}`}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+                <button type="button" onClick={() => { setCustomTarget(true); if (presetLabels.some((p) => p.label === target)) setTarget(""); }} aria-pressed={customTarget} className={`cs-chip h-10 px-3.5 text-[13px] inline-flex items-center gap-1.5 ${customTarget ? "bg-primary text-white" : "cs-chip-outline"}`} data-testid="goal-target-custom">
+                  <PenLine size={15} strokeWidth={2.2} aria-hidden />{t("goals.target.custom")}
+                </button>
+              </div>
+              {customTarget && (
+                <input value={target} onChange={(e) => setTarget(e.target.value)} maxLength={GOAL_TARGET_MAX} autoFocus placeholder={t("goals.fields.targetPlaceholder")} aria-label={t("goals.fields.targetResult")} className="cs-input mt-2" data-testid="goal-target-input" />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">

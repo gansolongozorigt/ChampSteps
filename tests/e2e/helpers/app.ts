@@ -104,22 +104,25 @@ export async function signOut(page: Page) {
 }
 
 /**
- * Dashboard ready, on the achievements tab. A parent with no practice log opens on Today
- * (first steps); this helper then switches to achievements so older tests keep their start point.
+ * Dashboard ready, on the achievements tab. A parent opens on Goals (no active goal) or Practice
+ * (active goal); this helper then switches to achievements so older tests keep their start point.
  */
 export async function waitForDashboard(page: Page) {
   const fab = page.getByRole("button", { name: tr("app.addAchievement"), exact: true });
-  const today = page.getByTestId("today-page");
-  await expect(fab.or(today)).toBeVisible({ timeout: 30_000 });
-  if (await today.isVisible()) await nav(page, "achievements");
+  const start = page.getByTestId("goals-page").or(page.getByTestId("practice-page"));
+  await expect(fab.or(start)).toBeVisible({ timeout: 30_000 });
+  if (!(await fab.isVisible())) await nav(page, "achievements");
   await expect(fab).toBeVisible({ timeout: 30_000 });
 }
 
-export async function nav(page: Page, section: "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms", lang = "mn") {
+export type Section = "goals" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms";
+
+export async function nav(page: Page, section: Section, lang = "mn") {
   const label = tr(`nav.${section}`, {}, lang);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   const scope = isMobile ? page.locator("nav").last() : page.locator("aside");
-  if (isMobile && (section === "about" || section === "terms")) {
+  // About / Terms live in the profile (avatar) menu on every width
+  if (section === "about" || section === "terms") {
     await openUserMenu(page);
     await page.getByRole("button", { name: label }).click();
     return;
@@ -163,4 +166,19 @@ export function cards(page: Page): Locator {
 }
 export function card(page: Page, title: string): Locator {
   return cards(page).filter({ has: page.getByRole("heading", { name: title, exact: true }) }).first();
+}
+
+/**
+ * Practice page quick form (must be on the Practice page): optional note + the three questions,
+ * minutes chip (15/30/45/60) or any other number, then save and wait for the inline confirmation.
+ */
+export async function logPractice(page: Page, p: { content?: string; wentWell?: string; toImprove?: string; learned?: string; minutes?: number }) {
+  if (p.content !== undefined) await page.getByTestId("practice-content").fill(p.content);
+  for (const k of ["wentWell", "toImprove", "learned"] as const) if (p[k] !== undefined) await page.getByTestId(`practice-${k}`).fill(p[k]!);
+  if (p.minutes !== undefined) {
+    if ([15, 30, 45, 60].includes(p.minutes)) await page.getByRole("button", { name: tr("today.minutes", { count: p.minutes }), exact: true }).click();
+    else { await page.getByTestId("practice-duration-other").click(); await page.getByTestId("practice-duration-input").fill(String(p.minutes)); }
+  }
+  await page.getByTestId("practice-save").click();
+  await expect(page.getByTestId("practice-flash")).toBeVisible();
 }

@@ -320,6 +320,9 @@ function TimelineCard({
                     : t("goals.prepLineMin", { days: achievement.prep.days, minutes: achievement.prep.minutes })}
                 </p>
               )}
+              {achievement.prep?.targetResult && (
+                <p className="t-caption mt-0.5 text-primary-soft-ink break-words" data-testid="achievement-target-line">{t("goals.targetLine", { target: achievement.prep.targetResult })}</p>
+              )}
             </div>
             {/* Edit/Delete — hover-д гарна (багшийн горимд байхгүй) */}
             {!readOnly && (

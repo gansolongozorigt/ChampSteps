@@ -18,8 +18,16 @@ export function loadEnv(): Record<string, string> {
   return env;
 }
 
+/** playwright.emulator.config.ts: local Firebase emulators (demo project) — no credentials, never production. */
+export const EMULATOR_PROJECT = "demo-champstep";
+export const onEmulators = () => process.env.E2E_EMULATORS === "1";
+
 function app() {
   if (getApps().length) return getApps()[0];
+  if (onEmulators()) {
+    if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error("emulator hosts missing");
+    return initializeApp({ projectId: EMULATOR_PROJECT, storageBucket: `${EMULATOR_PROJECT}.appspot.com` });
+  }
   const env = loadEnv();
   const b64 = env.FIREBASE_SERVICE_ACCOUNT_B64 ?? process.env.FIREBASE_SERVICE_ACCOUNT_B64;
   if (!b64) throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 missing (needed for E2E cleanup)");

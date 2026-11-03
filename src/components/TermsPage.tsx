@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-type Tab = "terms" | "refund" | "privacy";
+export type TermsTab = "terms" | "refund" | "privacy";
+type Tab = TermsTab;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -12,9 +13,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function TermsPage() {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>("terms");
+export default function TermsPage({ initialTab = "terms" }: { initialTab?: Tab } = {}) {
+  const { t, i18n } = useTranslation();
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "terms",   label: t("terms.tabTerms") },
@@ -32,7 +33,7 @@ export default function TermsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="cs-segment w-full" role="tablist">
+      <div className="cs-segment w-full items-stretch" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -41,7 +42,9 @@ export default function TermsPage() {
             aria-selected={tab === t.id}
             aria-pressed={tab === t.id}
             onClick={() => setTab(t.id)}
-            className="cs-segment-item flex-1 justify-center min-h-[40px] px-2 text-[12px]"
+            lang={i18n.language}
+            // long labels (RU "Политика конфиденциальности") wrap to 2 lines on a phone instead of being cut
+            className="cs-segment-item flex-1 basis-0 min-w-0 justify-center text-center whitespace-normal hyphens-auto [overflow-wrap:anywhere] leading-tight min-h-[44px] px-2 py-1 text-[12px]"
           >
             {t.label}
           </button>

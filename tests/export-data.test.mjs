@@ -15,8 +15,8 @@ const ach = [
   { id: "a2", childId: "child_b", title: "Б-ийн амжилт", date: "2026-04-01", location: "УБ", category: "Sports", description: "", awardType: "Silver", imageURLs: [], createdAt: "2026-04-01T00:00:00.000Z" },
   { id: "a3", childId: "child_zzz", title: "Өөр хүний", date: "2026-04-01", location: "", category: "Arts", description: "", awardType: "Participant", imageURLs: ["https://x/other.jpg"] },
 ];
-const logs = [{ id: "l1", childId: "child_a", date: "2026-05-01", duration: 30, content: "run", createdAt: ts("2026-05-01T00:00:00Z") }];
-const refl = [{ id: "r1", childId: "child_a", date: "2026-05-02", mood: 4, content: "ok", createdAt: new Date("2026-05-02T00:00:00Z") }];
+const logs = [{ id: "l1", childId: "child_a", date: "2026-05-01", duration: 30, content: "run", wentWell: "fast start", toImprove: "pace", learned: "breathing", createdAt: ts("2026-05-01T00:00:00Z") }];
+const refl = [{ id: "r1", childId: "child_a", date: "2026-05-02", mood: 4, content: "ok", focus: "calm breath", createdAt: new Date("2026-05-02T00:00:00Z") }];
 const ai = [{ childId: "child_a", text: "AI текст", updatedAt: ts("2026-06-01T00:00:00Z") }];
 const notes = [
   { id: "n1", childId: "child_a", teacherId: "t1", teacherName: "Багш", content: "сайн", createdAt: ts("2026-06-02T00:00:00Z") },
@@ -24,7 +24,7 @@ const notes = [
 ];
 const userDoc = { uid: "p1", email: "p@x.mn", displayName: "P", role: "parent", createdAt: ts("2026-01-01T00:00:00Z"), subscriptionTier: "family", subscriptionExpiresAt: ts("2026-11-12T00:00:00Z"), subscription: { provider: "qpay", lastOrderId: "CS-1" }, expiredFrom: "family", subscriptionActivatedAt: ts("2026-10-13T00:00:00Z") };
 
-const goals = [{ id: "g1", childId: "child_a", parentId: "p1", title: "Cup", date: "2026-12-13", category: "Sports", status: "active", createdAt: ts("2026-10-14T00:00:00Z") }];
+const goals = [{ id: "g1", childId: "child_a", parentId: "p1", title: "Cup", date: "2026-12-13", category: "Sports", status: "active", targetResult: "Gold medal", createdAt: ts("2026-10-14T00:00:00Z") }];
 const parentInput = { scope: "parent", uid: "p1", user: userDoc, children: [child, child2], achievements: ach, practiceLogs: logs, reflections: refl, goals, aiInsights: ai, coachNotes: notes, appVersion: "0.2.0", now: NOW };
 
 test("toIsoDeep: Timestamp-like, Date, nested arrays/objects → ISO strings; scalars untouched", () => {
@@ -60,6 +60,10 @@ test("parent export: header, nested children, only own children's records, times
   assert.deepEqual(a.practiceLogs.map((x) => x.id), ["l1"]);
   assert.deepEqual(a.goals.map((x) => x.id), ["g1"], "goals nest under their child");
   assert.equal(f.children[1].goals.length, 0);
+  // 2026-11 optional fields travel with their documents
+  assert.equal(a.goals[0].targetResult, "Gold medal");
+  assert.deepEqual([a.practiceLogs[0].wentWell, a.practiceLogs[0].toImprove, a.practiceLogs[0].learned], ["fast start", "pace", "breathing"]);
+  assert.equal(a.reflections[0].focus, "calm breath");
   assert.equal(a.reflections[0].createdAt, "2026-05-02T00:00:00.000Z");
   assert.deepEqual(a.aiInsight, { text: "AI текст", updatedAt: "2026-06-01T00:00:00.000Z" });
   assert.equal(a.coachNotes.length, 2, "parent sees every teacher's notes on their child");

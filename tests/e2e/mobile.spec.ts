@@ -11,7 +11,7 @@ test("390×844: bottom nav has 6 tabs; modal scrolls; save buttons reachable", a
   await waitForDashboard(page);
 
   const bottomNav = page.locator("nav").last();
-  for (const s of ["today", "achievements", "practice", "reflection", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
+  for (const s of ["goals", "practice", "reflection", "achievements", "coach", "pdf"]) await expect(bottomNav.getByRole("button", { name: tr(`nav.${s}`), exact: true })).toBeVisible();
 
   // upgrade bar (free tier): not shown far from the limit (only from 25/30, src/lib/upgradeBar.ts — unit-tested);
   // the header star still opens the plans. The FAB is not covered.

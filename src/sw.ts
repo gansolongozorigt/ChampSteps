@@ -5,7 +5,7 @@
 //      requests are never cached here (Firestore has its own IndexedDB cache).
 //   2. Firebase Cloud Messaging background handler: the cron sends DATA-ONLY
 //      messages, this worker renders exactly one notification and a click opens
-//      the in-app path (`/today` for the daily reminder).
+//      the in-app path (`/practice` for the daily reminder, `/goals` on competition day).
 // The page registers this worker (vite-plugin-pwa injects registerSW) and passes
 // the same registration to FCM getToken() (src/lib/push.ts), so there is no
 // second firebase-messaging-sw.js and no scope conflict.
@@ -51,7 +51,7 @@ for (const [name, pattern, maxEntries] of [
 }
 
 // ---- push --------------------------------------------------------------------
-const DEFAULT_URL = "/today";
+const DEFAULT_URL = "/practice";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

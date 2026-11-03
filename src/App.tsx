@@ -6,8 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle, ArrowUp, BellRing, CalendarCheck, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
-  Pencil, Plus, ScrollText, Settings, Star, Trophy, UserCog, UserPlus, X, type LucideIcon,
+  AlertTriangle, ArrowUp, BellRing, Check, Clock, Download, FileText, Globe, GraduationCap, Heart, Info, Loader2, Lock, LogOut,
+  Pencil, Plus, ScrollText, Settings, Star, Target, Trophy, UserCog, UserPlus, X, type LucideIcon,
 } from "lucide-react";
 import Logo, { LogoMark } from "./components/Logo";
 
@@ -18,6 +18,7 @@ import DeleteChildModal from "./components/DeleteChildModal";
 import AdminPage from "./components/AdminPage";
 import CoachNotes from "./components/CoachNotes";
 import TermsPage from "./components/TermsPage";
+import LegalSheet, { LegalLinks, type LegalView } from "./components/LegalSheet";
 import ChildProfileEditor from "./components/ChildProfileEditor";
 import LoginPage from "./components/LoginPage";
 import SubscriptionModal from "./components/SubscriptionModal";
@@ -33,7 +34,8 @@ import GoalForm from "./components/GoalForm";
 import FirstStepsCard from "./components/FirstStepsCard";
 import StepPrompt from "./components/StepPrompt";
 import {
-  dismissFirstSteps, firstSteps, firstStepsDismissed, markReminderAsked, preferTodayTab, reminderAsked, showFirstSteps, type StepId,
+  accountStepCounts, allStepsDone, defaultParentTab, dismissFirstSteps, firstSteps, firstStepsDismissed, markFirstStepsComplete, markReminderAsked,
+  reminderAsked, showFirstSteps, type StepId,
 } from "./lib/onboarding";
 import { achNearLimit, showUpgradeBar } from "./lib/upgradeBar";
 import { reminderFailureKey, turnOnDailyReminder } from "./lib/reminders";
@@ -41,8 +43,8 @@ import GoalDetailModal from "./components/GoalDetailModal";
 import { activeGoals, goalStats, nextGoal as pickNextGoal, prepFromStats } from "./lib/goals";
 import { localDateKey } from "./lib/streak";
 import { useReflections } from "./hooks/useReflections";
-import PracticeLogSection from "./components/PracticeLogSection";
-import TodayPage, { type SaveOutcome } from "./components/TodayPage";
+import PracticePage, { type SaveOutcome } from "./components/PracticePage";
+import GoalsPage from "./components/GoalsPage";
 import OfflineBanner from "./components/OfflineBanner";
 import { InstallBanner, InstallGuideModal } from "./components/InstallBanner";
 import { bumpOpenCount, installBannerKind, onInstallPromptChange, promptInstall, snoozeInstall, type InstallKind } from "./lib/install";
@@ -56,6 +58,7 @@ import {
   createPracticeLog,
   createGoal,
   updateGoal,
+  accountStepFlags,
   currentIdToken,
   createReflection,
   deletePracticeLog,
@@ -81,16 +84,25 @@ import {
 } from "./lib/localStore";
 import { celebrate } from "./lib/celebrate";
 import { DeleteError, deleteAccountRemote, deleteChildRemote } from "./lib/deleteClient";
-import type { Achievement, AchievementDraft, Child, Goal, GoalDraft, SubscriptionTier } from "./types";
+import type { Achievement, AchievementDraft, Child, Goal, GoalDraft, PracticeLog, Reflection, SubscriptionTier } from "./types";
 import { PDF_TEMPLATES, isPaidTemplate, type PdfTemplate } from "./lib/pdfTemplates";
 import { TIER_LIMITS } from "./types";
 
 type ToastState = { kind: ToastKind; message: string } | null;
-type NavSection = "today" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
+type NavSection = "goals" | "achievements" | "practice" | "reflection" | "coach" | "pdf" | "about" | "terms" | "subscription";
 
-/** Deep links: /today (manifest shortcut, notification click) opens the Today screen. */
+/**
+ * Deep links (manifest shortcuts, notification clicks, reloads): /goals and /practice open those pages.
+ * /today is the old daily screen's address (installed shortcuts, older pushes): it opens Goals.
+ */
+const SECTION_PATH: Partial<Record<NavSection, string>> = { goals: "/goals", practice: "/practice" };
+function sectionForPath(path: string): NavSection | null {
+  if (path === "/goals" || path === "/today") return "goals";
+  if (path === "/practice") return "practice";
+  return null;
+}
 function initialSection(): NavSection {
-  try { return window.location.pathname === "/today" ? "today" : "achievements"; } catch { return "achievements"; }
+  try { return sectionForPath(window.location.pathname) ?? "achievements"; } catch { return "achievements"; }
 }
 /** ?action=add-achievement (manifest shortcut) opens the add form once the dashboard is ready. */
 function pendingAction(): string | null {
@@ -163,10 +175,10 @@ function Dashboard() {
   const [activeChildIdx, setActiveChildIdx] = useState(0);
   const [loadingChildren, setLoadingChildren] = useState(true);
   const [activeSection, setActiveSectionState] = useState<NavSection>(initialSection);
-  // Keep the URL in step so a reload / "add to home screen" of /today stays on the Today screen.
+  // Keep the URL in step so a reload / "add to home screen" of /goals or /practice stays there.
   function setActiveSection(id: NavSection) {
     setActiveSectionState(id);
-    try { window.history.replaceState(null, "", id === "today" ? "/today" : "/"); } catch { /* sandboxed */ }
+    try { window.history.replaceState(null, "", SECTION_PATH[id] ?? "/"); } catch { /* sandboxed */ }
   }
   const [installKind, setInstallKind] = useState<InstallKind>("none");
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -196,7 +208,10 @@ function Dashboard() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null);
   // Goals: form (create / edit), detail modal, and the goal whose result is being recorded.
-  const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal }>({ open: false });
+  // `limit`: the free-plan limit was already reached when the form opened (a goal saved from this
+  // form must not flash the upgrade note while the form closes).
+  const [goalForm, setGoalForm] = useState<{ open: boolean; goal?: Goal; limit?: boolean }>({ open: false });
+  const [legal, setLegal] = useState<LegalView | null>(null);
   const [goalDetail, setGoalDetail] = useState<Goal | null>(null);
   const [resultGoal, setResultGoal] = useState<Goal | null>(null);
   // First steps (src/lib/onboarding.ts): goal question after the first child, "log today?", "remind at 20:00?".
@@ -204,11 +219,13 @@ function Dashboard() {
   const [practiceAsk, setPracticeAsk] = useState(false);
   const [reminderAsk, setReminderAsk] = useState<{ busy: boolean; note: { kind: "info" | "error"; text: string } | null } | null>(null);
   const [reminderPrefs, setReminderPrefsState] = useState<ReminderPrefs | null>(null);
-  const [todayFocus, setTodayFocus] = useState(0);
-  const [stepsClosed, setStepsClosed] = useState<string[]>([]);
-  // Default tab is decided once per app open; a deep link (/today, ?action=) always wins.
+  const [practiceFocus, setPracticeFocus] = useState(0);
+  const [stepsClosed, setStepsClosed] = useState(false);
+  // First steps count across the account: does another child already have a goal / log / achievement?
+  const [otherSteps, setOtherSteps] = useState<{ goal: boolean; practice: boolean; achievement: boolean } | null>(null);
+  // Default tab is decided once per app open; a deep link (/goals, /practice, /today, ?action=) always wins.
   const tabDecided = useRef(false);
-  const deepLinked = useRef(initialSection() === "today" || pendingAction() !== null);
+  const deepLinked = useRef(initialSection() !== "achievements" || pendingAction() !== null);
   // Until then a parent's main area shows a spinner instead of flashing the achievements tab first.
   const [tabReady, setTabReady] = useState(() => user?.role !== "parent" || deepLinked.current);
   // const [champMood, setChampMood] = useState<"idle" | "happy" | "excited" | "streak" | "sleeping">("idle");
@@ -222,7 +239,7 @@ function Dashboard() {
     usePracticeLogs(child?.childId ?? "", localMode);
   const { reflections, error: reflectionsError, addLocal: addLocalReflection, removeLocal: removeLocalReflection } =
     useReflections(child?.childId ?? "", user?.role !== "teacher", localMode);
-  const { goals, upsertLocal: upsertLocalGoal } = useGoals(child?.childId ?? "", localMode);
+  const { goals, loadedFor: goalsLoadedFor, upsertLocal: upsertLocalGoal } = useGoals(child?.childId ?? "", localMode);
 
   // Install nudge (iOS guide / Android prompt) from the 2nd open on; see src/lib/install.ts.
   useEffect(() => {
@@ -235,7 +252,8 @@ function Dashboard() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.type === "navigate" && e.data.url === "/today") setActiveSection("today");
+      const section = e.data?.type === "navigate" && typeof e.data.url === "string" ? sectionForPath(e.data.url) : null;
+      if (section) setActiveSection(section);
     };
     navigator.serviceWorker.addEventListener("message", onMsg);
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
@@ -260,16 +278,17 @@ function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadReminderPrefs, [user?.uid, localMode]);
 
-  // A parent who has not logged any practice yet starts on Today (the daily habit), once per open.
+  // Parent start tab, once per open: an active goal → Practice (the daily habit), none → Goals.
   useEffect(() => {
-    if (tabDecided.current || !child || logsLoadedFor !== child.childId) return;
+    if (tabDecided.current || !child || goalsLoadedFor !== child.childId) return;
     tabDecided.current = true;
-    if (activeSection === "achievements" && preferTodayTab({ role: user?.role, practiceLogs: practiceLogs.length, deepLinked: deepLinked.current })) {
-      setActiveSection("today");
-    }
+    const tab = activeSection === "achievements"
+      ? defaultParentTab({ role: user?.role, hasActiveGoal: activeGoals(goals).length > 0, deepLinked: deepLinked.current })
+      : null;
+    if (tab) setActiveSection(tab);
     setTabReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child?.childId, logsLoadedFor]);
+  }, [child?.childId, goalsLoadedFor]);
   // Logs that never arrive (error, very slow network) must not keep the spinner: open where we are.
   useEffect(() => {
     if (tabReady || !child) return;
@@ -277,6 +296,20 @@ function Dashboard() {
     return () => window.clearTimeout(id);
   }, [tabReady, child?.childId]);
   useEffect(() => { if (logsError && !tabReady) { tabDecided.current = true; setTabReady(true); } }, [logsError, tabReady]);
+
+  // First steps across children (parents with 2+ children, account mode): one existence check per open / child list.
+  const childIdsKey = children.map((c) => c.childId).join(",");
+  useEffect(() => {
+    if (localMode || user?.role !== "parent" || children.length < 2) { setOtherSteps({ goal: false, practice: false, achievement: false }); return; }
+    if (firstStepsDismissed(user.uid)) return; // card closed or finished: nothing to compute
+    let cancelled = false;
+    setOtherSteps(null);
+    accountStepFlags(children.map((c) => c.childId))
+      .then((f) => { if (!cancelled) setOtherSteps(f); })
+      .catch((e) => { console.warn("[first-steps] account check failed:", e); if (!cancelled) setOtherSteps({ goal: false, practice: false, achievement: false }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, localMode, childIdsKey]);
 
   // Manifest shortcut "Амжилт нэмэх": open the add form once a child is ready (parents only).
   useEffect(() => {
@@ -486,7 +519,7 @@ function Dashboard() {
     setToast({ kind: "success", message: t("status.deleted") });
   }
 
-  async function handleAddPracticeLog(log: { date: string; duration: number; content: string; goalId?: string }): Promise<SaveOutcome> {
+  async function handleAddPracticeLog(log: Omit<PracticeLog, "id" | "childId" | "createdAt">): Promise<SaveOutcome> {
     if (!child) return "saved";
     if (!localMode) {
       // Offline (or a stalled connection): the write sits in Firestore's queue and the
@@ -496,13 +529,14 @@ function Dashboard() {
       try { outcome = await raceWrite(createPracticeLog(child.childId, log), () => setToast({ kind: "error", message: t("status.errorSaving") })); }
       catch (e) { setToast({ kind: "error", message: t("status.errorSaving") }); throw e; } // form keeps the text
       if (first) askReminderOnce();
+      setOtherSteps((o) => (o ? { ...o, practice: true } : o));
       return outcome;
     }
     addLocalLog({ id: crypto.randomUUID(), childId: child.childId, ...log, createdAt: new Date().toISOString() });
     return "saved";
   }
 
-  async function handleAddReflection(r: { date: string; mood: 1|2|3|4|5; content: string; parentNote?: string }) {
+  async function handleAddReflection(r: Omit<Reflection, "id" | "childId" | "createdAt">) {
     if (!child) return;
     if (!localMode) {
       try { await createReflection(child.childId, r); }
@@ -541,9 +575,11 @@ function Dashboard() {
     try {
       if (localMode) {
         const now = new Date().toISOString();
-        upsertLocalGoal(editing
+        const next: Goal = editing
           ? { ...editing, ...draft, updatedAt: now }
-          : { id: crypto.randomUUID(), childId: child.childId, parentId: user.uid, ...draft, status: "active", createdAt: now, updatedAt: now });
+          : { id: crypto.randomUUID(), childId: child.childId, parentId: user.uid, ...draft, status: "active", createdAt: now, updatedAt: now };
+        if (!next.targetResult) delete next.targetResult; // "" = cleared in the edit form
+        upsertLocalGoal(next);
       } else if (editing) {
         await updateGoal(editing.id, draft);
       } else {
@@ -588,7 +624,7 @@ function Dashboard() {
 
   function openStep(id: StepId) {
     if (id === "goal") openGoalForm();
-    else if (id === "practice") { setActiveSection("today"); setTodayFocus((n) => n + 1); }
+    else if (id === "practice") { setActiveSection("practice"); setPracticeFocus((n) => n + 1); }
     else if (id === "achievement") setShowForm(true);
     else if (id === "reminder") { if (user) markReminderAsked(user.uid); setReminderAsk({ busy: false, note: null }); }
     else setShowAddChild(true);
@@ -612,7 +648,7 @@ function Dashboard() {
   function openGoalForm(goal?: Goal) {
     setGoalDetail(null);
     setShowProfile(false);
-    setGoalForm({ open: true, goal });
+    setGoalForm({ open: true, goal, limit: !goal && goalLimitReached });
   }
 
   // "official" is open to every plan; "framed" / "portfolio" need hasPdf (Family+).
@@ -657,9 +693,10 @@ function Dashboard() {
       for (const a of [...data.achievements].reverse()) {
         await createAchievement(newChild.childId, { title: a.title, date: a.date, location: a.location, category: a.category, description: a.description, awardType: a.awardType, images: [] });
       }
-      for (const l of [...data.practiceLogs].reverse()) await createPracticeLog(newChild.childId, { date: l.date, duration: l.duration, content: l.content });
-      for (const g of data.goals ?? []) if (g.status === "active") await createGoal(newChild.childId, user!.uid, { title: g.title, date: g.date, category: g.category, targetSessionsPerWeek: g.targetSessionsPerWeek, targetMinutes: g.targetMinutes });
-      for (const r of [...data.reflections].reverse()) await createReflection(newChild.childId, { date: r.date, mood: r.mood, content: r.content, parentNote: r.parentNote });
+      // goalId refers to the trial goal id, which does not exist in the account → dropped (as before).
+      for (const l of [...data.practiceLogs].reverse()) await createPracticeLog(newChild.childId, { date: l.date, duration: l.duration, content: l.content ?? "", wentWell: l.wentWell, toImprove: l.toImprove, learned: l.learned });
+      for (const g of data.goals ?? []) if (g.status === "active") await createGoal(newChild.childId, user!.uid, { title: g.title, date: g.date, category: g.category, targetSessionsPerWeek: g.targetSessionsPerWeek, targetMinutes: g.targetMinutes, targetResult: g.targetResult });
+      for (const r of [...data.reflections].reverse()) await createReflection(newChild.childId, { date: r.date, mood: r.mood, content: r.content ?? "", focus: r.focus, parentNote: r.parentNote });
       clearLocalData();
       void markGuestMigrated(user.uid);
       setChildren([newChild]);
@@ -721,6 +758,30 @@ function Dashboard() {
     await handleSignOut();
   }
 
+  // Account-wide (all children), so a parent of three is not asked again on the second child.
+  const steps = firstSteps({
+    hasChild: true,
+    ...accountStepCounts({ goals: goals.length, practiceLogs: practiceLogs.length, achievements: achievements.length }, otherSteps),
+    remindersOn,
+    guest: localMode,
+  });
+  // wait until the data behind the steps is in, so a finished account never sees the card flash
+  const stepsKnown = (localMode || remindersOn !== null) && otherSteps !== null
+    && !!child && logsLoadedFor === child.childId && goalsLoadedFor === child.childId && !(loadingAch && !localMode);
+  const stepsVisible = showFirstSteps({
+    role: user?.role,
+    dismissed: stepsClosed || (!!user && firstStepsDismissed(user.uid)),
+    steps,
+    remindersKnown: stepsKnown,
+  });
+  // Seen complete once → never again on this device (deleting the data later must not bring it back).
+  const stepsComplete = stepsKnown && allStepsDone(steps);
+  useEffect(() => { if (stepsComplete && user?.role === "parent") markFirstStepsComplete(user.uid); }, [stepsComplete, user?.uid, user?.role]);
+  function closeFirstSteps() {
+    if (user) dismissFirstSteps(user.uid);
+    setStepsClosed(true);
+  }
+
   if (loadingChildren) return <FullScreenLoader />;
   if (!child) {
     if (user?.role === "teacher") {
@@ -746,7 +807,9 @@ function Dashboard() {
             <div className="mt-6">
               <TeacherInvitePanel teacherId={user.uid} teacherName={user.displayName} onCreateCode={createInviteCode} />
             </div>
+            <LegalLinks onOpen={setLegal} className="mt-8" />
           </main>
+          {legal && <LegalSheet view={legal} onClose={() => setLegal(null)} />}
           {showAccount && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
           {toast && <Toast kind={toast.kind} message={toast.message} onClose={() => setToast(null)} />}
         </div>
@@ -778,7 +841,9 @@ function Dashboard() {
               {t("children.empty.add")}
             </button>
           </div>
+          <LegalLinks onOpen={setLegal} className="mt-6" />
         </main>
+        {legal && <LegalSheet view={legal} onClose={() => setLegal(null)} />}
         {showMigrate !== null && <MigrateModal count={showMigrate} busy={migrating} onConfirm={handleMigrate} onDecline={handleMigrateDecline} />}
         {showAddChild && showMigrate === null && <AddChildModal onClose={() => setShowAddChild(false)} onAdd={handleAddNewChild} />}
         {showAccount && user && <AccountSettingsModal user={user} subscriptionInfo={subscriptionInfo} childrenCount={0} onClose={() => setShowAccount(false)} onDeleteAccount={handleDeleteAccount} />}
@@ -805,37 +870,18 @@ function Dashboard() {
     setUpgradeBarDismissed(true);
   }
 
+  // One question per page: Goals (what for) · Practice (each day) · Feelings · Achievements (results).
   const navItems: { id: NavSection; label: string; Icon: LucideIcon }[] = [
-    { id: "today", label: t("nav.today"), Icon: CalendarCheck },
-    { id: "achievements", label: t("nav.achievements"), Icon: Trophy },
+    { id: "goals", label: t("nav.goals"), Icon: Target },
     { id: "practice", label: t("nav.practice"), Icon: Clock },
     { id: "reflection", label: t("nav.reflection"), Icon: Heart },
+    { id: "achievements", label: t("nav.achievements"), Icon: Trophy },
     { id: "coach", label: t("nav.coach"), Icon: GraduationCap },
     { id: "pdf", label: t("nav.pdf"), Icon: FileText },
     { id: "about", label: t("nav.about"), Icon: Info },
     { id: "terms", label: t("nav.terms"), Icon: ScrollText },
   ];
 
-  const steps = firstSteps({
-    hasChild: true,
-    goals: goals.length,
-    practiceLogs: practiceLogs.length,
-    achievements: achievements.length,
-    remindersOn,
-    guest: localMode,
-  });
-  const stepsKey = `${user?.uid}.${child.childId}`;
-  const stepsVisible = showFirstSteps({
-    role: user?.role,
-    dismissed: stepsClosed.includes(stepsKey) || (!!user && firstStepsDismissed(user.uid, child.childId)),
-    steps,
-    // wait until the data behind the steps is in, so a finished account never sees the card flash
-    remindersKnown: (localMode || remindersOn !== null) && logsLoadedFor === child.childId && !(loadingAch && !localMode),
-  });
-  function closeFirstSteps() {
-    if (user) dismissFirstSteps(user.uid, child.childId);
-    setStepsClosed((k) => [...k, stepsKey]);
-  }
   const firstStepsCard = (className: string) =>
     stepsVisible ? <FirstStepsCard steps={steps} onStep={openStep} onClose={closeFirstSteps} className={className} /> : null;
 
@@ -965,9 +1011,9 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Nav items */}
+          {/* Nav items — About / Terms live in the profile (avatar) menu */}
           <nav className="px-3 py-3 flex-1">
-            {navItems.map(({ id, label, Icon }) => {
+            {navItems.filter((item) => item.id !== "about" && item.id !== "terms").map(({ id, label, Icon }) => {
               const active = activeSection === id;
               return (
                 <button
@@ -1016,20 +1062,16 @@ function Dashboard() {
             <div className="flex justify-center py-16" data-testid="tab-pending"><Loader2 size={20} className="animate-spin text-ink-3" aria-hidden /></div>
           ) : (
           <div key={activeSection} className="cs-section-in">
-          {activeSection === "today" && (
+          {activeSection === "goals" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
-              <SectionHeader title={t("today.title")} subtitle={child.name} />
+              <SectionHeader title={t("goals.page.title")} subtitle={child.name} />
               {firstStepsCard("mb-4")}
-              <TodayPage
-                focusForm={todayFocus}
-                kids={children}
-                activeIdx={activeChildIdx}
-                onSelectChild={setActiveChildIdx}
+              <GoalsPage
+                child={child}
                 logs={practiceLogs}
-                onAdd={handleAddPracticeLog}
-                onDelete={handleDeletePracticeLog}
-                readOnly={isTeacher}
                 goals={goals}
+                readOnly={isTeacher}
+                limitReached={goalLimitReached}
                 onAddGoal={() => openGoalForm()}
                 onOpenGoal={(g) => setGoalDetail(g)}
                 onEditGoal={(g) => openGoalForm(g)}
@@ -1044,19 +1086,29 @@ function Dashboard() {
               loading={loadingAch && !localMode}
               readOnly={isTeacher}
               onAddClick={() => setShowForm(true)}
-              onTodayClick={() => setActiveSection("today")}
+              onTodayClick={() => { setActiveSection("practice"); setPracticeFocus((n) => n + 1); }}
               nextGoal={(() => { const g = pickNextGoal(goals, todayKey); return g ? { title: g.title, daysLeft: goalStats(g, practiceLogs, todayKey).daysLeft } : null; })()}
               onEditProfile={() => setShowProfile(true)}
               onEditAchievement={(a) => setEditingAchievement(a)}
               onDeleteAchievement={handleDeleteAchievement}
               onToast={(kind, message) => setToast({ kind, message })}
-              topSlot={firstStepsCard("mb-5")}
             />
           )}
           {activeSection === "practice" && (
             <div className="px-4 py-6 max-w-3xl mx-auto">
               <SectionHeader title={t("practice.title")} subtitle={child.name} />
-              <PracticeLogSection childId={child.childId} logs={practiceLogs} onAdd={handleAddPracticeLog} onDelete={handleDeletePracticeLog} readOnly={isTeacher} />
+              {firstStepsCard("mb-4")}
+              <PracticePage
+                focusForm={practiceFocus}
+                kids={children}
+                activeIdx={activeChildIdx}
+                onSelectChild={setActiveChildIdx}
+                logs={practiceLogs}
+                onAdd={handleAddPracticeLog}
+                onDelete={handleDeletePracticeLog}
+                readOnly={isTeacher}
+                goals={goals}
+              />
             </div>
           )}
           {activeSection === "reflection" && (
@@ -1284,7 +1336,7 @@ function Dashboard() {
         <GoalForm
           childName={child.name}
           initial={goalForm.goal}
-          limitReached={goalLimitReached}
+          limitReached={!!goalForm.limit}
           onUpgrade={() => { setGoalForm({ open: false }); setShowSubscription(true); }}
           onSubmit={async (d) => { await handleSaveGoal(d); }}
           onCancel={() => setGoalForm({ open: false })}
@@ -1306,7 +1358,7 @@ function Dashboard() {
           hint={t("onboarding.practiceAsk.hint")}
           yes={t("onboarding.practiceAsk.yes")}
           no={t("onboarding.practiceAsk.no")}
-          onYes={() => { setPracticeAsk(false); setActiveSection("today"); setTodayFocus((n) => n + 1); }}
+          onYes={() => { setPracticeAsk(false); setActiveSection("practice"); setPracticeFocus((n) => n + 1); }}
           onNo={() => setPracticeAsk(false)}
         />
       )}
@@ -1350,7 +1402,7 @@ function Dashboard() {
                 date: resultGoal.date,
                 category: resultGoal.category,
                 awardType: "Participant",
-                prep: prepFromStats(resultGoal.id, goalStats(resultGoal, practiceLogs, todayKey)),
+                prep: prepFromStats(resultGoal.id, goalStats(resultGoal, practiceLogs, todayKey), resultGoal.targetResult),
               }}
               onCancel={() => setResultGoal(null)}
               onSubmit={handleAddAchievement}

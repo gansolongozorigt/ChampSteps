@@ -1,5 +1,5 @@
 // =============================================================================
-// GoalCard — compact card on the Today screen: countdown, sessions/hours, weekly target.
+// GoalCard — compact card on the Goals screen: countdown, target result, sessions/hours, weekly target.
 // =============================================================================
 
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,7 @@ export default function GoalCard({ goal, stats, onOpen }: { goal: Goal; stats: G
         </span>
         <div className="min-w-0 flex-1">
           <p className="t-body-strong text-ink leading-snug" data-testid="goal-countdown">{countdown}</p>
+          {goal.targetResult && <p className="t-caption text-primary-soft-ink mt-0.5 break-words" data-testid="goal-target-line">{t("goals.targetLine", { target: goal.targetResult })}</p>}
           <p className="t-caption mt-0.5" data-testid="goal-stats">{statsLine(t, stats)}</p>
           {target > 0 && (
             <div className="mt-2">

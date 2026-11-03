@@ -5,7 +5,7 @@ import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, addAchievement } 
 const acc = { email: testEmail("i18n"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
 test.afterAll(async () => { await cleanupTestUser(acc.email); });
 
-const RAW_KEY = /\b(app|nav|auth|form|status|pdf|pdfPreview|sub|promo|pay|reflection|practice|coach|invite|children|about|terms|login|delete|card|search|summary|empty|profile|ai|admin|categories|awards)\.[a-zA-Z]+(\.[a-zA-Z]+)*\b/;
+const RAW_KEY = /\b(app|nav|auth|form|status|pdf|pdfPreview|sub|promo|pay|reflection|practice|coach|invite|children|about|terms|login|delete|card|search|summary|empty|profile|ai|admin|categories|awards|goals|today)\.[a-zA-Z]+(\.[a-zA-Z]+)*\b/;
 
 async function scan(page: import("@playwright/test").Page, label: string, problems: string[]) {
   const text = await page.locator("body").innerText();
@@ -35,8 +35,8 @@ test("MN → EN → RU: main screens show no raw keys / [object] / empty labels"
     prev = code;
     await page.getByRole("button", { name }).click();
     await expect(page.locator("aside").getByRole("button", { name: tr("nav.achievements", {}, code), exact: true })).toBeVisible();
-    for (const s of ["achievements", "practice", "reflection", "coach", "pdf", "about", "terms"] as const) {
-      await page.locator("aside").getByRole("button", { name: tr(`nav.${s}`, {}, code), exact: true }).click();
+    for (const s of ["goals", "practice", "reflection", "achievements", "coach", "pdf", "about", "terms"] as const) {
+      await nav(page, s, code);
       await scan(page, `${code}/${s}`, problems);
     }
     await page.locator("header").first().getByTitle(tr("nav.subscription", {}, code)).click();
@@ -46,5 +46,4 @@ test("MN → EN → RU: main screens show no raw keys / [object] / empty labels"
     await expect(page.getByRole("heading", { name: tr("sub.title", {}, code) })).toBeHidden();
   }
   expect(problems, problems.join("\n")).toEqual([]);
-  void nav;
 });

@@ -13,18 +13,18 @@ test("offline write → banner + queued confirm → synced to Firestore after re
   const page = await newPage(context);
   await signUp(page, acc);
   await waitForDashboard(page);
-  await nav(page, "today");
-  await expect(page.getByTestId("today-empty")).toBeVisible(); // listener is live
+  await nav(page, "practice");
+  await expect(page.getByTestId("practice-empty")).toBeVisible(); // listener is live
   await expect(page.getByTestId("offline-banner")).toBeHidden();
 
   await context.setOffline(true);
   await expect(page.getByTestId("offline-banner")).toContainText(tr("offline.banner"));
 
   const TEXT = "Офлайн бичлэг.";
-  await page.getByPlaceholder(tr("today.whatPlaceholder")).fill(TEXT);
-  await page.getByTestId("today-save").click();
-  await expect(page.getByTestId("today-flash")).toContainText(tr("today.queued"));
-  await expect(page.getByTestId("today-entries").locator("li").filter({ hasText: TEXT })).toBeVisible();
+  await page.getByTestId("practice-content").fill(TEXT);
+  await page.getByTestId("practice-save").click();
+  await expect(page.getByTestId("practice-flash")).toContainText(tr("today.queued"));
+  await expect(page.getByTestId("practice-history").getByTestId("practice-entry").filter({ hasText: TEXT })).toBeVisible();
   await expect(page.getByTestId("offline-banner")).toContainText(tr("offline.pending_one", { count: 1 }));
   expect(await countChildDocs(acc.email, "practiceLogs")).toBe(0); // not on the server yet
 

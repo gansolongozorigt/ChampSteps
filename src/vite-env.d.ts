@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   /** Web Push certificate public key (Firebase Console → Cloud Messaging). Optional: push UI shows "not configured" without it. */
   readonly VITE_FIREBASE_VAPID_KEY?: string
   readonly VITE_QPAY_SANDBOX?: string
+  /** "1" = dev server talks to the local Firebase emulators (E2E only) */
+  readonly VITE_USE_EMULATORS?: string
 }
 
 interface ImportMeta {

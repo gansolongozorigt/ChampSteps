@@ -49,7 +49,7 @@ export default defineConfig({
         background_color: '#FFFFFF',
         // Long-press / right-click shortcuts (Android, desktop). iOS ignores them.
         shortcuts: [
-          { name: 'Бэлтгэл тэмдэглэх', short_name: 'Өнөөдөр', url: '/today', icons: [{ src: '/shortcut-today.png', sizes: '96x96', type: 'image/png' }] },
+          { name: 'Бэлтгэл тэмдэглэх', short_name: 'Бэлтгэл', url: '/practice', icons: [{ src: '/shortcut-today.png', sizes: '96x96', type: 'image/png' }] },
           { name: 'Амжилт нэмэх', short_name: 'Амжилт', url: '/?action=add-achievement', icons: [{ src: '/shortcut-add.png', sizes: '96x96', type: 'image/png' }] },
         ],
         icons: [

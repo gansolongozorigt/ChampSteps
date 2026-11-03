@@ -15,6 +15,11 @@
 // Client-written (users/{uid}.reminders, allowed by the users update rule):
 //   reminders: { daily: boolean, competition: boolean, updatedAt }
 
+// Where a tap opens the app: evening "log today's practice" → Practice, competition-day morning → Goals
+// (the "you are ready" screen). Older app versions open these paths on their start tab.
+export const PRACTICE_URL = "/practice";
+export const GOALS_URL = "/goals";
+
 export const LANGS = ["mn", "en", "ru"] as const;
 export type Lang = (typeof LANGS)[number];
 export const PLATFORMS = ["ios-pwa", "android", "desktop"] as const;
@@ -295,7 +300,7 @@ export function decideMorning(user: ReminderUser, children: ChildLike[], goals: 
   if (children.length === 0) return { kind: "none", reason: "no-children" };
   const g = goals.filter((x) => x.date === today).sort((a, b) => a.title.localeCompare(b.title))[0];
   if (!g) return { kind: "none", reason: "no-goal-today" };
-  return { kind: "goalToday", title: g.title, childName: nameOf(children, g.childId), days: 0, sessions: 0, daysLeft: 0, url: "/today" };
+  return { kind: "goalToday", title: g.title, childName: nameOf(children, g.childId), days: 0, sessions: 0, daysLeft: 0, url: GOALS_URL };
 }
 
 /**
@@ -313,13 +318,13 @@ export function decideEvening(user: ReminderUser, children: ChildLike[], loggedT
   const stats = ctx.stats ?? { sessions: 0, days: 0 };
   if (user.competition) {
     const gt = byDate(tomorrow);
-    if (gt) return { kind: "goalTomorrow", title: gt.title, childName: nameOf(children, gt.childId), days: stats.days, sessions: stats.sessions, daysLeft: 1, url: "/today" };
+    if (gt) return { kind: "goalTomorrow", title: gt.title, childName: nameOf(children, gt.childId), days: stats.days, sessions: stats.sessions, daysLeft: 1, url: PRACTICE_URL };
     if (tomorrowEvents.length > 0) {
       const ev = tomorrowEvents[0];
       return { kind: "competition", childName: nameOf(children, ev.childId), title: ev.title };
     }
     const gw = byDate(inWeek);
-    if (gw) return { kind: "goalWeek", title: gw.title, childName: nameOf(children, gw.childId), days: stats.days, sessions: stats.sessions, daysLeft: 7, url: "/today" };
+    if (gw) return { kind: "goalWeek", title: gw.title, childName: nameOf(children, gw.childId), days: stats.days, sessions: stats.sessions, daysLeft: 7, url: PRACTICE_URL };
   }
   if (user.daily) {
     if (ctx.goals.some((g) => g.date === ctx.today)) return { kind: "none", reason: "competition-day" };
@@ -330,7 +335,7 @@ export function decideEvening(user: ReminderUser, children: ChildLike[], loggedT
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.title.localeCompare(b.title)))[0];
     if (upcoming) {
       const daysLeft = Math.round((Date.parse(upcoming.date + "T00:00:00Z") - Date.parse(ctx.today + "T00:00:00Z")) / 86_400_000);
-      return { kind: "goalDaily", title: upcoming.title, childName: nameOf(children, upcoming.childId), days: 0, sessions: 0, daysLeft, url: "/today" };
+      return { kind: "goalDaily", title: upcoming.title, childName: nameOf(children, upcoming.childId), days: 0, sessions: 0, daysLeft, url: PRACTICE_URL };
     }
     return { kind: "daily", childNames: missing.map((c) => c.name) };
   }
@@ -374,7 +379,7 @@ export function messagesFor(decision: Decision, tokens: TokenLike[], dateKey: st
       token: tk.token,
       title: text.title,
       body: text.body,
-      url: decision.kind === "competition" ? "/" : decision.kind === "daily" ? "/today" : decision.url,
+      url: decision.kind === "competition" ? "/" : decision.kind === "daily" ? PRACTICE_URL : decision.url,
       tag: `reminder-${dateKey}`,
     };
   });

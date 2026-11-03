@@ -19,6 +19,7 @@ import type { Achievement, Child, PracticeLog } from "../types";
 import type { AppLang } from "../i18n";
 import { LOGO_BARS } from "../components/Logo";
 import { ageBioLine } from "./age";
+import { practiceNoteText } from "./practice";
 
 // -----------------------------------------------------------------------------
 // Brand palette (docs/BRAND.md) as RGB for jsPDF.
@@ -490,15 +491,16 @@ export function prepValue(a: { prep?: { days: number; minutes: number } }, t: T)
 
 export interface PrepEntry { date: string; minutes: number; text: string }
 
-/** The newest practice-log entries (max 3, empty notes skipped) of the goal the achievement came out of. */
+/** The newest practice-log entries (max 3, empty notes skipped) of the goal the achievement came out of.
+ *  Text: the note (content), else "learned", else "went well" (src/lib/practice.ts). */
 export function prepEntriesFor(a: { prep?: { goalId: string } }, logs: readonly PracticeLog[] | undefined, max = 3): PrepEntry[] {
   const goalId = a.prep?.goalId;
   if (!goalId || !logs?.length) return [];
   return logs
-    .filter((l) => l.goalId === goalId && typeof l.content === "string" && l.content.trim().length > 0)
+    .filter((l) => l.goalId === goalId && practiceNoteText(l).length > 0)
     .sort((p, q) => (p.date < q.date ? 1 : p.date > q.date ? -1 : 0))
     .slice(0, max)
-    .map((l) => ({ date: String(l.date ?? ""), minutes: Number(l.duration) || 0, text: l.content.replace(/\s+/g, " ").trim() }));
+    .map((l) => ({ date: String(l.date ?? ""), minutes: Number(l.duration) || 0, text: practiceNoteText(l).replace(/\s+/g, " ").trim() }));
 }
 
 /** Just the note texts of prepEntriesFor. */

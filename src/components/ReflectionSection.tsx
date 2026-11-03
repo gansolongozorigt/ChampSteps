@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Annoyed, Frown, Heart, Laugh, Lock, Meh, Smile, Trash2, type LucideIcon } from "lucide-react";
-import type { Reflection } from "../types";
+import { REFLECTION_FOCUS_MAX, type Reflection } from "../types";
+import { dayLabel, localDateKey } from "../lib/streak";
 
 export interface ReflectionSectionProps {
   childId: string;
@@ -30,9 +31,10 @@ export default function ReflectionSection({
   const { t, i18n } = useTranslation();
 
   const [showForm, setShowForm] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localDateKey(new Date()));
   const [mood, setMood] = useState<Reflection["mood"]>(3);
   const [content, setContent] = useState("");
+  const [focus, setFocus] = useState("");
   const [parentNote, setParentNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -40,17 +42,19 @@ export default function ReflectionSection({
 
   async function handleAdd() {
     const childText = content.trim();
+    const focusText = focus.trim().slice(0, REFLECTION_FOCUS_MAX);
     const parentText = parentNote.trim();
-    // Either section may be filled; an empty one stays empty. Never send
+    // Any of the three may be filled; an empty one stays empty. Never send
     // `undefined` to Firestore (addDoc rejects it) — omit the key instead.
-    if (!childText && !parentText) return;
+    if (!childText && !focusText && !parentText) return;
     setSaving(true);
     try {
-      await onAdd({ date, mood, content: childText, ...(parentText ? { parentNote: parentText } : {}) });
+      await onAdd({ date, mood, content: childText, ...(focusText ? { focus: focusText } : {}), ...(parentText ? { parentNote: parentText } : {}) });
       setContent("");
+      setFocus("");
       setParentNote("");
       setMood(3);
-      setDate(new Date().toISOString().slice(0, 10));
+      setDate(localDateKey(new Date()));
       setShowForm(false);
     } catch {
       // parent already showed the error toast; keep the form open with the text
@@ -63,7 +67,7 @@ export default function ReflectionSection({
     ? (reflections.reduce((s, r) => s + r.mood, 0) / reflections.length).toFixed(1)
     : null;
 
-  const locale = i18n.language === "mn" ? "mn-MN" : "en-US";
+  const lang = i18n.language ?? "mn";
 
   return (
     <div className="mt-8 mb-10">
@@ -96,20 +100,18 @@ export default function ReflectionSection({
         <div className="mb-4 cs-card p-4 sm:p-5 cs-item-in">
           <div className="flex flex-col gap-4 mb-4">
             <div>
-              <label className="cs-field-label">
+              <label className="cs-field-label" htmlFor="reflection-date">
                 {t("reflection.fields.date")}
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
-                <div className="cs-input flex items-center justify-center text-center pointer-events-none">
-                  {new Date(date + "T12:00:00").toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
-                </div>
-              </div>
+              <input
+                id="reflection-date"
+                type="date"
+                value={date}
+                max={localDateKey(new Date())}
+                onChange={(e) => setDate(e.target.value)}
+                className="cs-input"
+                data-testid="reflection-date"
+              />
             </div>
             <div>
               <label className="cs-field-label">
@@ -151,7 +153,25 @@ export default function ReflectionSection({
               onChange={(e) => setContent(e.target.value)}
               rows={3}
               placeholder={t("reflection.fields.childNotePlaceholder")}
+              data-testid="reflection-content"
               className="cs-textarea"
+            />
+          </div>
+
+          {/* what to focus on next — primary left bar, short */}
+          <div className="mb-4 border-l-[3px] border-primary pl-3">
+            <label className="cs-field-label" htmlFor="reflection-focus">
+              {t("reflection.fields.focus")}
+            </label>
+            <textarea
+              id="reflection-focus"
+              value={focus}
+              onChange={(e) => setFocus(e.target.value)}
+              rows={2}
+              maxLength={REFLECTION_FOCUS_MAX}
+              placeholder={t("reflection.fields.focusPlaceholder")}
+              className="cs-textarea min-h-[72px]"
+              data-testid="reflection-focus"
             />
           </div>
 
@@ -181,7 +201,8 @@ export default function ReflectionSection({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={saving || (!content.trim() && !parentNote.trim())}
+              disabled={saving || (!content.trim() && !focus.trim() && !parentNote.trim())}
+              data-testid="reflection-save"
               className="cs-btn cs-btn-primary"
             >
               {saving ? t("reflection.actions.saving") : t("reflection.actions.save")}
@@ -214,9 +235,7 @@ export default function ReflectionSection({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="t-caption">
-                          {new Date(r.date).toLocaleDateString(locale, {
-                            year: "numeric", month: "long", day: "numeric"
-                          })} · {moodLabel}
+                          {dayLabel(r.date, lang)} · {moodLabel}
                         </p>
                         {r.content && (
                           <div className="mt-1.5 border-l-[3px] border-primary pl-3">
@@ -225,7 +244,7 @@ export default function ReflectionSection({
                             </p>
                           </div>
                         )}
-                        {r.content.length > 100 && (
+                        {(r.content ?? "").length > 100 && (
                           <button
                             type="button"
                             onClick={() => setExpandedId(isExpanded ? null : r.id)}
@@ -233,6 +252,12 @@ export default function ReflectionSection({
                           >
                             {isExpanded ? t("reflection.actions.collapse") : t("reflection.actions.expand")}
                           </button>
+                        )}
+                        {r.focus && (
+                          <div className="mt-2 border-l-[3px] border-primary-soft pl-3" data-testid="reflection-focus-line">
+                            <p className="t-label mb-0.5">{t("reflection.focusLabel")}</p>
+                            <p className="t-body text-ink">{r.focus}</p>
+                          </div>
                         )}
                         {(isExpanded || !r.content) && r.parentNote && (
                           <div className="mt-2 border-l-[3px] border-ink-3 pl-3">

@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 import { cleanupTestUser, testEmail } from "./helpers/admin";
-import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav } from "./helpers/app";
+import { newPage, signUp, waitForDashboard, tr, PASSWORD, nav, logPractice } from "./helpers/app";
 
 const acc = { email: testEmail("logs"), password: PASSWORD, name: "QA Parent", role: "parent" as const };
 let page: import("@playwright/test").Page;
@@ -11,17 +11,25 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => { await cleanupTestUser(acc.email); });
 
-test("practice log: add and delete", async () => {
+test("practice log: yesterday via the date row, other duration, add and delete", async () => {
   await nav(page, "practice");
-  await page.getByRole("button", { name: tr("practice.addButton") }).click();
-  await page.getByPlaceholder(tr("practice.fields.notesPlaceholder")).fill("Өнөөдөр 60 минут бэлтгэл хийсэн.");
-  await page.getByRole("button", { name: tr("practice.actions.save"), exact: true }).click();
-  await expect(page.getByPlaceholder(tr("practice.fields.notesPlaceholder"))).toBeHidden(); // form closes after save
-  const item = page.locator("p", { hasText: "Өнөөдөр 60 минут бэлтгэл хийсэн." });
+  await page.getByRole("button", { name: tr("today.prevDay") }).click();
+  await expect(page.getByTestId("practice-date")).toContainText(tr("today.isYesterday"));
+  await expect(page.getByRole("button", { name: tr("today.nextDay") })).toBeEnabled();
+  await logPractice(page, { content: "Өчигдөр 90 минут бэлтгэл хийсэн.", toImprove: "Хэмнэл", minutes: 90 });
+  const item = page.getByTestId("practice-entry").filter({ hasText: "Өчигдөр 90 минут бэлтгэл хийсэн." });
   await expect(item).toBeVisible();
-  await page.getByRole("button", { name: tr("practice.actions.delete"), exact: true }).first().click();
+  await expect(item.getByTestId("practice-entry-meta")).toContainText(tr("today.minutes", { count: 90 }));
+  await expect(item.getByTestId("practice-answers")).toContainText(tr("practice.q.toImprove"));
+  // yesterday is logged, today is not → the streak still counts it
+  await expect(page.getByTestId("practice-streak")).toContainText(tr("today.streak_one", { count: 1 }));
+  await page.getByRole("button", { name: tr("today.backToToday") }).click();
+  await expect(page.getByTestId("practice-date")).toContainText(tr("today.isToday"));
+  await expect(page.getByRole("button", { name: tr("today.nextDay") })).toBeDisabled();
+  await item.getByRole("button", { name: tr("practice.actions.delete"), exact: true }).click();
   await page.getByRole("button", { name: tr("practice.actions.confirmDelete"), exact: true }).last().click();
   await expect(item).toBeHidden();
+  await expect(page.getByTestId("practice-empty")).toBeVisible();
 });
 
 test.describe("reflection", () => {
